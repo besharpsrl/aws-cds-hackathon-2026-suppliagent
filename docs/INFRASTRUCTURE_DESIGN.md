@@ -415,6 +415,5 @@ Prerequisiti non automatizzabili:
 - [ ] ID esatto del profilo `eu.` per la versione Claude scelta
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
 - [ ] Key policy della CMK: oggi concede solo CloudWatch Logs ed EventBridge; aggiungere `ses.amazonaws.com` (inbound-mail, T-20) e `sns.amazonaws.com` (SNS → SQS cifrate, T-21) quando servono
-- [ ] Versione del layer Powertools (oggi 40 in `infra/config/environments.ts`): confermare con `aws ssm get-parameter --name /aws/service/powertools/python/arm64/python3.12/latest` prima del primo deploy
 - [ ] ERP del cliente (per documentare l'adapter futuro)
 - [ ] Soglie di matching tarate sui bigliettini reali

@@ -2,7 +2,7 @@
 
 > **Documento unico di handoff**: cosa devi fare tu, cosa fa Claude Code e come farglielo fare, quali file esistono e cosa contengono.
 > Usalo come scaletta: segui le sezioni in ordine e spunta le caselle.
-> Aggiornato al **23/10/2026** · Consegna Devpost: **28/10/2026 ore 21:00** (ora italiana) · Obiettivo interno: submission **entro il 28/10 mattina**
+> Aggiornato al **23/10/2026 pomeriggio** (P0 completata) · Consegna Devpost: **28/10/2026 ore 21:00** (ora italiana) · Obiettivo interno: submission **entro il 28/10 mattina**
 
 ---
 
@@ -12,11 +12,12 @@
 |---|---|
 | Idea, perimetro, documentazione funzionale e tecnica | ✅ pronta (da validare con il team) |
 | Architettura AWS e diagramma | ✅ pronti |
-| Backlog con 42 task ordinati per fase | ✅ pronto |
-| Contesto per Claude Code (istruzioni, comandi, subagent, hook, MCP) | ✅ pronto – **da riattivare** (§1, passo 1) |
-| Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato – **ultimo commit non ancora pushato** |
-| Codice | ⬜ non ancora iniziato |
-| Account AWS, canali (WhatsApp, SES, SMS/RCS), dati del cliente, ACE, Devpost | ⬜ da fare (§1) |
+| Backlog: 39 task da fare in `docs/04_BACKLOG.md`; il completato è in `docs/DONE.md` | ✅ pronto |
+| Contesto per Claude Code (istruzioni, comandi, subagent, hook, MCP) | ✅ attivo |
+| Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato – branch `chore/p0-foundations` **da pushare + PR** (§1.1) |
+| Codice | ◐ **P0 fatta** (T-01, T-03, T-02): monorepo, CI, app CDK con Foundation e Data stack, `npm run check` verde · nessun deploy ancora |
+| Account AWS | ◐ credenziali ok, **CDK bootstrap da fare** (§1.2) |
+| Canali (WhatsApp, SES, SMS/RCS), dati del cliente, ACE, Devpost | ⬜ da fare (§1) |
 
 Calendario sintetico (dettaglio in §5):
 
@@ -35,19 +36,14 @@ Calendario sintetico (dettaglio in §5):
 
 Le cose che Claude Code non può fare: account, accessi, contatti con cliente e Meta, decisioni, approvazioni, video, submission.
 
-### 1.1 Subito – sistemare il repo (10 minuti)
-
-Nella cartella `aws-cds-hackathon-2026-suppliagent`, dal Terminale:
+### 1.1 Subito – pubblicare la P0 (10 minuti)
 
 ```bash
-bash agent-context/install.sh          # collega i 4 subagent e aggiorna .mcp.json (oggi mancano)
-git rm TODO.md                         # conteneva solo un comando ormai superato
-git add -A
-git commit -m "chore: activate subagents and AgentCore MCP, add START_HERE"
-git push -u origin main
+git push -u origin chore/p0-foundations
+gh pr create --fill                    # la CI parte sulla PR: deve essere verde prima del merge
 ```
 
-- [ ] Passi sopra eseguiti; su GitHub si vedono `START_HERE.md`, `docs/`, `agent-context/`
+- [ ] PR della P0 aperta, CI verde (è la prima esecuzione reale del workflow), merge su `main`
 - [ ] GitHub → *Settings → Branches*: regola su `main` (PR obbligatoria, CI verde, niente force push)
 - [ ] GitHub → *About*: descrizione e topic (vedi §4.6)
 - [ ] Membri del team aggiunti al repo
@@ -61,7 +57,8 @@ git push -u origin main
 **Account AWS** (eu-west-1)
 - [ ] Account dedicato + budget con avvisi
 - [ ] Accesso ai modelli Bedrock: Claude con profilo `eu.` e Titan Text Embeddings V2 (`aws bedrock list-inference-profiles --region eu-west-1`)
-- [ ] `npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-1` (una volta sola)
+- [ ] Confermare l'account da usare (oggi il profilo `default` punta a `115908659817`, ruolo `beSharp-BedrockAccessRole`) e lanciare `npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-1` (una volta sola)
+- [ ] Primo deploy `dev` (`cd infra && npx cdk deploy --all -c env=dev`), dopo aver letto `cdk diff`
 - [ ] Crediti: quelli AWS ($50) probabilmente non arrivano in tempo (3–5 giorni, scadono il 31/10) → confermare un budget interno beSharp
 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
@@ -103,11 +100,11 @@ git push -u origin main
 
 ## 2. Cosa fa Claude Code
 
-Tutto il codice, i test, l'infrastruttura CDK, i dati di prova sintetici, i testi (template, email, README) e le revisioni. Il lavoro è diviso in **42 task** in `docs/04_BACKLOG.md`, organizzati in 4 stream e 5 fasi:
+Tutto il codice, i test, l'infrastruttura CDK, i dati di prova sintetici, i testi (template, email, README) e le revisioni. Il lavoro è diviso in 42 task, organizzati in 4 stream e 5 fasi: quelli **da fare** sono in `docs/04_BACKLOG.md`, quelli **completati** in `docs/DONE.md` (a task chiuso la riga si sposta dal primo al secondo).
 
 | Fase | Quando | Cosa produce | Task principali |
 |---|---|---|---|
-| **P0 – Fondamenta** | 23/10 | Monorepo, CI, app CDK con Foundation e Data stack, template WhatsApp | T-01, T-03, T-02, T-28 |
+| **P0 – Fondamenta** | 23/10 | Monorepo, CI, app CDK con Foundation e Data stack, template WhatsApp | ✅ T-01, T-03, T-02 · ⬜ T-28 |
 | **P1 – Walking skeleton** | 23–24/10 | Messaggio WhatsApp → pipeline → agente → risposta | T-04, T-20, T-21, T-22, T-23, T-24, T-40, T-41, T-42, T-60, T-61 |
 | **P2 – Ordine da foto** | 24–25/10 | Scenario S1 completo: lettura bigliettino, matching, chiarimenti, conferma, ERP mock, email PDF, SMS/RCS | T-06, T-07, T-25…T-27, T-43…T-49, T-62 |
 | **P3 – Copilota, proattività, console** | 25–26/10 | Copilota agenti, riordino proattivo, consegne, console, KPI | T-08, T-09, T-50…T-52, T-63…T-65 |
@@ -135,7 +132,7 @@ Guida completa, pensata per chi parte da zero: **`docs/HANDOFF_CLAUDE_CODE.md`**
    /plugin install security-guidance@claude-plugins-official
    ```
    Non servono altre skill: istruzioni, comandi e subagent sono già nel repo.
-2. **Sessione delle fondamenta** (guida §7): `Shift+Tab` fino a *plan mode*, incolli il prompt di avvio, approvi il piano, alla fine `git push` + `gh pr create --fill` e merge.
+2. **Sessione delle fondamenta** (guida §7): ✅ fatta il 23/10 (dettagli in `docs/DONE.md`); resta push + PR (§1.1).
 3. **Sessioni parallele** (guida §8): ogni persona apre la propria copia di lavoro con `claude -w canali` / `agente` / `console` / `dati` e incolla il prompt del proprio stream.
 4. **Ciclo di ogni task** (guida §9):
    ```text
@@ -178,7 +175,8 @@ I **team di agenti** non servono finché ogni stream ha una persona (guida §11)
 | `docs/01_PROJECT_OVERVIEW.md` | Panoramica: problema, attori, perimetro, architettura ad alto livello, **flusso principale con 20 diramazioni**, ruolo dei canali, glossario |
 | `docs/02_TECHNICAL_FLOWS.md` | Documento tecnico completo: stati di ordine e righe, ruoli, pipeline di ingresso e debounce, **15 flussi (F-01…F-15) con tutti i casi**, 13 errori, contratti JSON, eventi, tool, parametri |
 | `docs/03_FUNCTIONAL_SPEC.md` | **35 funzionalità (FN-01…FN-35)** con priorità e criteri di accettazione, personas, journey, requisiti non funzionali, 7 scenari demo |
-| `docs/04_BACKLOG.md` | **42 task (T-xx)** per stream, fasi, ondate parallele, dipendenze, owner, stato |
+| `docs/04_BACKLOG.md` | Task **da fare** (T-xx) per stream, fasi, ondate parallele, dipendenze, owner, stato |
+| `docs/DONE.md` | Lavoro **completato**: task, documenti e punti aperti chiusi, con data, commit e come verificarli |
 | `docs/INFRASTRUCTURE_DESIGN.md` | Architettura AWS in eu-west-1: 9 stack CDK, canali, ingestion, AgentCore (incl. Evaluations), catalogo con S3 Vectors e Knowledge Base, ordini/ERP, proattività, dati, console, sicurezza, costi, configurazione |
 | `docs/architecture.drawio` | Diagramma architetturale (apri con draw.io); da esportare in PNG per la submission |
 | `docs/HANDOFF_CLAUDE_CODE.md` | Guida passo passo a Claude Code: concetti, installazione, AWS, GitHub, primo avvio, plugin, subagent, prompt di avvio e per stream, comandi |
@@ -207,14 +205,16 @@ I file si modificano **solo qui**; `install.sh` li collega dove i tool li cercan
 
 `CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/commands`, `.claude/agents`, `.mcp.json`, `.kiro/steering`, `.github/pull_request_template.md`
 
-### 4.5 Codice (oggi solo scheletro con README)
+### 4.5 Codice
+
+Comandi dalla root: `npm ci && uv sync`, poi `npm run check` (lint, type check, test, `cdk synth` con cdk-nag; gli stessi della CI). Dettagli in `agent-context/AGENTS.md` §6.
 
 | Cartella | Cosa conterrà |
 |---|---|
-| `infra/` | App CDK in TypeScript con i 9 stack |
-| `agent/` | Agente Strands per AgentCore, prompt per ruolo, `evals/` con dataset ed eval |
-| `services/` | Lambda Python: ricezione, debounce, Notifier, PDF, ERP mock, catalogo, proattività, console; `tools/` (tool dell'agente) e `shared/` |
-| `console/` | Console back office e chat agenti (React + Vite) |
+| `infra/` | App CDK in TypeScript: config `dev`/`demo`, construct `PythonLambda`, `FoundationStack` e `DataStack` completi, gli altri 7 stack vuoti e collegati; test in `infra/test/` |
+| `agent/` | Package `suppliagent_agent` (vuoto); conterrà agente Strands per AgentCore, prompt per ruolo, `evals/` |
+| `services/` | Lambda Python (da fare): ricezione, debounce, Notifier, PDF, ERP mock, catalogo, proattività, console; `tools/` (tool dell'agente) e `shared/` (package `suppliagent_shared`, vuoto) |
+| `console/` | Console back office e chat agenti (React + Vite); oggi solo `package.json` segnaposto (T-61) |
 | `seed/` | Dati di prova anonimizzati/sintetici e script di caricamento/reset; `seed/private/` per i dati grezzi del cliente (esclusa da git) |
 | `scripts/` | Utility (deploy, reset demo, test end-to-end) |
 
@@ -236,7 +236,7 @@ Topic: `aws`, `amazon-bedrock`, `bedrock-agentcore`, `strands-agents`, `whatsapp
 
 | Giorno | Tu | Claude Code (backlog) |
 |---|---|---|
-| **Gio 23/10** | §1.1 repo · §1.2 account, canali, cliente, Devpost, ACE · owner degli stream | Sessione fondamenta: T-01, T-03, T-02 · T-28 testi template · avvio T-04, T-20, T-42 |
+| **Gio 23/10** | §1.1 push e PR · §1.2 account, canali, cliente, Devpost, ACE · owner degli stream | ✅ T-01, T-03, T-02 · T-28 testi template · avvio T-04, T-20, T-42 |
 | **Ven 24/10** | Dataset bigliettini e vocali · approvazioni deploy `dev` · revisione PR | T-04, T-05, T-21, T-23, T-22, T-24, T-40, T-41, T-60, T-61 · T-06 · prototipo lettura bigliettini |
 | **Sab 25/10** | Prove S1 dal telefono · revisione PR | T-07, T-25, T-43, T-44, T-45, T-46, T-47, T-48, T-49, T-62 · T-26, T-27, T-09 |
 | **Dom 26/10** | Prove S1–S7 · **code freeze la sera** | T-08, T-50, T-51, T-52, T-63, T-64, T-65 · avvio T-53 |
