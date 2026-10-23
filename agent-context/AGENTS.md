@@ -126,7 +126,7 @@ npm run format         # prettier --write + ruff format
 cd infra && npx cdk synth -c env=demo
 npx cdk diff -c env=dev
 npx cdk deploy --all -c env=dev                      # solo dev; demo = manuale (vedi §11)
-# opzionale: -c budgetAlertEmail=<email> crea l'AWS Budget (alert 25/50/80%)
+# opzionale: -c budgetAlertEmail=<email> crea l'AWS Budget (alert 25/50/80%) – un solo env, copre l'account
 
 # Console (scaffold in T-61)
 npm run dev -w console | npm run build -w console | npm test -w console

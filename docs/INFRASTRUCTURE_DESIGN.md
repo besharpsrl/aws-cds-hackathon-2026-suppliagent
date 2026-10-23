@@ -23,7 +23,7 @@
 
 ## 2. Account, region e ambienti
 
-- **Account** AWS dedicato all'hackathon (crediti promozionali), **AWS Budgets** con alert 25/50/80%.
+- **Account** AWS dedicato all'hackathon (crediti promozionali), **AWS Budgets** con alert 25/50/80%: creato dal `FoundationStack` solo con `-c budgetAlertEmail=<email>`; il budget copre l'intero account, quindi va passato in **un solo** ambiente.
 - **Region: `eu-west-1` (Irlanda)**. Vincolo: **dati e inferenza restano in Europa**.
 - **Modello**: Claude tramite inference profile **`eu.`**; il profilo `global.` **non** si usa.
 - **Ambienti**: `dev` e `demo` (congelato per video e judging, attivo fino al 12/11/2026). Parametri via CDK context (`-c env=demo`).
@@ -56,7 +56,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 | # | Stack | Risorse principali | Dipende da |
 |---|---|---|---|
 | 1 | `FoundationStack` | KMS CMK, bucket S3 (media, inbound-mail, documents, catalog-assets, analytics, access-logs), event bus applicativo, parametri SSM, Budgets | – |
-| 2 | `DataStack` | Tabelle DynamoDB (§5.7) con Streams e PITR, custom resource di seed | Foundation |
+| 2 | `DataStack` | Tabelle DynamoDB (§5.7) con Streams e PITR, custom resource di seed (rinviata a T-04) | Foundation |
 | 3 | `CatalogStack` | S3 Vectors bucket + indice `products`, Lambda di indicizzazione catalogo, **Bedrock Knowledge Base** (schede tecniche, vector store S3 Vectors) + data source S3 | Foundation, Data |
 | 4 | `ChannelsStack` | SES (identity dominio, configuration set, receipt rule set → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out list), EUM Social (event destination SNS), topic SNS inbound | Foundation |
 | 5 | `AgentStack` | ECR image, AgentCore Runtime + Endpoint, AgentCore Memory, AgentCore Gateway + target Lambda, Bedrock Guardrail, ruoli IAM | Data, Catalog |
@@ -65,7 +65,11 @@ Disponibilità servizi verificata il 09–12/10/2026:
 | 8 | `ConsoleStack` | Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API Gateway REST + WebSocket, Lambda API/broadcaster/rep-chat, S3 + CloudFront (OAC) + WAF | Data, Messaging, Agent |
 | 9 | `AnalyticsStack` | Firehose (eventi CDS + applicativi) → S3 Parquet, Glue Catalog, Athena workgroup e viste KPI, CloudWatch Dashboard + allarmi | Channels, Foundation |
 
-> AgentCore: construct L2 `@aws-cdk/aws-bedrock-agentcore-alpha` dove disponibili, altrimenti L1/custom resource. S3 Vectors e Knowledge Base: L1 (`CfnVectorBucket`, `CfnIndex`, `CfnKnowledgeBase`) o custom resource se non ancora coperte.
+> Verificato il 23/10/2026 su `aws-cdk-lib` 2.274.0:
+> - **AgentCore**: L2 **stabili** in `aws-cdk-lib/aws-bedrockagentcore` (`Runtime`, `RuntimeEndpoint`, `Gateway`, `GatewayTarget`, `WorkloadIdentity`, `Memory`); il pacchetto `@aws-cdk/aws-bedrock-agentcore-alpha` serve solo per Policy e non si usa.
+> - **S3 Vectors**: solo L1 (`CfnVectorBucket`, `CfnIndex`). **Knowledge Base**: L1 `CfnKnowledgeBase` con `storageConfiguration.type = S3_VECTORS` (l'L2 alpha supporta solo OpenSearch).
+> - **cdk-nag v3** gira come plugin di policy validation (`Validations.of(app).addPlugins(...)`): un errore non riconosciuto fa fallire `cdk synth`; le eccezioni si dichiarano con `Validations.of(scope).acknowledge({ id, reason })`.
+> - Stack env-agnostic sull'account (region fissa `eu-west-1`), così `cdk synth` gira in CI senza credenziali. Gli stack 3–9 sono per ora vuoti e collegati nell'ordine di dipendenza.
 
 ## 5. Dettaglio componenti
 
@@ -237,30 +241,32 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 
 ### 5.7 Data layer
 
-**DynamoDB** (on-demand, PITR, SSE-KMS):
+**DynamoDB** (on-demand, PITR, SSE-KMS con la CMK del `FoundationStack`; nome fisico `suppliagent-<env>-<tabella-in-kebab-case>`, es. `suppliagent-dev-turn-buffer`):
 
 | Tabella | PK | SK | GSI | Note |
 |---|---|---|---|---|
 | `Customers` | `customerId` | – | `repId`, `zone` | locali: ragione sociale, tipologia, zona, giorni consegna, agente, listino |
 | `Contacts` | `contactId` | – | `customerId` | persone: ruolo, lingua, preferenze, consenso |
-| `ChannelIdentities` | `channel#address` | – | `contactId` | phone/email → contatto; include agenti di commercio |
+| `ChannelIdentities` | `channelAddress` (`channel#address`) | – | `contactId` | phone/email → contatto; include agenti di commercio |
 | `SalesReps` | `repId` | – | – | agenti: portafoglio, zona |
 | `Products` | `sku` | – | `category` | catalogo, sinonimi, unità, multipli, attivo |
 | `PriceLists` | `priceListId` | `sku` | – | prezzi per listino |
 | `Promotions` | `promoId` | – | `sku` | promozioni con validità |
 | `Stock` | `sku` | – | – | disponibilità, prossimo arrivo, sostituti suggeriti |
 | `DeliveryCalendar` | `zone` | `date` | – | giorni di consegna, cut-off |
-| `Orders` | `orderId` | – | `customerId#createdAt`, `status#updatedAt`, `repId` | testata + righe (raw text, candidati, SKU scelto, confidence, stato riga); **Stream** |
-| `OrderHistory` | `customerId` | `date#orderId` | – | storico (seed sintetico) per insight e matching |
+| `Orders` | `orderId` | – | `customerId`+`createdAt`, `status`+`updatedAt`, `repId` | testata + righe (raw text, candidati, SKU scelto, confidence, stato riga); **Stream** |
+| `OrderHistory` | `customerId` | `dateOrderId` (`date#orderId`) | – | storico (seed sintetico) per insight e matching |
 | `CustomerInsights` | `customerId` | – | – | riordini attesi, prodotti smessi, suggerimenti |
 | `Deliveries` | `orderId` | – | `date` | fascia oraria, stato consegna |
 | `Issues` | `issueId` | – | `orderId` | problemi di consegna con foto |
 | `Conversations` | `conversationId` | – | `contactId` | `mode = AGENT \| HUMAN`, ruolo |
-| `Messages` | `conversationId` | `ts#messageId` | `providerMessageId` | storico multicanale; **Stream** |
+| `Messages` | `conversationId` | `tsMessageId` (`ts#messageId`) | `providerMessageId` | storico multicanale; **Stream** |
 | `TurnBuffer` | `conversationId` | – | – | debounce e lock |
 | `WsConnections` | `connectionId` | – | `userId` | connessioni console/chat web; TTL |
 
-**S3** (Block Public Access, SSE-KMS):
+Convenzioni implementate (T-03): attributi chiave tutti stringa; GSI chiamati `by-<partition key>` (es. `by-customerId`); `a`+`b` = partition key `a`, sort key `b`; TTL su `TurnBuffer` e `WsConnections` con attributo `expiresAt` (epoch seconds); Streams `NEW_AND_OLD_IMAGES` su `Orders` e `Messages`. `date` e `status` sono parole riservate DynamoDB: nelle espressioni usare `ExpressionAttributeNames`. **Removal policy `DESTROY`** su tabelle e bucket in tutti gli ambienti: i dati sono sintetici e si ripopolano con `seed/seed.py` / `seed/reset.py` (T-04); PITR resta attivo.
+
+**S3** (Block Public Access, SSE-KMS; eccezione: `access-logs` usa SSE-S3 perché la destinazione dei server access log S3 non supporta SSE-KMS):
 
 | Bucket | Contenuto | Lifecycle |
 |---|---|---|
@@ -340,7 +346,7 @@ sequenceDiagram
 - Ruoli Lambda dedicati e minimi; solo il Notifier può inviare su canali CDS.
 - **Autorizzazione per ruolo** nei tool: un ristoratore vede solo i propri ordini e il proprio listino; un agente solo il proprio portafoglio. I controlli sono **nel tool** (non solo nel prompt).
 - AgentCore Runtime: `bedrock:InvokeModel*` solo su profili `eu.` scelti, `ApplyGuardrail`, accesso a Memory, Gateway e Knowledge Base.
-- KMS su DynamoDB, S3, SQS, SNS, log; Secrets Manager; CloudTrail; WAF; CORS ristretto; **cdk-nag** in pipeline.
+- KMS su DynamoDB, S3, SQS, SNS, EventBridge (event bus applicativo), log; Secrets Manager; CloudTrail; WAF; CORS ristretto; **cdk-nag** in pipeline.
 - **Dati del cliente**: catalogo anonimizzato o sintetico, nessun dato personale reale, nessun prezzo reale se non autorizzato.
 
 ## 8. Resilienza e scalabilità
@@ -380,7 +386,7 @@ SuppliAgent/
 └── README.md
 ```
 
-- GitHub Actions con **OIDC**; `cdk deploy` su `main` → `dev`, manuale → `demo`.
+- GitHub Actions: CI (T-02, `.github/workflows/ci.yml`) su PR e push su `main` con lint, type check, test e `cdk synth` + cdk-nag, senza credenziali AWS. **Da fare**: deploy con **OIDC** (`main` → `dev`, manuale → `demo`); oggi il deploy è manuale.
 
 ## 11. Configurazione e prerequisiti manuali
 
@@ -407,6 +413,8 @@ Prerequisiti non automatizzabili:
 - [x] Region `eu-west-1`, profilo Claude `eu.`
 - [ ] ID esatto del profilo `eu.` per la versione Claude scelta
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
-- [ ] Copertura CDK di S3 Vectors / Knowledge Base con S3 Vectors (L1 vs custom resource)
+- [x] Copertura CDK di S3 Vectors / Knowledge Base con S3 Vectors → L1 (vedi nota §4)
+- [ ] Key policy della CMK: oggi concede solo CloudWatch Logs ed EventBridge; aggiungere `ses.amazonaws.com` (inbound-mail, T-20) e `sns.amazonaws.com` (SNS → SQS cifrate, T-21) quando servono
+- [ ] Versione del layer Powertools (oggi 40 in `infra/config/environments.ts`): confermare con `aws ssm get-parameter --name /aws/service/powertools/python/arm64/python3.12/latest` prima del primo deploy
 - [ ] ERP del cliente (per documentare l'adapter futuro)
 - [ ] Soglie di matching tarate sui bigliettini reali

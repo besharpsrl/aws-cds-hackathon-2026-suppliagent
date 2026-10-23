@@ -41,9 +41,9 @@ Legenda stato: ☐ da fare · ◐ in corso · ☑ fatto · ⛔ bloccato
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-01 | Scaffold monorepo: `pyproject.toml` (uv workspace), npm workspaces, ruff/mypy/eslint/prettier, script `make`/npm per lint-test-synth | – | P0 | – | | ☐ |
-| 2 | T-03 | CDK app: config `dev`/`demo`, construct Lambda comune, `FoundationStack`, `DataStack` (tabelle 5.7) | FN-32 | P0 | T-01 | | ☐ |
-| 3 | T-02 | CI GitHub Actions: lint, type check, test, `cdk synth` + cdk-nag su PR | FN-32 | P0 | T-01 | | ☐ |
+| 1 | T-01 | Scaffold monorepo: `pyproject.toml` (uv workspace), npm workspaces, ruff/mypy/eslint/prettier, script `make`/npm per lint-test-synth | – | P0 | – | | ☑ |
+| 2 | T-03 | CDK app: config `dev`/`demo`, construct Lambda comune, `FoundationStack`, `DataStack` (tabelle 5.7) | FN-32 | P0 | T-01 | | ☑ |
+| 3 | T-02 | CI GitHub Actions: lint, type check, test, `cdk synth` + cdk-nag su PR | FN-32 | P0 | T-01 | | ☑ |
 | 4 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | | ☐ |
 | 5 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | | ☐ |
 | 6 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | | ☐ |
