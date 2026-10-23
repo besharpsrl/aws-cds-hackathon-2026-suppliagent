@@ -94,7 +94,10 @@ export class FoundationStack extends Stack {
     this.catalogAssetsBucket = bucket('CatalogAssetsBucket', 'catalog-assets');
     this.analyticsBucket = bucket('AnalyticsBucket', 'analytics', 365);
 
-    this.eventBus = new events.EventBus(this, 'EventBus', { eventBusName: `${prefix}-events` });
+    this.eventBus = new events.EventBus(this, 'EventBus', {
+      eventBusName: `${prefix}-events`,
+      kmsKey: this.key,
+    });
 
     for (const [name, value] of Object.entries(config.parameters)) {
       new ssm.StringParameter(this, `Param${name}`, {
@@ -123,13 +126,16 @@ export class FoundationStack extends Stack {
       });
     }
 
-    // CDK-managed provider behind `autoDeleteObjects` (DESTROY removal policy).
-    Validations.of(this).acknowledge({
+    // Scoped to the CDK-managed provider behind `autoDeleteObjects` (DESTROY removal policy).
+    const autoDeleteProvider = this.node.findChild(
+      'Custom::S3AutoDeleteObjectsCustomResourceProvider',
+    );
+    Validations.of(autoDeleteProvider).acknowledge({
       id: 'AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]',
       reason:
         'CDK-managed autoDeleteObjects custom resource provider uses the basic execution role.',
     });
-    Validations.of(this).acknowledge({
+    Validations.of(autoDeleteProvider).acknowledge({
       id: 'AwsSolutions-L1',
       reason:
         'CDK-managed autoDeleteObjects custom resource provider runtime is controlled by aws-cdk-lib.',

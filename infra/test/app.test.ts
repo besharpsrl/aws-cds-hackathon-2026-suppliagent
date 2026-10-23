@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { App, Stack } from 'aws-cdk-lib';
+import { App, Stack, Validations } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import { AwsSolutionsChecks } from 'cdk-nag';
 import { describe, expect, it } from 'vitest';
 import { getConfig } from '../config/environments.js';
 import { buildApp } from '../lib/app.js';
@@ -74,6 +75,17 @@ describe('FoundationStack', () => {
     expect(Object.keys(buckets)).toHaveLength(5);
   });
 
+  it('keeps access logs on SSE-S3 with 30-day expiration', () => {
+    template.hasResourceProperties('AWS::S3::Bucket', {
+      BucketEncryption: {
+        ServerSideEncryptionConfiguration: [
+          { ServerSideEncryptionByDefault: { SSEAlgorithm: 'AES256' } },
+        ],
+      },
+      LifecycleConfiguration: { Rules: [Match.objectLike({ ExpirationInDays: 30 })] },
+    });
+  });
+
   it('publishes runtime parameters to SSM', () => {
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/suppliagent/dev/matchAutoThreshold',
@@ -123,6 +135,24 @@ describe('DataStack', () => {
     ).toEqual(['by-customerId', 'by-status', 'by-repId']);
   });
 
+  const keySchema = (key: string | readonly string[]) => {
+    const [pk, sk] = typeof key === 'string' ? [key] : key;
+    return [
+      { AttributeName: pk, KeyType: 'HASH' },
+      ...(sk ? [{ AttributeName: sk, KeyType: 'RANGE' }] : []),
+    ];
+  };
+
+  it.each(TABLES.map((t) => [t.name, t] as const))('%s matches §5.7 keys and GSIs', (_, spec) => {
+    const kebab = spec.name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    const table = byName(kebab);
+    expect(table.KeySchema).toEqual(keySchema(spec.key));
+    const indexes: readonly (string | readonly string[])[] = 'indexes' in spec ? spec.indexes : [];
+    expect(
+      (table.GlobalSecondaryIndexes ?? []).map((i: { KeySchema: unknown }) => i.KeySchema),
+    ).toEqual(indexes.map(keySchema));
+  });
+
   it('enables TTL on TurnBuffer and WsConnections', () => {
     for (const name of ['turn-buffer', 'ws-connections']) {
       expect(byName(name).TimeToLiveSpecification).toEqual({
@@ -134,16 +164,22 @@ describe('DataStack', () => {
 });
 
 describe('PythonLambda', () => {
-  const stack = new Stack(new App(), 'LambdaProbe', { env: { region: 'eu-west-1' } });
+  const app = new App({ context });
+  Validations.of(app).addPlugins(new AwsSolutionsChecks(app));
+  const stack = new Stack(app, 'LambdaProbe', { env: { region: 'eu-west-1' } });
   new PythonLambda(stack, 'Fn', {
     config: getConfig('dev'),
-    key: new kms.Key(stack, 'Key'),
+    key: new kms.Key(stack, 'Key', { enableKeyRotation: true }),
     name: 'probe',
     code: lambda.Code.fromInline('def handler(event, context): return None'),
     handler: 'index.handler',
     withDlq: true,
   });
   const template = Template.fromStack(stack);
+
+  it('passes cdk-nag', () => {
+    expect(() => app.synth()).not.toThrow();
+  });
 
   it('applies SuppliAgent Lambda defaults', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {

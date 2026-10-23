@@ -1,4 +1,5 @@
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Duration, Stack, Validations } from 'aws-cdk-lib';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -48,8 +49,20 @@ export class PythonLambda extends Construct {
       });
     }
 
+    // Explicit role instead of AWSLambdaBasicExecutionRole: logs only on this function's log group.
+    const role = new iam.Role(this, 'Role', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+        resources: [logGroup.logGroupArn],
+      }),
+    );
+
     this.function = new lambda.Function(this, 'Function', {
       functionName,
+      role,
       runtime: lambda.Runtime.PYTHON_3_12,
       architecture: lambda.Architecture.ARM_64,
       code: props.code,
@@ -73,6 +86,17 @@ export class PythonLambda extends Construct {
         SUPPLIAGENT_ENV: config.envName,
         ...props.environment,
       },
+    });
+
+    Validations.of(this).acknowledge({
+      id: 'AwsSolutions-L1',
+      reason:
+        'Python 3.12 is the project runtime (AGENTS.md §6), aligned with the Powertools layer.',
+    });
+    Validations.of(this).acknowledge({
+      id: 'AwsSolutions-IAM5[Resource::*]',
+      reason:
+        'X-Ray PutTraceSegments/PutTelemetryRecords do not support resource-level permissions.',
     });
   }
 }
