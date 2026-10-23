@@ -1,0 +1,53 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Secrets & local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Customer data: never commit real or non-anonymized data
+seed/private/
+seed/raw/
+
+# Node / TypeScript / CDK
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+infra/cdk.out/
+cdk.out/
+cdk.context.json.bak
+.npm/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Console build
+console/dist/
+
+# Agent / evals output
+agent/evals/results/
+*.log
+
+# Claude Code local overrides
+.claude/worktrees/
+.claude/settings.local.json
+CLAUDE.local.md

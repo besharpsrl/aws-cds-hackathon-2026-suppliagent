@@ -1,0 +1,522 @@
+# SuppliAgent – Flussi tecnici e casistiche
+
+> AWS CDS Agentic AI Partner Hackathon · Team beSharp
+> Stato: **v0.2 – bozza da validare con il team** · Data: 12/10/2026
+> Prerequisiti di lettura: [01 – Panoramica](./01_PROJECT_OVERVIEW.md) · [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md)
+> Riferimenti funzionali: gli ID `FN-xx` rimandano a [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md)
+
+---
+
+## 1. Convenzioni
+
+- **Flussi** `F-xx`; **casi** `F-xx.Cn`; **errori** `E-xx`.
+- "Agente" = Strands agent su AgentCore Runtime; "agente di commercio" = persona umana (ruolo `SALES_REP`).
+- Tempi e soglie sono **parametri configurabili** (SSM, §7).
+- Ogni passaggio rilevante emette un **evento applicativo** (§6.4).
+- Lingua delle risposte = lingua del contatto (default italiano).
+- Gli importi mostrati al cliente sono **stime IVA esclusa** dal listino del cliente (decisione aperta: mostrare o no i prezzi).
+
+## 2. Modelli di stato
+
+### 2.1 Modalità della conversazione (`Conversations.mode`)
+
+```mermaid
+stateDiagram-v2
+    [*] --> AGENT
+    AGENT --> HUMAN: handoff_to_human / Take over / richiesta cliente
+    HUMAN --> AGENT: Release
+```
+
+In `HUMAN` i messaggi vanno solo in console; al `Release` l'agente riprende con il contesto completo.
+
+### 2.2 Ruoli
+
+| Ruolo | Come viene riconosciuto | Tool disponibili |
+|---|---|---|
+| `CUSTOMER_CONTACT` | `ChannelIdentities` → contatto associato a uno o più `Customers` | ordini, stato, consegne, catalogo (senza dati interni), riordino |
+| `SALES_REP` | `ChannelIdentities` → `SalesReps` (o login console `sales_rep`) | tutto quanto sopra **limitato al proprio portafoglio** + briefing, agenda, insight, ordini per conto del cliente |
+| `UNKNOWN` | indirizzo non censito | solo identificazione (F-02) |
+
+### 2.3 Stato dell'ordine (`Orders.status`)
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT: create_order_draft
+    DRAFT --> NEEDS_CLARIFICATION: righe incerte / vincoli non rispettati
+    NEEDS_CLARIFICATION --> DRAFT: chiarimenti risolti
+    DRAFT --> PENDING_CONFIRMATION: riepilogo inviato
+    PENDING_CONFIRMATION --> DRAFT: Modifica
+    PENDING_CONFIRMATION --> CONFIRMED: Confermo
+    PENDING_CONFIRMATION --> EXPIRED: nessuna risposta entro fine giornata
+    DRAFT --> CANCELLED: cliente annulla
+    CONFIRMED --> SUBMITTED: ERP adapter OK
+    CONFIRMED --> CONFIRMED: ERP non disponibile (retry)
+    SUBMITTED --> SCHEDULED: consegna pianificata
+    SUBMITTED --> CANCELLED: annullo entro cut-off
+    SCHEDULED --> OUT_FOR_DELIVERY
+    OUT_FOR_DELIVERY --> DELIVERED: Ricevuto / conferma autista
+    OUT_FOR_DELIVERY --> DELIVERY_ISSUE: Segnala problema
+    DELIVERY_ISSUE --> DELIVERED: risolto dal back office
+```
+
+### 2.4 Stato della riga d'ordine (`Orders.lines[].status`)
+
+| Stato | Significato |
+|---|---|
+| `MATCHED` | Abbinamento automatico (confidenza ≥ `matchAutoThreshold`) |
+| `AMBIGUOUS` | Più candidati plausibili → chiarimento |
+| `UNMATCHED` | Nessun candidato affidabile |
+| `OUT_OF_STOCK` | Prodotto non disponibile per la data di consegna |
+| `SUBSTITUTED` | Sostituto accettato dal cliente |
+| `ADJUSTED` | Quantità adeguata (multipli/minimi) con consenso |
+| `REMOVED` | Riga eliminata dal cliente o non risolta |
+| `CONFIRMED` | Riga confermata nell'ordine finale |
+
+Ogni riga conserva: `rawText`, `rawQuantity`, `sourceMessageId`, eventuale `imageRegion` (per mostrarla in console), `candidates[]`, `sku`, `quantity`, `unit`, `confidence`, `correctedBy` (cliente/agente/back office).
+
+## 3. Pipeline comune di ingresso
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CH as Canale (EUM Social / SES / EUM SMS / chat web)
+    participant Q as SNS → SQS FIFO
+    participant R as Inbound Router
+    participant B as TurnBuffer
+    participant FQ as SQS turn-flush
+    participant D as Turn Dispatcher
+    participant A as AgentCore Runtime
+    CH->>Q: evento (group = chat, dedup = providerMessageId)
+    Q->>R: consegna in ordine per chat
+    R->>R: normalizza · identità e ruolo · idempotenza · media · read receipt
+    alt mode = HUMAN
+        R-->>R: solo console
+    else mode = AGENT
+        R->>B: append, lastMessageAt
+        R->>FQ: flush(token, delay)
+        FQ->>D: dopo il ritardo
+        alt arrivati altri messaggi / turno in corso
+            D-->>D: nessuna azione
+        else raffica conclusa
+            D->>B: lock + drain
+            D->>A: InvokeAgentRuntime (tutti i messaggi, ruolo)
+            A-->>D: fine turno
+            D->>B: rilascio lock (+ flush se buffer non vuoto)
+        end
+    end
+```
+
+### 3.1 Normalizzazione per canale
+
+| Canale | Sorgente | Estrazione | Chat (`MessageGroupId`) |
+|---|---|---|---|
+| WhatsApp | SNS da EUM Social | testo, image/audio/document, `interactive` reply (button/list), `context` | numero (E.164) |
+| Email | SES receipt rule → S3 + SNS | mittente, oggetto, corpo pulito, allegati (foto, PDF, Excel) | indirizzo mittente |
+| RCS / SMS | SNS two-way | testo, postback suggested reply, keyword STOP/HELP | numero |
+| Chat web | WebSocket → `rep-chat` | testo, allegati caricati | `userId` Cognito |
+
+### 3.2 Risoluzione identità e ruolo
+
+| Caso | Condizione | Azione |
+|---|---|---|
+| C1 | indirizzo in `ChannelIdentities` come contatto cliente | `role = CUSTOMER_CONTACT`, `customerIds` noti |
+| C2 | indirizzo di un agente di commercio | `role = SALES_REP`, portafoglio caricato |
+| C3 | email a `ordine+<orderId>@` da indirizzo sconosciuto | contatto risolto dall'ordine, **associazione in attesa di conferma** |
+| C4 | indirizzo sconosciuto | `role = UNKNOWN` → F-02 |
+| C5 | contatto collegato a più locali | `customerIds[]` multipli → l'agente chiede il locale se non deducibile |
+
+### 3.3 Debounce
+
+| Parametro | Default |
+|---|---|
+| `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | 3000 / 6000 / 15000 |
+| `turnLockTtlMs` | 120000 |
+
+- **C1** messaggio singolo → risposta dopo `debounceTextMs`.
+- **C2** raffica (foto bigliettino + vocale "aggiungi…" + testo) → **un turno** con tutti i messaggi in ordine.
+- **C3** messaggi durante un turno → accumulati, nuovo turno unico a fine turno; l'agente sa che sono arrivati dopo la sua risposta (es. "ah, aggiungi anche…" dopo il riepilogo).
+- **C4** raffica oltre `debounceMaxMs` → si risponde comunque.
+- **C5** crash → lock scaduto, retry del flush, nessuna perdita.
+
+### 3.4 Media
+
+| Tipo | Gestione | Uso a valle |
+|---|---|---|
+| Immagine | → S3 | bigliettino (`extract_order_lines`), foto prodotto (ricerca a catalogo), foto problema consegna |
+| Audio | → S3 | `transcribe` → testo nel turno |
+| PDF / Excel | → S3 | ordine strutturato del cliente (estrazione righe) o documento generico |
+| Video, sticker | non elaborati | richiesta cortese di foto o testo |
+
+## 4. Flussi
+
+### F-01 – Primo contatto e informativa (FN-02)
+
+**Trigger**: primo messaggio di un contatto senza informativa registrata.
+
+1. L'agente si presenta come **assistente virtuale del Distributore**, spiega in una riga cosa può fare ("puoi mandarmi l'ordine anche come foto del bigliettino").
+2. Invia il link all'**informativa privacy** (trattamento dei dati del contatto per la gestione degli ordini) e ne registra l'invio; per le comunicazioni promozionali/proattive chiede il **consenso** specifico (pulsanti *Sì / No*).
+3. Prosegue con la richiesta del cliente.
+
+| Caso | Comportamento |
+|---|---|
+| C1 consenso proattivo dato | Abilita riordini proattivi e suggerimenti |
+| C2 consenso proattivo negato | Gli ordini funzionano normalmente; nessun messaggio proattivo |
+| C3 il primo messaggio è già un ordine | Informativa in coda alla prima risposta, senza bloccare l'ordine |
+
+### F-02 – Identificazione e ruolo (FN-03)
+
+**Trigger**: `role = UNKNOWN`.
+
+1. L'agente chiede **nome del locale** e **codice cliente** (o P.IVA).
+2. `identify_contact(customerCode | vatNumber, venueName, address)`.
+3. Se trovato: associa il nuovo indirizzo al cliente **in stato da confermare**; se il cliente ha un contatto già verificato, invia a quello una richiesta di conferma (o lo verifica il back office).
+
+| Caso | Comportamento |
+|---|---|
+| C1 match univoco + contatto principale conferma | Contatto verificato → prosegue |
+| C2 match univoco, nessun contatto verificato | Ordine accettato come **bozza**, verifica del back office prima dell'invio all'ERP |
+| C3 nessun match | Probabile nuovo cliente → raccoglie dati minimi, **handoff** al back office/agente di zona (lead) |
+| C4 dati incoerenti dopo 3 tentativi | Handoff `IDENTIFICATION_FAILED` |
+| C5 contatto con più locali | Chiede il locale (lista con pulsanti) |
+| C6 chi scrive è un agente di commercio non censito su quel numero | Verifica tramite console (login `sales_rep`) o back office |
+
+### F-03 – Comprensione dell'intento (FN-04)
+
+| Intento | Esempi | Instradamento |
+|---|---|---|
+| `NEW_ORDER` | foto di un bigliettino, "mi servono…", allegato ordine | F-04 |
+| `MODIFY_ORDER` / `CANCEL_ORDER` | "aggiungi 2 casse di acqua", "annulla l'ordine di oggi" | F-08 |
+| `ORDER_STATUS` | "quando arriva?", "è partito l'ordine?" | F-09 |
+| `DELIVERY_ISSUE` | "manca un cartone", foto di merce danneggiata | F-12 |
+| `PRODUCT_INFO` | "il fior di latte è senza lattosio?", "che formati avete di burrata?" | F-10.B (anche per i clienti, senza dati interni) |
+| `REORDER` | "come la settimana scorsa" | F-04 con base l'ultimo ordine |
+| `HUMAN_REQUEST` | "voglio parlare con qualcuno" | F-14 |
+| Intenti agente di commercio | consigli, briefing, ordini per conto | F-10 |
+| `OTHER` | saluti, fuori ambito | risposta breve e riorientamento |
+
+| Caso | Comportamento |
+|---|---|
+| C1 nuovo ordine con una bozza aperta nello stesso giorno | "Aggiungo queste righe all'ordine in corso o è un ordine separato?" |
+| C2 messaggio dopo un ordine `CONFIRMED` dello stesso giorno con prodotti | Interpreta come **integrazione** (F-08), chiede conferma |
+| C3 più intenti | Priorità: handoff > problema consegna > ordine > modifica > stato > info |
+
+### F-04 – Acquisizione dell'ordine (FN-05, FN-06)
+
+**Obiettivo**: trasformare qualsiasi input in **righe grezze** `{rawText, rawQuantity, rawUnit, note}`.
+
+| Input | Tool | Note |
+|---|---|---|
+| Foto bigliettino | `extract_order_lines(image)` – Claude vision con output strutturato | gestisce abbreviazioni, cancellature, frecce, quantità prima/dopo il nome, unità ("cs", "kg", "pz", "ct") |
+| Vocale | Transcribe → `extract_order_lines(text)` | "tre casse di pelati e due chili di burro" |
+| Testo libero | `extract_order_lines(text)` | elenchi, frasi, mix |
+| Email con corpo o allegato | come sopra; PDF/Excel strutturato → parsing diretto delle colonne | ordini da gestionali del ristorante |
+| "Come l'ultima volta" | `get_customer_profile` → copia ultimo ordine come bozza | il cliente può modificare |
+| Ordine inserito da agente di commercio | come sopra, `customerId` scelto dall'agente | F-10.D |
+
+| Caso | Comportamento |
+|---|---|
+| C1 bigliettino leggibile | Tutte le righe estratte con confidenza di lettura |
+| C2 parti illeggibili | Righe marcate `UNREADABLE` con ritaglio dell'immagine; chiarimento mirato ("la riga 4 non si legge bene: cosa c'è scritto?") |
+| C3 foto non è un ordine (es. foto di un prodotto) | Ricerca a catalogo per immagine/descrizione ("intendi questo prodotto?") |
+| C4 più foto (bigliettino su più pagine) | Unite in un'unica bozza nello stesso turno (debounce) |
+| C5 foto + vocale con aggiunte/correzioni ("togli il burro") | Il vocale **modifica** le righe estratte dalla foto |
+| C6 quantità mancante | Proposta della quantità abituale dallo storico ("di solito 2 cartoni, confermo?") |
+| C7 note di consegna ("lasciare sul retro", "entro le 10") | Salvate in `Orders.deliveryNotes` |
+
+### F-05 – Abbinamento al catalogo e chiarimenti (FN-07, FN-08)
+
+1. Per ogni riga: `match_products(rawText, customerId)` → candidati con `confidence` (semantico S3 Vectors + fuzzy + storico cliente + compatibilità unità).
+2. Classificazione: `MATCHED` (≥ 0,85) · `AMBIGUOUS` (0,5–0,85) · `UNMATCHED` (< 0,5).
+3. Chiarimenti **raggruppati in un solo messaggio** quando possibile; per ogni riga incerta: WhatsApp **interactive list/buttons** con max 3 candidati + "Altro".
+
+| Caso | Comportamento |
+|---|---|
+| C1 tutte le righe `MATCHED` | Nessuna domanda → F-06 |
+| C2 righe `AMBIGUOUS` | Pulsanti con i candidati (nome, formato, eventuale prezzo); il primo è quello che il cliente compra più spesso |
+| C3 riga `UNMATCHED` | Chiede di descriverla meglio o mandare una foto; dopo 2 tentativi → riga esclusa e **segnalata in console** |
+| C4 "il solito X" | Risolto dallo storico (prodotto X più acquistato); se lo storico è ambiguo → C2 |
+| C5 marca richiesta non a catalogo | Propone l'equivalente a catalogo dichiarandolo come alternativa |
+| C6 prodotto fuori catalogo / dismesso | Lo comunica, propone il sostituto ufficiale (`Stock.substitutes`) |
+| C7 cliente risponde a testo invece che col pulsante ("il primo", "quello grande") | Interpretato nel contesto delle opzioni proposte |
+| C8 molte righe incerte (> 5) | Prima le più importanti; il resto in un secondo messaggio, per non sommergere il cliente |
+
+### F-06 – Disponibilità, vincoli e data di consegna (FN-09, FN-10)
+
+`check_availability(skus, deliveryDate)`, `get_prices(customerId, skus)`, `get_delivery_options(customerId, orderTime)`.
+
+| Caso | Comportamento |
+|---|---|
+| C1 tutto disponibile, vincoli ok | → F-07 |
+| C2 prodotto non disponibile | Propone **sostituto** (stesso uso, formato simile, prezzo indicato) oppure consegna **senza quella riga** oppure **attesa** del riassortimento (data prevista) |
+| C3 disponibilità parziale | Propone quantità disponibile + resto alla consegna successiva |
+| C4 quantità non multipla della confezione | Propone arrotondamento ("il burro è a cartoni da 8 kg: metto 1 cartone?") |
+| C5 sotto il minimo d'ordine | Indica quanto manca, eventualmente con un suggerimento (F-07) |
+| C6 dopo il cut-off | Propone la prima data utile ("ordine dopo le 18: consegna giovedì invece di mercoledì, va bene?") |
+| C7 giorno non servito nella zona | Propone il primo giorno servito |
+| C8 richiesta di consegna in data specifica | Verificata con il calendario; se impossibile, alternativa |
+
+### F-07 – Suggerimento, riepilogo e conferma (FN-11, FN-12, FN-13, FN-14, FN-15)
+
+1. **Suggerimento** (opzionale, max 1 per ordine): `recommend_products(customerId, orderLines)` → solo se pertinente e con consenso proattivo. Priorità: prodotto abituale dimenticato > complementare > promozione > novità.
+2. **Riepilogo**: righe confermate (nome, formato, quantità), eventuali sostituti, data di consegna, note, **totale stimato** (se si mostrano i prezzi), pulsanti **Confermo / Modifica**.
+3. **Conferma** → `confirm_order(orderId, idempotencyKey)` → `CONFIRMED` → evento `order.confirmed` → ERP adapter → `SUBMITTED` con numero ordine.
+4. **Notifiche di conferma**: WhatsApp (testo + PDF), **email SES con PDF** (Reply-To `ordine+<orderId>@`), **SMS/RCS** breve con numero ordine e data.
+5. Notifica all'**agente di commercio** del cliente (WhatsApp o console).
+
+| Caso | Comportamento |
+|---|---|
+| C1 il cliente dimentica un prodotto abituale | Suggerimento "Di solito ordini anche il parmigiano: lo aggiungo?" |
+| C2 il cliente rifiuta il suggerimento | Nessuna insistenza; preferenza registrata in Memory |
+| C3 "Modifica" | Chiede cosa cambiare; torna a F-05/F-06 sulle righe interessate |
+| C4 nessuna risposta al riepilogo | Promemoria dopo 2h (`order_pending_reminder`); a fine giornata `EXPIRED` + messaggio |
+| C5 conferma doppia (doppio tap) | Idempotenza: un solo ordine |
+| C6 ERP non disponibile | Ordine `CONFIRMED`, invio in retry; il cliente riceve "ordine ricevuto, numero definitivo a breve" |
+| C7 cliente senza email | Conferma via WhatsApp + SMS; chiede se vuole indicare un'email |
+
+### F-08 – Modifica e annullamento (FN-16)
+
+| Caso | Comportamento |
+|---|---|
+| C1 ordine in `DRAFT`/`PENDING_CONFIRMATION` | Modifica diretta |
+| C2 ordine `SUBMITTED`, prima del cut-off | Modifica/annullo → nuovo invio all'ERP (`updateOrder`/`cancelOrder`), nuova conferma email/SMS |
+| C3 dopo il cut-off o `SCHEDULED` | Spiega che non è più modificabile automaticamente → handoff back office |
+| C4 integrazione ("aggiungi anche…") dopo la conferma | Proposta di **ordine integrativo** sulla stessa consegna se entro cut-off |
+
+### F-09 – Stato ordine e consegna (FN-17)
+
+`get_order_status(customerId | orderId)` → stato, data e fascia di consegna, righe modificate, eventuali ritardi. Più ordini aperti → elenco breve e domanda.
+
+### F-10 – Copilota per l'agente di commercio (FN-20, FN-21, FN-22, FN-23)
+
+Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio** dell'agente.
+
+**F-10.A – Consigli e briefing** – "cosa propongo alla Trattoria X?"
+- `get_customer_briefing(customerId)` + `recommend_products` → risposta con: ultimi ordini e trend, **riordini scaduti**, **prodotti smessi**, **prodotti comprati da locali simili ma non da X**, promozioni attive, problemi recenti di consegna, 3 proposte **motivate**.
+- C1 cliente fuori portafoglio → rifiuto cortese.
+- C2 cliente nuovo senza storico → proposte per tipologia di cucina e zona.
+
+**F-10.B – Catalogo e schede tecniche**
+- `search_catalog` per ricerche ("burrate sotto i 300 g"), `ask_product_sheets` (Knowledge Base) per allergeni, ingredienti, conservazione, shelf life, origine.
+- Risposte **con citazione della scheda** (nome documento) e senza inventare: se l'informazione non c'è, lo dice.
+- Per i clienti (`CUSTOMER_CONTACT`) stessa funzione ma senza informazioni interne (margini, giacenze precise).
+
+**F-10.C – Agenda** – "chi vedo domani?" → `get_rep_agenda` con priorità (clienti con riordini scaduti o problemi aperti).
+
+**F-10.D – Ordine per conto del cliente**
+1. L'agente di commercio invia foto/testo e indica il cliente (o l'agente lo deduce dall'agenda).
+2. Stessi passi F-04…F-06; i chiarimenti vanno **all'agente di commercio**.
+3. Conferma dell'agente di commercio → ordine `CONFIRMED` con `createdBy = repId`.
+4. Il ristoratore riceve email/SMS di conferma (parametro: conferma anche del ristoratore sì/no – decisione aperta).
+
+**F-10.E – Briefing giornaliero** (Could) – alle 07:30 dei giorni lavorativi, email/WhatsApp con le visite del giorno e i punti salienti.
+
+### F-11 – Notifiche e regole di canale (FN-01, FN-14, FN-15, FN-18)
+
+| Evento | Canali |
+|---|---|
+| Ordine confermato | Email con PDF + SMS/RCS + WhatsApp (se conversazione lì) |
+| Ordine modificato/annullato | Stessi canali della conferma |
+| Promemoria bozza non confermata | WhatsApp (template se fuori finestra) |
+| Consegna in giornata | RCS con fascia oraria e pulsanti *Ricevuto / Segnala problema* (fallback SMS) |
+| Proposta di riordino | WhatsApp template `reorder_suggestion`; RCS per chi non usa WhatsApp |
+| Nuovo ordine di un cliente (per l'agente di commercio) | WhatsApp o console |
+
+| Caso | Comportamento |
+|---|---|
+| C1 WhatsApp entro 24h | Messaggio libero |
+| C2 WhatsApp oltre 24h | Template approvato |
+| C3 Template non approvato | Fallback SMS/email |
+| C4 RCS non supportato dal device | Fallback SMS automatico (opzioni numerate) |
+| C5 STOP su SMS | Opt-out registrato |
+| C6 Fascia notturna (21:00–07:00) | Proattivi rinviati; conferme d'ordine inviate comunque |
+| C7 Invio fallito / bounce | Retry, poi canale alternativo; per email bounce → richiesta nuovo indirizzo |
+
+### F-12 – Consegna e problemi (FN-18)
+
+1. Il giorno di consegna (ERP mock → `SCHEDULED`): RCS con fascia oraria.
+2. Tap *Ricevuto* → `DELIVERED`.
+3. Tap *Segnala problema* (o messaggio "manca un cartone") → l'agente chiede tipo (mancante, danneggiato, errato, scaduto), righe coinvolte e **foto** → `report_delivery_issue` → `DELIVERY_ISSUE` → console back office.
+
+| Caso | Comportamento |
+|---|---|
+| C1 prodotto mancante | Proposta di reintegro alla consegna successiva (decisione del back office) |
+| C2 prodotto danneggiato | Foto obbligatoria; segnalazione con priorità |
+| C3 nessun tap entro fine giornata | Si assume consegnato (configurabile) |
+
+### F-13 – Riordino proattivo (FN-19)
+
+1. **Notte**: Analyzer calcola per ogni cliente gli intervalli medi per prodotto → `CustomerInsights.dueReorders`.
+2. **Mattina** (fascia consentita): Proactive Trigger, per i clienti con consenso, avvia un **turno proattivo**.
+3. Messaggio template `reorder_suggestion`: "Buongiorno! Di solito a quest'ora avete già riordinato olio EVO e pelati. Vuole lo stesso ordine dell'ultima volta?" → *Riordina uguale / Modifica / No grazie*.
+4. *Riordina uguale* → bozza dall'ultimo ordine → F-06 → F-07.
+
+| Caso | Comportamento |
+|---|---|
+| C1 il cliente ha già un ordine in corso | Nessuna proposta |
+| C2 "No grazie" | Nessuna nuova proposta per 7 giorni; motivo opzionale registrato |
+| C3 nessuna risposta | Nessun sollecito; segnalazione all'agente di commercio (possibile cliente a rischio) |
+| C4 cliente senza consenso proattivo | Nessun messaggio; solo segnalazione all'agente di commercio |
+
+### F-14 – Handoff (FN-24)
+
+| Motivo | Origine |
+|---|---|
+| `CUSTOMER_REQUEST` | richiesta esplicita |
+| `IDENTIFICATION_FAILED` / `NEW_CUSTOMER` | F-02 |
+| `UNRESOLVED_LINES` | righe non risolte dopo i tentativi su ordine importante |
+| `ORDER_LOCKED` | modifica dopo il cut-off |
+| `DELIVERY_ISSUE` | problemi che richiedono decisione |
+| `NEGATIVE_SENTIMENT` / `LOW_CONFIDENCE` | rilevati dall'agente |
+| `OUT_OF_SCOPE` | prezzi speciali, sconti, crediti, reclami commerciali |
+| `OPERATOR_TAKEOVER` | *Take over* in console |
+
+`handoff_to_human(reason, summary)` → `mode = HUMAN`, notifica in console (e all'agente di commercio del cliente). Il back office risponde dalla console sullo stesso canale; *Release* riporta all'agente.
+
+### F-15 – Cambio di canale (FN-25)
+
+Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp può essere confermato rispondendo all'email, e un tap RCS sulla consegna è collegato all'ordine giusto. La risposta va sempre sul canale da cui arriva il messaggio.
+
+## 5. Gestione errori e fallback
+
+| ID | Errore | Gestione |
+|---|---|---|
+| E-01 | Evento duplicato | Dedup FIFO + idempotenza su `providerMessageId` |
+| E-02 | Download media fallito | Retry ×3; poi richiesta di reinvio |
+| E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
+| E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |
+| E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato |
+| E-06 | Guardrail interviene | Risposta sicura predefinita |
+| E-07 | Errore indice prodotti / KB | Fallback su ricerca lessicale in DynamoDB; risposte sulle schede rimandate all'agente di commercio |
+| E-08 | ERP adapter non disponibile | Ordine `CONFIRMED`, retry con backoff, allarme; cliente informato della presa in carico |
+| E-09 | Invio CDS fallito | Retry ×3, fallback di canale |
+| E-10 | Messaggio in DLQ | Allarme; redrive; blocca solo quella chat |
+| E-11 | Lock orfano | Scadenza `turnLockTtlMs` |
+| E-12 | Turno oltre il tempo massimo | Cortesia, retry una volta, poi handoff `LOW_CONFIDENCE` |
+| E-13 | Allegato non consentito/malevolo | Scartato, cliente informato |
+
+## 6. Contratti
+
+### 6.1 NormalizedMessage
+Vedi [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md).
+
+### 6.2 Richiesta di turno (Dispatcher → Runtime)
+
+```json
+{
+  "conversationId": "conv_456",
+  "contactId": "con_123",
+  "role": "CUSTOMER_CONTACT",
+  "customerIds": ["cus_45"],
+  "activeCustomerId": "cus_45",
+  "channel": "WHATSAPP",
+  "locale": "it-IT",
+  "activeOrderId": null,
+  "whatsappWindowOpen": true,
+  "proactive": false,
+  "messages": [
+    { "messageId": "m1", "ts": "2026-10-20T07:41:00Z", "attachments": [{ "type": "image", "s3Uri": "s3://.../m1.jpg" }] },
+    { "messageId": "m2", "ts": "2026-10-20T07:41:04Z", "attachments": [{ "type": "audio", "s3Uri": "s3://.../m2.ogg" }] }
+  ],
+  "arrivedDuringPreviousTurn": false
+}
+```
+
+### 6.3 Riga d'ordine (estratto di `Orders`)
+
+```json
+{
+  "lineId": "l3",
+  "rawText": "mozz fdl",
+  "rawQuantity": "3",
+  "rawUnit": "kg",
+  "sourceMessageId": "m1",
+  "imageRegion": { "x": 0.12, "y": 0.41, "w": 0.6, "h": 0.07 },
+  "candidates": [
+    { "sku": "LAT-0142", "name": "Mozzarella fior di latte 1 kg", "confidence": 0.78, "boughtBefore": true },
+    { "sku": "LAT-0150", "name": "Fior di latte julienne 3 kg", "confidence": 0.64, "boughtBefore": false }
+  ],
+  "status": "AMBIGUOUS",
+  "sku": null,
+  "quantity": null,
+  "unit": null,
+  "correctedBy": null
+}
+```
+
+### 6.4 Eventi applicativi (EventBridge → Firehose)
+
+| `detail-type` | Campi principali | Uso |
+|---|---|---|
+| `conversation.started` | contactId, role, channel | KPI |
+| `contact.identified` | contactId, method | audit |
+| `order.draft_created` | orderId, source (photo/voice/text/email/reorder/rep) | KPI |
+| `order.lines_extracted` | orderId, lines, unreadable | qualità lettura |
+| `order.line_matched` | orderId, lineId, status, confidence | qualità matching |
+| `order.line_corrected` | orderId, lineId, by, fromSku, toSku | accuratezza |
+| `order.suggestion` | orderId, sku, reason, accepted | upsell |
+| `order.status_changed` | orderId, from, to, ts | tempi |
+| `order.confirmed` | orderId, value, lines, createdBy | KPI principali |
+| `erp.submitted` / `erp.failed` | orderId, erpOrderNumber | integrazione |
+| `reorder.proposed` / `reorder.accepted` | customerId, orderId | proattività |
+| `delivery.issue_reported` | orderId, type | qualità consegne |
+| `rep.query` | repId, type (briefing, sheets, catalog, order) | uso copilota |
+| `handoff.started` / `handoff.released` | reason | automazione |
+| `notification.sent` / `notification.failed` | channel, template | delivery |
+| `agent.turn` | latencyMs, tokens, toolCount | costi e performance |
+
+### 6.5 Tool (sintesi I/O)
+
+| Tool | Input | Output |
+|---|---|---|
+| `identify_contact` | address \| customerCode \| vatNumber, venueName | contact, role, customers[] \| `NOT_FOUND` |
+| `get_customer_profile` | customerId | dati locale, listino, zona, ultimi ordini, insight |
+| `extract_order_lines` | s3Uri \| text | lines[] (rawText, qty, unit, readConfidence, imageRegion) |
+| `match_products` | lines[], customerId | per riga: candidates[] con confidence |
+| `search_catalog` | query, filters | products[] |
+| `ask_product_sheets` | question, sku? | answer, citations[] |
+| `check_availability` | skus[], deliveryDate | per SKU: available, qty, nextArrival, substitutes[] |
+| `get_prices` | customerId, skus[] | prezzi da listino, promo applicabili |
+| `get_delivery_options` | customerId, orderTime | nextDeliveryDate, cutoff, servedDays |
+| `recommend_products` | customerId, context(lines) | suggestions[] con reason |
+| `create_order_draft` / `update_order_draft` | customerId, lines \| patch | order |
+| `confirm_order` | orderId, idempotencyKey | order (CONFIRMED) |
+| `cancel_order` | orderId | order |
+| `get_order_status` | customerId \| orderId | orders[] |
+| `report_delivery_issue` | orderId, type, lines, s3Uris | issueId |
+| `get_rep_agenda` | repId, date | visite[] con priorità |
+| `get_customer_briefing` | repId, customerId | briefing strutturato |
+| `send_notification` | contactId, channel?, template \| content, attachments | messageId, channelUsed |
+| `handoff_to_human` | conversationId, reason, summary | ok |
+
+## 7. Parametri configurabili (SSM)
+
+| Parametro | Default |
+|---|---|
+| `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | 3000 / 6000 / 15000 |
+| `turnLockTtlMs` | 120000 |
+| `matchAutoThreshold` / `matchAskThreshold` | 0.85 / 0.5 |
+| `maxClarificationsPerMessage` | 5 |
+| `unmatchedMaxAttempts` | 2 |
+| `maxSuggestionsPerOrder` | 1 |
+| `pendingReminderHours` / `draftExpiry` | 2 / fine giornata |
+| `reorderDueFactor` | 1.5 (× intervallo medio) |
+| `reorderCooldownDays` | 7 |
+| `quietHours` | 21:00–07:00 |
+| `deliveryAutoConfirm` | true (fine giornata) |
+| `identificationMaxAttempts` | 3 |
+
+## 8. Tracciabilità e logging
+
+- `correlationId` = `conversationId` (+ `orderId` quando presente) propagato su Router, Dispatcher, AgentCore, tool, Notifier, ERP adapter.
+- Log JSON senza contenuto dei messaggi; contenuto in `Messages` (cifrato).
+- Tracce AgentCore per ogni turno.
+
+## 9. Punti da validare con il team (e con il cliente)
+
+- [ ] Dati per identificare un contatto nuovo (codice cliente, P.IVA) e procedura di verifica
+- [ ] Mostrare i prezzi al ristoratore?
+- [ ] Ordine inserito dall'agente di commercio: serve anche la conferma del ristoratore?
+- [ ] Regole reali di cut-off, giorni di consegna, minimi d'ordine, multipli
+- [ ] Soglie di matching tarate su bigliettini reali
+- [ ] Testi dei template WhatsApp da sottomettere a Meta
+- [ ] Politica sui suggerimenti (frequenza, tipologie ammesse)

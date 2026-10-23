@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git worktree:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx jest:*)",
+      "Bash(npx cdk synth:*)",
+      "Bash(npx cdk diff:*)",
+      "Bash(npx cdk ls:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv add:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run mypy:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run python seed/:*)",
+      "Bash(uv run python agent/evals/:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(git mv:*)",
+      "mcp__aws-documentation__*",
+      "mcp__agentcore__*"
+    ],
+    "ask": [
+      "Bash(npx cdk deploy:*)",
+      "Bash(npx cdk destroy:*)",
+      "Bash(cdk deploy:*)",
+      "Bash(cdk destroy:*)",
+      "Bash(aws:*)",
+      "Bash(git push:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(rm:*)",
+      "Bash(docker:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)",
+      "Read(./seed/private/**)",
+      "Read(./seed/raw/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/agent-context/claude/hooks/lint-changed.sh\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

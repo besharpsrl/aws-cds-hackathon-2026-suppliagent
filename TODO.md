@@ -1,0 +1,1 @@
+gh repo create <org>/suppliagent --private --source=. --remote=origin --push
