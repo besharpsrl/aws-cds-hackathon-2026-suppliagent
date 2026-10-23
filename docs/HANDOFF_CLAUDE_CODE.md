@@ -149,7 +149,7 @@ Obiettivo di questa sessione: Fase P0 del backlog (T-01, T-03, T-02, in quest'or
    come classi vuote collegate nell'ordine di dipendenza. Test di assertion CDK.
 5. T-02: workflow GitHub Actions su PR e push su main: lint, type check, test Python e TS, cdk synth con cdk-nag.
 6. Verifica con il subagent test-runner che tutto passi, poi fai revisionare con code-reviewer.
-   Aggiorna lo stato dei task in docs/04_BACKLOG.md. Commit piccoli (Conventional Commits) sul branch
+   Sposta i task completati da docs/04_BACKLOG.md a docs/DONE.md. Commit piccoli (Conventional Commits) sul branch
    chore/p0-foundations. Non fare push e non fare deploy.
 7. Alla fine riassumi cosa hai fatto, come verificarlo e cosa resta aperto.
 

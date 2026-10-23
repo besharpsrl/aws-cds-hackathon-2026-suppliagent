@@ -1,12 +1,11 @@
 # SuppliAgent – Documenti da fare
 
 > Promemoria dei documenti da scrivere dopo la validazione di 01/02/03.
-> Ordinati per urgenza · Aggiornato il 12/10/2026 (nuovo concept SuppliAgent)
+> Ordinati per urgenza · Aggiornato il 12/10/2026 (nuovo concept SuppliAgent) · I documenti completati si rimuovono da qui e vanno in [DONE.md](./DONE.md)
 
 | # | Documento | File proposto | Priorità | Entro | Owner | Stato |
 |---|---|---|---|---|---|---|
 | 1 | Richiesta dati e autorizzazioni al cliente | `00_CLIENT_DATA_REQUEST.md` | **Urgentissima** | 13/10 | | ☐ |
-| 2 | Backlog e piano di lavoro | `04_BACKLOG.md` | Alta | 13/10 | | ☑ (16/10) |
 | 3 | Testi e template | `09_CONTENT_AND_TEMPLATES.md` | Alta (template Meta) | 14/10 | | ☐ |
 | 4 | Specifica dell'agente | `05_AGENT_SPEC.md` | Alta | 15/10 | | ☐ |
 | 5 | Contratti e modello dati | `06_DATA_AND_CONTRACTS.md` | Alta | 15/10 | | ☐ |

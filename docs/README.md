@@ -14,6 +14,7 @@ Concept: [`../SUPPLIAGENT_SOLUTION.md`](../SUPPLIAGENT_SOLUTION.md)
 | – | [Handoff a Claude Code](./HANDOFF_CLAUDE_CODE.md) | Setup, collegamento a GitHub, prompt di avvio e prompt per stream | v0.1 |
 | – | [Checklist submission](./SUBMISSION_CHECKLIST.md) | Passi per iscrizione, crediti, ACE e submission Devpost | in corso |
 | – | [Documenti da fare](./TODO_DOCS.md) | Elenco dei documenti ancora da scrivere | promemoria |
+| – | [Lavoro completato](./DONE.md) | Task, documenti e punti aperti chiusi, con data, commit e verifica | vivo |
 
 **Punto di partenza**: [`../START_HERE.md`](../START_HERE.md) – documento unico di handoff (cosa fare, chi lo fa, mappa dei file).
 

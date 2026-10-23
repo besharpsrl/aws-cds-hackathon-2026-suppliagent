@@ -1,6 +1,7 @@
 # SuppliAgent – Backlog e piano di lavoro
 
-> Stato: **v0.2** · Aggiornato il 23/10/2026 (ri-ordinato sul calendario reale, perimetro invariato) · Da aggiornare a ogni task completato (`/implement-fn` lo fa in automatico)
+> Stato: **v0.2** · Aggiornato il 23/10/2026 (ri-ordinato sul calendario reale, perimetro invariato)
+> Contiene **solo il lavoro da fare**: a task completato la riga si rimuove e il task va in [DONE.md](./DONE.md) (`/implement-fn` lo fa in automatico). Una dipendenza `T-xx` che non compare più qui è completata.
 > Riferimenti: [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md) · [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) · [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md)
 
 ---
@@ -16,7 +17,7 @@
 | **Code freeze** | **26/10 sera** | Solo bugfix dopo questa data | – |
 | **P4 – Hardening e materiali** | 27–28/10 | Eval, KPI, ambiente `demo`, README, video, submission | Submission inviata **entro il 28/10 mattina** (scadenza 21:00) |
 
-Percorso critico: T-01 → T-03 → **T-04 dati** → T-20/T-21/T-22 ingestion → T-40/T-41 agente → T-43 lettura → T-44 matching → T-45/T-46/T-47 ordine → T-07 ERP/PDF → T-24/T-26/T-27 conferme → T-10/T-12 demo e video.
+Percorso critico: **T-04 dati** → T-20/T-21/T-22 ingestion → T-40/T-41 agente → T-43 lettura → T-44 matching → T-45/T-46/T-47 ordine → T-07 ERP/PDF → T-24/T-26/T-27 conferme → T-10/T-12 demo e video.
 
 ## 2. Sequenza consigliata (ondate parallele)
 
@@ -24,8 +25,8 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 
 | Ondata | Quando | IN | CH | AG | CO |
 |---|---|---|---|---|---|
-| 1 | 23/10 mattina | T-01 | **T-28** | – | – |
-| 2 | 23/10 pomeriggio | T-03, T-02, T-04 (avvio) | T-20 | T-42 (su dati seed) | – |
+| 1 | 23/10 mattina | – | **T-28** | – | – |
+| 2 | 23/10 pomeriggio | T-04 (avvio) | T-20 | T-42 (su dati seed) | – |
 | 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | T-60 |
 | 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | T-61 |
 | 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
@@ -35,24 +36,21 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 
 ## 3. Task (in ordine di esecuzione per stream)
 
-Legenda stato: ☐ da fare · ◐ in corso · ☑ fatto · ⛔ bloccato
+Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in [DONE.md](./DONE.md))
 
 ### IN – Infra, Dati & Materiali
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-01 | Scaffold monorepo: `pyproject.toml` (uv workspace), npm workspaces, ruff/mypy/eslint/prettier, script `make`/npm per lint-test-synth | – | P0 | – | | ☑ |
-| 2 | T-03 | CDK app: config `dev`/`demo`, construct Lambda comune, `FoundationStack`, `DataStack` (tabelle 5.7) | FN-32 | P0 | T-01 | | ☑ |
-| 3 | T-02 | CI GitHub Actions: lint, type check, test, `cdk synth` + cdk-nag su PR | FN-32 | P0 | T-01 | | ☑ |
-| 4 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | | ☐ |
-| 5 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | | ☐ |
-| 6 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | | ☐ |
-| 7 | T-07 | ERP adapter mock (`submit/update/cancel/getStatus`, simulazione pianificazione e consegna) + `order_pdf` + regola EventBridge `order.confirmed` | FN-13, 14 | P2 | T-03 | | ☐ |
-| 8 | T-09 | `AnalyticsStack`: Firehose → S3 Parquet → Glue → viste Athena KPI; dashboard e allarmi CloudWatch | FN-30, 33 | P2–P3 | T-03 | | ☐ |
-| 9 | T-08 | `ProactiveStack`: `insights_analyzer` (riordini scaduti, prodotti smessi, gap vs simili), `proactive_trigger`, scheduler | FN-19, 20 | P3 | T-04, T-22 | | ☐ |
-| 10 | T-10 | Ambiente `demo`, script reset, README sezione giudici, cliente/bigliettino di prova | FN-31 | P4 | tutti | | ☐ |
-| 11 | T-11 | Opportunità ACE, export PNG del diagramma, testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | | ☐ |
-| 12 | T-12 | Copione e registrazione video (≤ 3 min) | – | P4 (copione da P2) | T-10 | | ☐ |
+| 1 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | | ☐ |
+| 2 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | | ☐ |
+| 3 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | | ☐ |
+| 4 | T-07 | ERP adapter mock (`submit/update/cancel/getStatus`, simulazione pianificazione e consegna) + `order_pdf` + regola EventBridge `order.confirmed` | FN-13, 14 | P2 | T-03 | | ☐ |
+| 5 | T-09 | `AnalyticsStack`: Firehose → S3 Parquet → Glue → viste Athena KPI; dashboard e allarmi CloudWatch | FN-30, 33 | P2–P3 | T-03 | | ☐ |
+| 6 | T-08 | `ProactiveStack`: `insights_analyzer` (riordini scaduti, prodotti smessi, gap vs simili), `proactive_trigger`, scheduler | FN-19, 20 | P3 | T-04, T-22 | | ☐ |
+| 7 | T-10 | Ambiente `demo`, script reset, README sezione giudici, cliente/bigliettino di prova | FN-31 | P4 | tutti | | ☐ |
+| 8 | T-11 | Opportunità ACE, export PNG del diagramma, testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | | ☐ |
+| 9 | T-12 | Copione e registrazione video (≤ 3 min) | – | P4 (copione da P2) | T-10 | | ☐ |
 
 ### CH – Canali CDS
 

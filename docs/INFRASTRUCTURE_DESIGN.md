@@ -410,10 +410,10 @@ Prerequisiti non automatizzabili:
 
 ## 12. Punti aperti
 
-- [x] Region `eu-west-1`, profilo Claude `eu.`
+> Solo i punti ancora aperti; quelli chiusi sono in [DONE.md](./DONE.md).
+
 - [ ] ID esatto del profilo `eu.` per la versione Claude scelta
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
-- [x] Copertura CDK di S3 Vectors / Knowledge Base con S3 Vectors → L1 (vedi nota §4)
 - [ ] Key policy della CMK: oggi concede solo CloudWatch Logs ed EventBridge; aggiungere `ses.amazonaws.com` (inbound-mail, T-20) e `sns.amazonaws.com` (SNS → SQS cifrate, T-21) quando servono
 - [ ] Versione del layer Powertools (oggi 40 in `infra/config/environments.ts`): confermare con `aws ssm get-parameter --name /aws/service/powertools/python/arm64/python3.12/latest` prima del primo deploy
 - [ ] ERP del cliente (per documentare l'adapter futuro)
