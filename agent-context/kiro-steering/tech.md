@@ -19,10 +19,9 @@ inclusion: always
 
 ## Comandi
 ```bash
-cd infra && npm ci && npx cdk synth -c env=dev
-npx cdk deploy --all -c env=dev        # mai su demo senza conferma
-uv sync && uv run ruff check . && uv run mypy services agent && uv run pytest -q
-cd console && npm ci && npm run build && npm test
+npm ci && uv sync                      # dalla root (npm + uv workspaces)
+npm run check                          # lint + typecheck + test + cdk synth (cdk-nag)
+cd infra && npx cdk deploy --all -c env=dev   # mai su demo senza conferma
 uv run python seed/reset.py --env dev
 ```
 

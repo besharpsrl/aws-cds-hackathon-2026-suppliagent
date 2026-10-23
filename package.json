@@ -1,0 +1,29 @@
+{
+  "name": "suppliagent",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "infra",
+    "console"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "npm run lint:ts && npm run lint:py",
+    "lint:ts": "eslint --no-error-on-unmatched-pattern infra console && prettier --check infra console .github '*.{json,mjs}'",
+    "lint:py": "uv run ruff check . && uv run ruff format --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present && uv run mypy services agent tests",
+    "test": "npm test --workspaces --if-present && uv run pytest",
+    "synth": "npm run synth -w infra",
+    "check": "npm run lint && npm run typecheck && npm test && npm run synth",
+    "format": "prettier --write infra console .github '*.{json,mjs}' && uv run ruff format ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}

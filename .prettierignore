@@ -1,0 +1,8 @@
+node_modules/
+cdk.out/
+.venv/
+uv.lock
+package-lock.json
+*.md
+seed/private/
+seed/raw/

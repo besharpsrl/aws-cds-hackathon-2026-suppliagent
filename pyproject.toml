@@ -1,0 +1,47 @@
+[project]
+name = "suppliagent"
+version = "0.1.0"
+description = "SuppliAgent monorepo (uv workspace root)"
+requires-python = ">=3.12,<3.13"
+dependencies = ["suppliagent-shared", "suppliagent-agent"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+suppliagent-shared = { workspace = true }
+suppliagent-agent = { workspace = true }
+
+[tool.uv.workspace]
+members = ["agent", "services/*", "services/tools/*"]
+exclude = ["services/tools"]
+
+[dependency-groups]
+dev = [
+  "ruff==0.17.2",
+  "mypy==2.4.0",
+  "pytest==9.1.1",
+  "moto==5.2.4",
+  "boto3-stubs[essential]",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["infra", "console", "node_modules", "**/cdk.out"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "N"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+explicit_package_bases = true
+exclude = ["(^|/)(node_modules|cdk\\.out|\\.venv)/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "services", "agent"]
+addopts = "-q --import-mode=importlib"

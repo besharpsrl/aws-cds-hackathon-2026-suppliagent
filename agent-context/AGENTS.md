@@ -106,22 +106,30 @@ Non creare nuove cartelle di primo livello senza motivo; se servono, aggiorna qu
 | Agent | Strands Agents + AgentCore SDK; tool esposti via AgentCore Gateway (MCP) |
 | Console | React + Vite + TypeScript, Amplify Auth (Cognito) solo lato client |
 | Python tooling | `uv` (dipendenze), `ruff` (lint+format), `mypy`, `pytest`, `moto` per i mock AWS |
-| TS tooling | `npm` workspaces, `eslint`, `prettier`, `vitest` / `jest` per CDK assertions |
+| TS tooling | `npm` workspaces, `eslint`, `prettier`, `vitest` (anche per le CDK assertions) |
 
 Comandi (da mantenere aggiornati quando gli script esistono):
 
 ```bash
+# Setup (dalla root: npm workspaces infra+console, uv workspace agent+services)
+npm ci && uv sync
+
+# Tutti i controlli (gli stessi della CI)
+npm run check          # = lint + typecheck + test + synth
+npm run lint           # eslint + prettier --check + ruff check + ruff format --check
+npm run typecheck      # tsc (workspaces) + mypy services agent tests
+npm test               # vitest (workspaces) + pytest
+npm run synth          # cdk synth -c env=dev (cdk-nag v3: errori = synth fallita)
+npm run format         # prettier --write + ruff format
+
 # Infra
-cd infra && npm ci && npx cdk synth -c env=dev       # synth + cdk-nag
+cd infra && npx cdk synth -c env=demo
 npx cdk diff -c env=dev
 npx cdk deploy --all -c env=dev                      # solo dev; demo = manuale (vedi §11)
+# opzionale: -c budgetAlertEmail=<email> crea l'AWS Budget (alert 25/50/80%)
 
-# Python (dalla root)
-uv sync && uv run ruff check . && uv run ruff format --check . && uv run mypy services agent
-uv run pytest -q
-
-# Console
-cd console && npm ci && npm run dev | npm run build | npm test
+# Console (scaffold in T-61)
+npm run dev -w console | npm run build -w console | npm test -w console
 
 # Dati demo
 uv run python seed/seed.py --env dev        # carica dati di prova

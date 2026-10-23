@@ -20,11 +20,11 @@ case "$FILE" in
     uv run --quiet ruff format "$FILE" >/dev/null 2>&1 || true
     ;;
   *.ts|*.tsx)
-    DIR=""
-    case "$FILE" in */infra/*) DIR=infra ;; */console/*) DIR=console ;; esac
-    [ -n "$DIR" ] && [ -d "$DIR/node_modules" ] || exit 0
-    (cd "$DIR" && npx --no-install prettier --write "$FILE" >/dev/null 2>&1) || true
-    OUT=$(cd "$DIR" && npx --no-install eslint "$FILE" 2>&1) || { echo "eslint: errori in $FILE" >&2; echo "$OUT" | tail -40 >&2; exit 2; }
+    # npm workspaces: node_modules e config eslint/prettier sono nella root.
+    case "$FILE" in */infra/*|*/console/*) ;; *) exit 0 ;; esac
+    [ -d node_modules ] || exit 0
+    npx --no-install prettier --write "$FILE" >/dev/null 2>&1 || true
+    OUT=$(npx --no-install eslint "$FILE" 2>&1) || { echo "eslint: errori in $FILE" >&2; echo "$OUT" | tail -40 >&2; exit 2; }
     ;;
 esac
 exit 0
