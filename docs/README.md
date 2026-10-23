@@ -15,6 +15,8 @@ Concept: [`../SUPPLIAGENT_SOLUTION.md`](../SUPPLIAGENT_SOLUTION.md)
 | – | [Checklist submission](./SUBMISSION_CHECKLIST.md) | Passi per iscrizione, crediti, ACE e submission Devpost | in corso |
 | – | [Documenti da fare](./TODO_DOCS.md) | Elenco dei documenti ancora da scrivere | promemoria |
 
+**Punto di partenza**: [`../START_HERE.md`](../START_HERE.md) – documento unico di handoff (cosa fare, chi lo fa, mappa dei file).
+
 **Ordine di lettura consigliato**: concept → 01 → 03 → 02 → Infrastructure Design.
 
 **Convenzioni ID**: `FN-xx` funzionalità · `NFR-xx` requisiti non funzionali · `F-xx(.Cn)` flussi e casi · `E-xx` errori · `S-x` scenari demo · `J-x` journey.
