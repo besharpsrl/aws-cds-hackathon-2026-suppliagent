@@ -1,6 +1,6 @@
 import { App, Tags, Validations, type Stack } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
-import type { EnvConfig } from '../config/environments.js';
+import { MANDATORY_TAGS, type EnvConfig } from '../config/environments.js';
 import { AgentStack } from './stacks/agent-stack.js';
 import { AnalyticsStack } from './stacks/analytics-stack.js';
 import { CatalogStack } from './stacks/catalog-stack.js';
@@ -14,7 +14,11 @@ import { ProactiveStack } from './stacks/proactive-stack.js';
 /** Builds the 9 SuppliAgent stacks in dependency order (INFRASTRUCTURE_DESIGN §4). */
 export function buildApp(app: App, config: EnvConfig) {
   // Account stays env-agnostic so `cdk synth` runs in CI without AWS credentials.
-  const common = { config, env: { region: config.region } };
+  // Stack tags are explicit (flag @aws-cdk/core:explicitStackTags): CloudFormation propagates them to
+  // every resource that supports tags, including raw CfnResources that Tags.of() cannot reach
+  // (e.g. CDK-managed custom resource provider functions and roles).
+  const tags = { ...MANDATORY_TAGS, Env: config.envName };
+  const common = { config, env: { region: config.region }, tags };
   const name = (stack: string) => `suppliagent-${config.envName}-${stack}`;
   const after = (stack: Stack, ...deps: Stack[]) => {
     deps.forEach((dep) => stack.addStackDependency(dep));
@@ -41,10 +45,7 @@ export function buildApp(app: App, config: EnvConfig) {
   );
   const analytics = after(new AnalyticsStack(app, name('analytics'), common), channels, foundation);
 
-  Tags.of(app).add('Project', 'SuppliAgent');
-  Tags.of(app).add('Env', config.envName);
-  Tags.of(app).add('Owner', 'beSharp');
-  Tags.of(app).add('Hackathon', 'AWS-CDS-2026');
+  Object.entries(tags).forEach(([key, value]) => Tags.of(app).add(key, value));
   // cdk-nag v3 is a policy validation plugin: any unacknowledged error fails `cdk synth`.
   Validations.of(app).addPlugins(new AwsSolutionsChecks(app, { verbose: true }));
 

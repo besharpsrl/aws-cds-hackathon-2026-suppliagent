@@ -1,12 +1,20 @@
-import { Duration, RemovalPolicy, Stack, Validations, type StackProps } from 'aws-cdk-lib';
+import {
+  type CfnResource,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  Validations,
+  type StackProps,
+} from 'aws-cdk-lib';
 import * as budgets from 'aws-cdk-lib/aws-budgets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
-import type { EnvConfig } from '../../config/environments.js';
+import { MANDATORY_TAGS, type EnvConfig } from '../../config/environments.js';
 
 export interface FoundationStackProps extends StackProps {
   readonly config: EnvConfig;
@@ -114,6 +122,10 @@ export class FoundationStack extends Stack {
           timeUnit: 'MONTHLY',
           budgetLimit: { amount: config.budgetLimitUsd, unit: 'USD' },
         },
+        // CfnBudget is not ITaggable, so Tags.of(app) does not reach it.
+        resourceTags: Object.entries({ ...MANDATORY_TAGS, Env: config.envName }).map(
+          ([key, value]) => ({ key, value }),
+        ),
         notificationsWithSubscribers: [25, 50, 80].map((threshold) => ({
           notification: {
             notificationType: 'ACTUAL',
@@ -140,5 +152,28 @@ export class FoundationStack extends Stack {
       reason:
         'CDK-managed autoDeleteObjects custom resource provider runtime is controlled by aws-cdk-lib.',
     });
+
+    // Pre-create the provider's log group: otherwise Lambda creates it at runtime, outside
+    // CloudFormation, without the mandatory tags (AGENTS.md §7), KMS or retention.
+    const autoDeleteHandler = autoDeleteProvider.node.findChild('Handler') as CfnResource;
+    const autoDeleteLogGroup = new logs.LogGroup(this, 'AutoDeleteObjectsLogGroup', {
+      logGroupName: `/aws/lambda/${autoDeleteHandler.ref}`,
+      retention: config.logRetention,
+      encryptionKey: this.key,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+    const autoDeleteBuckets = [
+      accessLogsBucket,
+      this.mediaBucket,
+      this.inboundMailBucket,
+      this.documentsBucket,
+      this.catalogAssetsBucket,
+      this.analyticsBucket,
+    ];
+    for (const bucket of autoDeleteBuckets) {
+      bucket.node
+        .findChild('AutoDeleteObjectsCustomResource')
+        .node.addDependency(autoDeleteLogGroup);
+    }
   }
 }

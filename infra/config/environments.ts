@@ -2,6 +2,12 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 export type EnvName = 'dev' | 'demo';
 
+/** Tags required on every resource of the account (AGENTS.md §7, decision of 24/10/2026). */
+export const MANDATORY_TAGS = {
+  Project: 'Hackathon AWS CDS',
+  Owner: 'matteo.goretti@besharp.it',
+} as const;
+
 export interface EnvConfig {
   readonly envName: EnvName;
   readonly region: string;

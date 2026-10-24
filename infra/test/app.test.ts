@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { App, Stack, Validations } from 'aws-cdk-lib';
+import { App, CfnResource, type ITaggable, Stack, TagManager, Validations } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -52,6 +52,35 @@ describe('app', () => {
   });
 });
 
+describe('mandatory tags (AGENTS.md §7)', () => {
+  const required = { Project: 'Hackathon AWS CDS', Owner: 'matteo.goretti@besharp.it', Env: 'dev' };
+  const { app } = build('dev', 'alerts@example.com');
+  const assembly = app.synth();
+
+  it('sets them as explicit stack tags, so CloudFormation propagates them to every resource', () => {
+    expect(assembly.stacks).toHaveLength(9);
+    for (const stack of assembly.stacks) {
+      expect(stack.tags, stack.stackName).toMatchObject(required);
+    }
+  });
+
+  it('renders them on every taggable resource', () => {
+    const taggable = app.node
+      .findAll()
+      .filter(
+        (c): c is CfnResource & ITaggable =>
+          CfnResource.isCfnResource(c) && TagManager.isTaggable(c),
+      );
+    expect(taggable.length).toBeGreaterThan(20);
+    for (const resource of taggable) {
+      expect(resource.tags.tagValues(), resource.node.path).toMatchObject({
+        Project: required.Project,
+        Owner: required.Owner,
+      });
+    }
+  });
+});
+
 describe('FoundationStack', () => {
   const template = Template.fromStack(build().stacks.foundation);
 
@@ -86,6 +115,28 @@ describe('FoundationStack', () => {
     });
   });
 
+  it('pre-creates the tagged, encrypted log group of the autoDeleteObjects provider', () => {
+    // Otherwise Lambda creates it at runtime, outside CloudFormation and without tags.
+    const handler = Object.keys(template.findResources('AWS::Lambda::Function')).find((id) =>
+      id.startsWith('CustomS3AutoDeleteObjectsCustomResourceProviderHandler'),
+    );
+    template.hasResourceProperties('AWS::Logs::LogGroup', {
+      LogGroupName: { 'Fn::Join': ['', ['/aws/lambda/', { Ref: handler }]] },
+      KmsKeyId: Match.anyValue(),
+      RetentionInDays: 14,
+    });
+    const logGroup = Object.keys(
+      template.findResources('AWS::Logs::LogGroup', {
+        Properties: { LogGroupName: { 'Fn::Join': ['', ['/aws/lambda/', { Ref: handler }]] } },
+      }),
+    )[0];
+    const autoDeletes = Object.values(template.findResources('Custom::S3AutoDeleteObjects'));
+    expect(autoDeletes).toHaveLength(6);
+    for (const resource of autoDeletes) {
+      expect(resource.DependsOn).toContain(logGroup);
+    }
+  });
+
   it('publishes runtime parameters to SSM', () => {
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/suppliagent/dev/matchAutoThreshold',
@@ -93,11 +144,17 @@ describe('FoundationStack', () => {
     });
   });
 
-  it('creates the budget only when an alert email is given', () => {
+  it('creates the budget only when an alert email is given, with the mandatory tags', () => {
     template.resourceCountIs('AWS::Budgets::Budget', 0);
-    Template.fromStack(build('dev', 'alerts@example.com').stacks.foundation).resourceCountIs(
+    // CfnBudget is not ITaggable: Tags.of() skips it, so tags must be explicit.
+    Template.fromStack(build('dev', 'alerts@example.com').stacks.foundation).hasResourceProperties(
       'AWS::Budgets::Budget',
-      1,
+      {
+        ResourceTags: Match.arrayWith([
+          { Key: 'Project', Value: 'Hackathon AWS CDS' },
+          { Key: 'Owner', Value: 'matteo.goretti@besharp.it' },
+        ]),
+      },
     );
   });
 });
