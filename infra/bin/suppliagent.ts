@@ -4,4 +4,4 @@ import { getConfig } from '../config/environments.js';
 import { buildApp } from '../lib/app.js';
 
 const app = new App();
-buildApp(app, getConfig(app.node.tryGetContext('env'), app.node.tryGetContext('budgetAlertEmail')));
+buildApp(app, getConfig(app.node.tryGetContext('env')));

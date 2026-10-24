@@ -14,9 +14,6 @@ export interface EnvConfig {
   /** Version of the public Powertools for AWS Lambda (Python) v3 layer, python3.12 arm64. */
   readonly powertoolsLayerVersion: number;
   readonly logRetention: RetentionDays;
-  /** Monthly AWS Budget in USD; the budget is created only when an alert email is provided. */
-  readonly budgetLimitUsd: number;
-  readonly budgetAlertEmail?: string;
   /** Runtime parameters published to SSM under /suppliagent/<env>/<name> (02_TECHNICAL_FLOWS §7). */
   readonly parameters: Readonly<Record<string, string>>;
 }
@@ -47,7 +44,6 @@ const environments: Record<EnvName, EnvConfig> = {
     region: 'eu-west-1',
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.TWO_WEEKS,
-    budgetLimitUsd: 300,
     parameters: runtimeParameters,
   },
   demo: {
@@ -55,15 +51,13 @@ const environments: Record<EnvName, EnvConfig> = {
     region: 'eu-west-1',
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.ONE_MONTH,
-    budgetLimitUsd: 300,
     parameters: runtimeParameters,
   },
 };
 
-/** Resolves the environment config; `budgetAlertEmail` comes from `-c budgetAlertEmail=...`, never from the repo. */
-export function getConfig(envName: string | undefined, budgetAlertEmail?: string): EnvConfig {
+export function getConfig(envName: string | undefined): EnvConfig {
   if (envName !== 'dev' && envName !== 'demo') {
     throw new Error(`Unknown env "${envName}": pass -c env=dev or -c env=demo`);
   }
-  return { ...environments[envName], budgetAlertEmail: budgetAlertEmail || undefined };
+  return environments[envName];
 }

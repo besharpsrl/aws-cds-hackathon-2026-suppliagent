@@ -23,7 +23,7 @@
 
 ## 2. Account, region e ambienti
 
-- **Account** AWS dedicato all'hackathon (crediti promozionali), **AWS Budgets** con alert 25/50/80%: creato dal `FoundationStack` solo con `-c budgetAlertEmail=<email>`; il budget copre l'intero account, quindi va passato in **un solo** ambiente.
+- **Account** AWS `471112860008` (decisione del 24/10): account **condiviso** con altri progetti beSharp, già con bootstrap CDK. Per questo il CDK **non crea AWS Budgets** (un budget conterebbe la spesa di tutto l'account); i costi SuppliAgent si isolano con i tag obbligatori (`Project`, `Owner`, `Env`) in Cost Explorer.
 - **Region: `eu-west-1` (Irlanda)**. Vincolo: **dati e inferenza restano in Europa**.
 - **Modello**: Claude tramite inference profile **`eu.`**; il profilo `global.` **non** si usa.
 - **Ambienti**: `dev` e `demo` (congelato per video e judging, attivo fino al 12/11/2026). Parametri via CDK context (`-c env=demo`).
@@ -55,7 +55,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 
 | # | Stack | Risorse principali | Dipende da |
 |---|---|---|---|
-| 1 | `FoundationStack` | KMS CMK, bucket S3 (media, inbound-mail, documents, catalog-assets, analytics, access-logs), event bus applicativo, parametri SSM, Budgets | – |
+| 1 | `FoundationStack` | KMS CMK, bucket S3 (media, inbound-mail, documents, catalog-assets, analytics, access-logs), event bus applicativo, parametri SSM | – |
 | 2 | `DataStack` | Tabelle DynamoDB (§5.7) con Streams e PITR, custom resource di seed (rinviata a T-04) | Foundation |
 | 3 | `CatalogStack` | S3 Vectors bucket + indice `products`, Lambda di indicizzazione catalogo, **Bedrock Knowledge Base** (schede tecniche, vector store S3 Vectors) + data source S3 | Foundation, Data |
 | 4 | `ChannelsStack` | SES (identity dominio, configuration set, receipt rule set → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out list), EUM Social (event destination SNS), topic SNS inbound | Foundation |
@@ -293,7 +293,7 @@ Convenzioni implementate (T-03): attributi chiave tutti stringa; GSI chiamati `b
 
 - Eventi CDS (SES, EUM SMS/RCS, EUM Social) + eventi applicativi ([02 §6.4](./02_TECHNICAL_FLOWS.md)) → Firehose → S3 Parquet → Glue → Athena.
 - **Viste KPI**: tempo foto→conferma, % righe auto-abbinate, correzioni, % ordini senza intervento umano, valore suggerimenti accettati, conversione riordini proattivi, delivery/read rate per canale, problemi di consegna.
-- CloudWatch: dashboard unica e allarmi (DLQ, errori Notifier, errori ERP adapter, budget). Log JSON (Powertools) con `conversationId`/`orderId`, senza contenuti dei messaggi.
+- CloudWatch: dashboard unica e allarmi (DLQ, errori Notifier, errori ERP adapter). Log JSON (Powertools) con `conversationId`/`orderId`, senza contenuti dei messaggi.
 
 ## 6. Flussi principali (sintesi)
 

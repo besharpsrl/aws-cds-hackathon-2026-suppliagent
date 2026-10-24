@@ -14,9 +14,9 @@ import { TABLES } from '../lib/stacks/data-stack.js';
 // Same feature flags as `cdk synth`.
 const { context } = JSON.parse(readFileSync(new URL('../cdk.json', import.meta.url), 'utf8'));
 
-const build = (env = 'dev', budgetAlertEmail?: string) => {
+const build = (env = 'dev') => {
   const app = new App({ context });
-  return { app, stacks: buildApp(app, getConfig(env, budgetAlertEmail)) };
+  return { app, stacks: buildApp(app, getConfig(env)) };
 };
 
 describe('app', () => {
@@ -54,7 +54,7 @@ describe('app', () => {
 
 describe('mandatory tags (AGENTS.md §7)', () => {
   const required = { Project: 'Hackathon AWS CDS', Owner: 'matteo.goretti@besharp.it', Env: 'dev' };
-  const { app } = build('dev', 'alerts@example.com');
+  const { app } = build('dev');
   const assembly = app.synth();
 
   it('sets them as explicit stack tags, so CloudFormation propagates them to every resource', () => {
@@ -144,18 +144,8 @@ describe('FoundationStack', () => {
     });
   });
 
-  it('creates the budget only when an alert email is given, with the mandatory tags', () => {
+  it('creates no AWS Budget (shared account)', () => {
     template.resourceCountIs('AWS::Budgets::Budget', 0);
-    // CfnBudget is not ITaggable: Tags.of() skips it, so tags must be explicit.
-    Template.fromStack(build('dev', 'alerts@example.com').stacks.foundation).hasResourceProperties(
-      'AWS::Budgets::Budget',
-      {
-        ResourceTags: Match.arrayWith([
-          { Key: 'Project', Value: 'Hackathon AWS CDS' },
-          { Key: 'Owner', Value: 'matteo.goretti@besharp.it' },
-        ]),
-      },
-    );
   });
 });
 
