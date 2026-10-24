@@ -51,7 +51,8 @@ aws bedrock list-inference-profiles --region eu-west-1 \
   --query "inferenceProfileSummaries[?starts_with(inferenceProfileId,'eu.')].inferenceProfileId" --output table
 
 # Solo la prima volta sull'account (una persona sola)
-npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-1
+npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-1 \
+  --tags Project="Hackathon AWS CDS" --tags Owner=matteo.goretti@besharp.it
 ```
 
 Copia `.env.example` in `.env` e compila `AWS_PROFILE` (il file `.env` non va mai committato e Claude Code non può leggerlo).

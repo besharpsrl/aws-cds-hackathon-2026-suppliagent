@@ -27,7 +27,7 @@
 - **Region: `eu-west-1` (Irlanda)**. Vincolo: **dati e inferenza restano in Europa**.
 - **Modello**: Claude tramite inference profile **`eu.`**; il profilo `global.` **non** si usa.
 - **Ambienti**: `dev` e `demo` (congelato per video e judging, attivo fino al 12/11/2026). Parametri via CDK context (`-c env=demo`).
-- **Naming**: `suppliagent-<env>-<componente>`; tag: `Project=SuppliAgent`, `Env`, `Owner=beSharp`, `Hackathon=AWS-CDS-2026`.
+- **Naming**: `suppliagent-<env>-<componente>`; tag: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it`, `Env=<env>` (decisione del 24/10: i primi due sono obbligatori su **tutte** le risorse dell'account).
 
 Disponibilità servizi verificata il 09–12/10/2026:
 

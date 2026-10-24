@@ -42,60 +42,61 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | | ☐ |
-| 2 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | | ☐ |
-| 3 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | | ☐ |
-| 4 | T-07 | ERP adapter mock (`submit/update/cancel/getStatus`, simulazione pianificazione e consegna) + `order_pdf` + regola EventBridge `order.confirmed` | FN-13, 14 | P2 | T-03 | | ☐ |
-| 5 | T-09 | `AnalyticsStack`: Firehose → S3 Parquet → Glue → viste Athena KPI; dashboard e allarmi CloudWatch | FN-30, 33 | P2–P3 | T-03 | | ☐ |
-| 6 | T-08 | `ProactiveStack`: `insights_analyzer` (riordini scaduti, prodotti smessi, gap vs simili), `proactive_trigger`, scheduler | FN-19, 20 | P3 | T-04, T-22 | | ☐ |
-| 7 | T-10 | Ambiente `demo`, script reset, README sezione giudici, cliente/bigliettino di prova | FN-31 | P4 | tutti | | ☐ |
-| 8 | T-11 | Opportunità ACE, export PNG del diagramma, testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | | ☐ |
-| 9 | T-12 | Copione e registrazione video (≤ 3 min) | – | P4 (copione da P2) | T-10 | | ☐ |
+| 0 | T-13 | **Tag obbligatori su tutte le risorse** prima del primo deploy: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it`, `Env` via `Tags.of(app)` **e** tag di stack espliciti; test di assertion che li verifica; tag espliciti per risorse create da custom resource/SDK (AGENTS.md §7) | FN-32 | P0 | – | MG | ☐ |
+| 1 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | MG | ☐ |
+| 2 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | MG | ☐ |
+| 3 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | MG | ☐ |
+| 4 | T-07 | ERP adapter mock (`submit/update/cancel/getStatus`, simulazione pianificazione e consegna) + `order_pdf` + regola EventBridge `order.confirmed` | FN-13, 14 | P2 | T-03 | MG | ☐ |
+| 5 | T-09 | `AnalyticsStack`: Firehose → S3 Parquet → Glue → viste Athena KPI; dashboard e allarmi CloudWatch | FN-30, 33 | P2–P3 | T-03 | MG | ☐ |
+| 6 | T-08 | `ProactiveStack`: `insights_analyzer` (riordini scaduti, prodotti smessi, gap vs simili), `proactive_trigger`, scheduler | FN-19, 20 | P3 | T-04, T-22 | MG | ☐ |
+| 7 | T-10 | Ambiente `demo`, script reset, README sezione giudici, cliente/bigliettino di prova | FN-31 | P4 | tutti | MG | ☐ |
+| 8 | T-11 | Opportunità ACE, export PNG del diagramma, testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | MG | ☐ |
+| 9 | T-12 | Copione e registrazione video (≤ 3 min) | – | P4 (copione da P2) | T-10 | MG | ☐ |
 
 ### CH – Canali CDS
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-28 | **Testi template WhatsApp** e invio a Meta per approvazione (`order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`) | FN-12, 19 | **P0 – subito** | – | | ☐ |
-| 2 | T-20 | `ChannelsStack`: SES (identity, configuration set, receipt rule → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out), EUM Social (event destination SNS), topic SNS | FN-01 | P0–P1 | T-03 | | ☐ |
-| 3 | T-21 | `MessagingStack` + `inbound_router`: SQS FIFO + DLQ, normalizzazione WhatsApp/email/SMS/web, identità e ruolo, idempotenza, read receipt, check handoff | FN-01, 03, 26 | P1 | T-20, T-03 | | ☐ |
-| 4 | T-23 | `media_fetcher` (WhatsApp media → S3) ed estrazione allegati email | FN-05, 06 | P1 | T-21 | | ☐ |
-| 5 | T-22 | `TurnBuffer` + coda `turn-flush` + `turn_dispatcher` (debounce, lock, drain, re-flush) | FN-26 | P1 | T-21 | | ☐ |
-| 6 | T-24 | `notifier`: unico punto di uscita, policy di canale, finestra 24h/template, fallback RCS→SMS, fasce orarie, opt-out, idempotenza (versione base in P1, completa in P2) | FN-01, 14, 15 | P1–P2 | T-20 | | ☐ |
-| 7 | T-25 | Messaggi interattivi WhatsApp (button/list) e parsing delle risposte | FN-08, 12 | P2 | T-24 | | ☐ |
-| 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel) | FN-06, 14 | P2 | T-24, T-07 | | ☐ |
-| 9 | T-27 | RCS: rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | | ☐ |
+| 1 | T-28 | **Testi template WhatsApp** e invio a Meta per approvazione (`order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`) | FN-12, 19 | **P0 – subito** | – | MG | ☐ |
+| 2 | T-20 | `ChannelsStack`: SES (identity, configuration set, receipt rule → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out), EUM Social (event destination SNS), topic SNS | FN-01 | P0–P1 | T-03 | MG | ☐ |
+| 3 | T-21 | `MessagingStack` + `inbound_router`: SQS FIFO + DLQ, normalizzazione WhatsApp/email/SMS/web, identità e ruolo, idempotenza, read receipt, check handoff | FN-01, 03, 26 | P1 | T-20, T-03 | MG | ☐ |
+| 4 | T-23 | `media_fetcher` (WhatsApp media → S3) ed estrazione allegati email | FN-05, 06 | P1 | T-21 | MG | ☐ |
+| 5 | T-22 | `TurnBuffer` + coda `turn-flush` + `turn_dispatcher` (debounce, lock, drain, re-flush) | FN-26 | P1 | T-21 | MG | ☐ |
+| 6 | T-24 | `notifier`: unico punto di uscita, policy di canale, finestra 24h/template, fallback RCS→SMS, fasce orarie, opt-out, idempotenza (versione base in P1, completa in P2) | FN-01, 14, 15 | P1–P2 | T-20 | MG | ☐ |
+| 7 | T-25 | Messaggi interattivi WhatsApp (button/list) e parsing delle risposte | FN-08, 12 | P2 | T-24 | MG | ☐ |
+| 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel) | FN-06, 14 | P2 | T-24, T-07 | MG | ☐ |
+| 9 | T-27 | RCS: rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | MG | ☐ |
 
 ### AG – Agent & AgentCore
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-42 | Tool `customers`: `identify_contact`, `get_customer_profile` + autorizzazione per ruolo + test negativi | FN-03, 32 | P0–P1 | T-04 (seed) | | ☐ |
-| 2 | T-40 | `AgentStack`: ECR, AgentCore Runtime/Endpoint, Memory, Gateway (auth OAuth), Identity, Guardrail | FN-32 | P1 | T-03 | | ☐ |
-| 3 | T-41 | Agente Strands: entrypoint, contesto iniettato non modificabile (`contactId`, `role`, `customerIds`), prompt per ruolo (`customer`, `sales_rep`, `shared`), set di tool per ruolo, multilingua | FN-03, 04, 27 | P1 | T-40, T-22 | | ☐ |
-| 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Claude vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | | ☐ |
-| 5 | T-44 | Tool `catalog`: `match_products` (semantico + fuzzy + storico + unità), `search_catalog`, `ask_product_sheets` con citazioni | FN-07, 21 | P2 | T-06 | | ☐ |
-| 6 | T-45 | Tool `inventory_pricing`: `check_availability` (sostituti), `get_prices`, `get_delivery_options` (cut-off, giorni serviti) | FN-09, 10 | P2 | T-04 | | ☐ |
-| 7 | T-46 | Tool `orders`: draft/update/confirm (idempotente)/cancel/status/issue + macchina a stati ordine e righe | FN-12, 16, 17, 18 | P2 | T-03, T-07 | | ☐ |
-| 8 | T-47 | Logica conversazionale ordine: chiarimenti raggruppati, sostituti, vincoli, riepilogo, conferma, promemoria e scadenza bozza | FN-08, 09, 12 | P2 | T-43…T-46, T-25 | | ☐ |
-| 9 | T-48 | Primo contatto: informativa e consenso proattivo | FN-02 | P2 | T-41 | | ☐ |
-| 10 | T-49 | `handoff_to_human` e gestione `mode = HUMAN` / release | FN-24 | P2 | T-41, T-21 | | ☐ |
-| 11 | T-53 | Eval runner + metriche (lettura righe, matching, intento, n. scambi) con **AgentCore Evaluations** (on-demand + evaluator custom) e dataset di progetto; report — avvio in P2, report finale in P4 | FN-04, 05, 07 | P2–P4 | T-05 | | ☐ |
-| 12 | T-50 | Tool `reco` + politica suggerimenti (max 1, consenso, motivazione) | FN-11, 20 | P3 | T-08 | | ☐ |
-| 13 | T-51 | Tool `sales`: briefing, agenda, ordine per conto del cliente (solo portafoglio) | FN-20, 22, 23 | P3 | T-42, T-50 | | ☐ |
-| 14 | T-52 | Turno proattivo di riordino (template, pulsanti, cooldown) | FN-19 | P3 | T-08, T-24 | | ☐ |
+| 1 | T-42 | Tool `customers`: `identify_contact`, `get_customer_profile` + autorizzazione per ruolo + test negativi | FN-03, 32 | P0–P1 | T-04 (seed) | MG | ☐ |
+| 2 | T-40 | `AgentStack`: ECR, AgentCore Runtime/Endpoint, Memory, Gateway (auth OAuth), Identity, Guardrail | FN-32 | P1 | T-03 | MG | ☐ |
+| 3 | T-41 | Agente Strands: entrypoint, contesto iniettato non modificabile (`contactId`, `role`, `customerIds`), prompt per ruolo (`customer`, `sales_rep`, `shared`), set di tool per ruolo, multilingua | FN-03, 04, 27 | P1 | T-40, T-22 | MG | ☐ |
+| 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Claude vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | MG | ☐ |
+| 5 | T-44 | Tool `catalog`: `match_products` (semantico + fuzzy + storico + unità), `search_catalog`, `ask_product_sheets` con citazioni | FN-07, 21 | P2 | T-06 | MG | ☐ |
+| 6 | T-45 | Tool `inventory_pricing`: `check_availability` (sostituti), `get_prices`, `get_delivery_options` (cut-off, giorni serviti) | FN-09, 10 | P2 | T-04 | MG | ☐ |
+| 7 | T-46 | Tool `orders`: draft/update/confirm (idempotente)/cancel/status/issue + macchina a stati ordine e righe | FN-12, 16, 17, 18 | P2 | T-03, T-07 | MG | ☐ |
+| 8 | T-47 | Logica conversazionale ordine: chiarimenti raggruppati, sostituti, vincoli, riepilogo, conferma, promemoria e scadenza bozza | FN-08, 09, 12 | P2 | T-43…T-46, T-25 | MG | ☐ |
+| 9 | T-48 | Primo contatto: informativa e consenso proattivo | FN-02 | P2 | T-41 | MG | ☐ |
+| 10 | T-49 | `handoff_to_human` e gestione `mode = HUMAN` / release | FN-24 | P2 | T-41, T-21 | MG | ☐ |
+| 11 | T-53 | Eval runner + metriche (lettura righe, matching, intento, n. scambi) con **AgentCore Evaluations** (on-demand + evaluator custom) e dataset di progetto; report — avvio in P2, report finale in P4 | FN-04, 05, 07 | P2–P4 | T-05 | MG | ☐ |
+| 12 | T-50 | Tool `reco` + politica suggerimenti (max 1, consenso, motivazione) | FN-11, 20 | P3 | T-08 | MG | ☐ |
+| 13 | T-51 | Tool `sales`: briefing, agenda, ordine per conto del cliente (solo portafoglio) | FN-20, 22, 23 | P3 | T-42, T-50 | MG | ☐ |
+| 14 | T-52 | Turno proattivo di riordino (template, pulsanti, cooldown) | FN-19 | P3 | T-08, T-24 | MG | ☐ |
 
 ### CO – Console & Analytics
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-60 | `ConsoleStack`: Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API REST + WebSocket, S3 + CloudFront (OAC) + WAF | FN-28, 32 | P1 | T-03 | | ☐ |
-| 2 | T-61 | Scaffold console React + Vite + TS: auth, layout, brand (`assets/brand/`) | FN-28 | P1 | T-60 | | ☐ |
-| 3 | T-62 | Inbox ordini + dettaglio con **immagine del bigliettino affiancata alle righe** e correzione righe (parte con dati mock, poi API reali) | FN-28 | P2 | T-46 | | ☐ |
-| 4 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | | ☐ |
-| 5 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | | ☐ |
-| 6 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | | ☐ |
-| 7 | T-66 | Ruolo `judge` in sola lettura, rifiniture demo | FN-31 | P4 | T-62 | | ☐ |
+| 1 | T-60 | `ConsoleStack`: Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API REST + WebSocket, S3 + CloudFront (OAC) + WAF | FN-28, 32 | P1 | T-03 | MG | ☐ |
+| 2 | T-61 | Scaffold console React + Vite + TS: auth, layout, brand (`assets/brand/`) | FN-28 | P1 | T-60 | MG | ☐ |
+| 3 | T-62 | Inbox ordini + dettaglio con **immagine del bigliettino affiancata alle righe** e correzione righe (parte con dati mock, poi API reali) | FN-28 | P2 | T-46 | MG | ☐ |
+| 4 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
+| 5 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
+| 6 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
+| 7 | T-66 | Ruolo `judge` in sola lettura, rifiniture demo | FN-31 | P4 | T-62 | MG | ☐ |
 
 ## 4. Suggerimento di assegnazione
 

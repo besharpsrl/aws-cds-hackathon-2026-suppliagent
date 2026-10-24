@@ -14,21 +14,23 @@
 | Architettura AWS e diagramma | ✅ pronti |
 | Backlog: 39 task da fare in `docs/04_BACKLOG.md`; il completato è in `docs/DONE.md` | ✅ pronto |
 | Contesto per Claude Code (istruzioni, comandi, subagent, hook, MCP) | ✅ attivo |
-| Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato – branch `chore/p0-foundations` **da pushare + PR** (§1.1) |
+| Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato e configurato · branch `chore/p0-foundations` **ancora da pushare + PR** (§1.1) |
 | Codice | ◐ **P0 fatta** (T-01, T-03, T-02): monorepo, CI, app CDK con Foundation e Data stack, `npm run check` verde · nessun deploy ancora |
-| Account AWS | ◐ credenziali ok, **CDK bootstrap da fare** (§1.2) |
-| Canali (WhatsApp, SES, SMS/RCS), dati del cliente, ACE, Devpost | ⬜ da fare (§1) |
+| Account AWS | ◐ account dell'hackathon assegnato (24/10), **CDK bootstrap da fare** (§1.2) · tag obbligatori su tutte le risorse: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it` |
+| Devpost | ◐ iscritti e team creato |
+| Team | Una sola persona (MG): tutti gli stream sono suoi, lavoro con sessioni Claude Code parallele (§3) |
+| Canali (WhatsApp, SES, SMS/RCS), dati del cliente, ACE | ⬜ da fare (§1) |
 
 Calendario sintetico (dettaglio in §5):
 
 | Giorno | Tu | Claude Code |
 |---|---|---|
-| **Gio 23/10** | Repo, account, canali, cliente, Devpost | Fondamenta (P0) e avvio walking skeleton (P1) |
-| **Ven 24/10** | Dataset bigliettini, approvazioni | P1 → P2: messaggio WhatsApp end-to-end, lettura e matching |
-| **Sab 25/10** | Revisioni, test con il telefono | P2 → P3: ordine completo, copilota, proattività, console |
-| **Dom 26/10** | Prova completa degli scenari | P3 e **code freeze** la sera |
-| **Lun 27/10** | Video, testi, ACE | Hardening, eval, ambiente `demo`, README giudici |
-| **Mar 28/10** | **Submission** al mattino | Solo bugfix |
+| **Ven 23/10** | Repo, account, canali, cliente, Devpost | Fondamenta (P0) e avvio walking skeleton (P1) |
+| **Sab 24/10** | Dataset bigliettini, approvazioni | P1 → P2: messaggio WhatsApp end-to-end, lettura e matching |
+| **Dom 25/10** | Revisioni, test con il telefono | P2 → P3: ordine completo, copilota, proattività, console |
+| **Lun 26/10** | Prova completa degli scenari | P3 e **code freeze** la sera |
+| **Mar 27/10** | Video, testi, ACE | Hardening, eval, ambiente `demo`, README giudici |
+| **Mer 28/10** | **Submission** al mattino | Solo bugfix |
 
 ---
 
@@ -44,9 +46,9 @@ gh pr create --fill                    # la CI parte sulla PR: deve essere verde
 ```
 
 - [ ] PR della P0 aperta, CI verde (è la prima esecuzione reale del workflow), merge su `main`
-- [ ] GitHub → *Settings → Branches*: regola su `main` (PR obbligatoria, CI verde, niente force push)
-- [ ] GitHub → *About*: descrizione e topic (vedi §4.6)
-- [ ] Membri del team aggiunti al repo
+- [x] GitHub → *Settings → Branches*: regola su `main` (PR obbligatoria, CI verde, niente force push)
+- [x] GitHub → *About*: descrizione e topic (vedi §4.6)
+- [x] Membri del team aggiunti al repo
 
 ### 1.2 Oggi – account, canali, cliente, gara
 
@@ -57,7 +59,9 @@ gh pr create --fill                    # la CI parte sulla PR: deve essere verde
 **Account AWS** (eu-west-1)
 - [ ] Account dedicato + budget con avvisi
 - [ ] Accesso ai modelli Bedrock: Claude con profilo `eu.` e Titan Text Embeddings V2 (`aws bedrock list-inference-profiles --region eu-west-1`)
-- [ ] Confermare l'account da usare (oggi il profilo `default` punta a `115908659817`, ruolo `beSharp-BedrockAccessRole`) e lanciare `npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-1` (una volta sola)
+- [ ] Confermare l'account da usare (oggi il profilo `default` punta a `115908659817`, ruolo `beSharp-BedrockAccessRole`) e lanciare `npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-1 --tags Project="Hackathon AWS CDS" --tags Owner=matteo.goretti@besharp.it` (una volta sola)
+- [ ] Prima del primo deploy: task **T-13** (tag obbligatori in CDK) fatto da Claude Code
+- [ ] Risorse create a mano da console (EUM Social/numero WhatsApp, eventuali identità SES, budget): aggiungere gli stessi due tag
 - [ ] Primo deploy `dev` (`cd infra && npx cdk deploy --all -c env=dev`), dopo aver letto `cdk diff`
 - [ ] Crediti: quelli AWS ($50) probabilmente non arrivano in tempo (3–5 giorni, scadono il 31/10) → confermare un budget interno beSharp
 
@@ -76,20 +80,21 @@ gh pr create --fill                    # la CI parte sulla PR: deve essere verde
 - [ ] Referente per l'opportunità ACE
 
 **Gara** → `docs/SUBMISSION_CHECKLIST.md`
-- [ ] Tutti iscritti su Devpost con email @besharp.it, team formato, rappresentante scelto
+- [x] Tutti iscritti su Devpost con email @besharp.it, team formato
+- [ ] Rappresentante del team scelto
 - [ ] **Opportunità ACE** su Partner Central (codice campagna `AWS CDS Agentic AI Hackathon -Sept. 2026`, prodotti EUM, EUM Social, SES) → annotare l'ID
 
 **Team e decisioni** → §6
 - [ ] Owner di ogni stream (IN, CH, AG, CO) scritto in `docs/04_BACKLOG.md`
 - [ ] Decisioni aperte chiuse (§6)
 
-### 1.3 Venerdì–domenica (24–26/10)
+### 1.3 Sabato–lunedì (24–26/10)
 - [ ] **Dataset di prova**: ~15 bigliettini scritti a mano da persone diverse (fotografati) + qualche vocale → li usa Claude Code per lettura ed eval (task T-05)
 - [ ] Approvare i deploy su `dev` quando Claude Code li chiede; rivedere e fare merge delle PR
 - [ ] Provare gli scenari dal proprio telefono (S1 per primo)
-- [ ] Domenica sera: **code freeze**
+- [ ] Lunedì 26 sera: **code freeze**
 
-### 1.4 Lunedì–martedì (27–28/10)
+### 1.4 Martedì–mercoledì (27–28/10)
 - [ ] Deploy sull'ambiente `demo` (una sola persona)
 - [ ] Video ≤ 3 minuti (telefono + console), caricato **pubblico** su YouTube
 - [ ] Repo pubblico con licenza visibile **oppure** privato condiviso con i contatti dei giudici (vedi regolamento)
@@ -236,12 +241,12 @@ Topic: `aws`, `amazon-bedrock`, `bedrock-agentcore`, `strands-agents`, `whatsapp
 
 | Giorno | Tu | Claude Code (backlog) |
 |---|---|---|
-| **Gio 23/10** | §1.1 push e PR · §1.2 account, canali, cliente, Devpost, ACE · owner degli stream | ✅ T-01, T-03, T-02 · T-28 testi template · avvio T-04, T-20, T-42 |
-| **Ven 24/10** | Dataset bigliettini e vocali · approvazioni deploy `dev` · revisione PR | T-04, T-05, T-21, T-23, T-22, T-24, T-40, T-41, T-60, T-61 · T-06 · prototipo lettura bigliettini |
-| **Sab 25/10** | Prove S1 dal telefono · revisione PR | T-07, T-25, T-43, T-44, T-45, T-46, T-47, T-48, T-49, T-62 · T-26, T-27, T-09 |
-| **Dom 26/10** | Prove S1–S7 · **code freeze la sera** | T-08, T-50, T-51, T-52, T-63, T-64, T-65 · avvio T-53 |
-| **Lun 27/10** | Deploy `demo` · video · ACE · testi submission | T-10, T-11, T-53 (report), T-66 · bugfix |
-| **Mar 28/10** | **Submission al mattino** · controllo link | Solo bugfix |
+| **Ven 23/10** | §1.1 push e PR · §1.2 account, canali, cliente, Devpost, ACE · owner degli stream | ✅ T-01, T-03, T-02 · T-28 testi template · avvio T-04, T-20, T-42 |
+| **Sab 24/10** | Dataset bigliettini e vocali · approvazioni deploy `dev` · revisione PR | T-04, T-05, T-21, T-23, T-22, T-24, T-40, T-41, T-60, T-61 · T-06 · prototipo lettura bigliettini |
+| **Dom 25/10** | Prove S1 dal telefono · revisione PR | T-07, T-25, T-43, T-44, T-45, T-46, T-47, T-48, T-49, T-62 · T-26, T-27, T-09 |
+| **Lun 26/10** | Prove S1–S7 · **code freeze la sera** | T-08, T-50, T-51, T-52, T-63, T-64, T-65 · avvio T-53 |
+| **Mar 27/10** | Deploy `demo` · video · ACE · testi submission | T-10, T-11, T-53 (report), T-66 · bugfix |
+| **Mer 28/10** | **Submission al mattino** · controllo link | Solo bugfix |
 
 ---
 

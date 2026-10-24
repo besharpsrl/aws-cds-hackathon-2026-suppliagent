@@ -140,7 +140,10 @@ uv run python seed/reset.py --env dev       # ripristina lo scenario demo
 ## 7. Convenzioni di codice
 
 **Generali**
-- Naming risorse: `suppliagent-<env>-<componente>`; tag `Project=SuppliAgent`, `Env`, `Owner=beSharp`, `Hackathon=AWS-CDS-2026`.
+- Naming risorse: `suppliagent-<env>-<componente>`; tag `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it`, `Env=<env>` (decisione del 24/10: i primi due sono obbligatori su **tutte** le risorse dell'account).
+  - Applicarli sia come `Tags.of(app)` sia come **tag di stack** espliciti (`tags` nelle props di ogni Stack): con il flag `@aws-cdk/core:explicitStackTags` i tag dell'app non diventano tag di stack.
+  - Le risorse create fuori da CloudFormation (custom resource, chiamate SDK, AgentCore se non via CDK) devono ricevere gli stessi tag in modo esplicito.
+  - Un test di assertion CDK verifica che ogni risorsa taggabile abbia `Project` e `Owner`.
 - Configurazione da **SSM Parameter Store** / CDK context; nessun valore hard-coded (soglie, tempi, ID canale). Parametri e default: 02 §7.
 - **Nessun segreto nel codice o nel repo**; Secrets Manager; `.env.example` per lo sviluppo locale.
 - Identificatori con prefisso: `cus_`, `con_`, `rep_`, `ord_`, `conv_`, `iss_`.
