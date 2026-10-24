@@ -2,7 +2,7 @@
 
 > **Team:** beSharp · **Progetto:** SuppliAgent – ordini HoReCa via WhatsApp per un cliente reale di beSharp
 > **Deadline:** mercoledì **28/10/2026 ore 21:00** (ora italiana) = 13:00 PDT
-> **Deadline interna consigliata:** lunedì **26/10/2026**
+> **Deadline interna:** mercoledì **28/10/2026 ore 15:00** (code freeze martedì 27/10 ore 18:00)
 > Link: [Overview](https://aws-cds-partner.devpost.com/) · [Rules](https://aws-cds-partner.devpost.com/rules) · [FAQ](https://aws-cds-partner.devpost.com/details/faq) · [Enablement](https://aws-cds-partner.devpost.com/details/enablement) · [Discord](https://discord.gg/558g3B5wS2)
 
 ---

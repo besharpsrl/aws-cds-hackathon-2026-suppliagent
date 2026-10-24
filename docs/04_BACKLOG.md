@@ -14,10 +14,21 @@
 | **P1 – Walking skeleton** | 23–24/10 | Un messaggio WhatsApp attraversa tutta la pipeline e riceve risposta dall'agente | "ciao" su WhatsApp → risposta dell'agente via Notifier, con debounce, in `dev` |
 | **P2 – Ordine da foto end-to-end** | 24–25/10 | Scenario S1 completo | S1 eseguibile in `dev` dall'inizio alla fine |
 | **P3 – Copilota, proattività, consegne, console** | 25–26/10 | Scenari S2–S7, console operativa | S3, S5, S6 eseguibili; console con inbox ordini e handoff |
-| **Code freeze** | **26/10 sera** | Solo bugfix dopo questa data | – |
-| **P4 – Hardening e materiali** | 27–28/10 | Eval, KPI, ambiente `demo`, README, video, submission | Submission inviata **entro il 28/10 mattina** (scadenza 21:00) |
+| **Code freeze** | **27/10 ore 18:00** | Solo bugfix dopo questa data | – |
+| **P4 – Hardening e materiali** | 27–28/10 | Eval, ambiente `demo`, README, video, submission | Submission inviata **entro le 15:00 del 28/10** (scadenza 21:00) |
 
 Percorso critico: **T-04 dati** → T-20/T-21/T-22 ingestion → T-40/T-41 agente → T-43 lettura → T-44 matching → T-45/T-46/T-47 ordine → T-07 ERP/PDF → T-24/T-26/T-27 conferme → T-10/T-12 demo e video.
+
+
+## 1bis. Perimetro per un team di una persona (deciso il 24/10)
+
+Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_HERE §3bis](../START_HERE.md).
+
+| Priorità | Quando | Task |
+|---|---|---|
+| **Must** – S1 end-to-end | Sab–Dom | T-28 (testi), T-04 (dati sintetici), T-20 (solo SES + EUM Social), T-21, T-23, T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
+| **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati, T-25, T-49, T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
+| **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65, T-66 |
 
 ## 2. Sequenza consigliata (ondate parallele)
 
@@ -42,7 +53,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 0 | T-13 | **Tag obbligatori su tutte le risorse** prima del primo deploy: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it`, `Env` via `Tags.of(app)` **e** tag di stack espliciti; test di assertion che li verifica; tag espliciti per risorse create da custom resource/SDK (AGENTS.md §7) | FN-32 | P0 | – | MG | ☐ |
 | 1 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | MG | ☐ |
 | 2 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | MG | ☐ |
 | 3 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | MG | ☐ |
@@ -65,6 +75,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 6 | T-24 | `notifier`: unico punto di uscita, policy di canale, finestra 24h/template, fallback RCS→SMS, fasce orarie, opt-out, idempotenza (versione base in P1, completa in P2) | FN-01, 14, 15 | P1–P2 | T-20 | MG | ☐ |
 | 7 | T-25 | Messaggi interattivi WhatsApp (button/list) e parsing delle risposte | FN-08, 12 | P2 | T-24 | MG | ☐ |
 | 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel) | FN-06, 14 | P2 | T-24, T-07 | MG | ☐ |
+| 8b | T-14 | **Simulatore canali + test end-to-end**: script che pubblica eventi WhatsApp sintetici (testo, foto, vocale) sul topic SNS di EUM Social e modalità `sandbox` del Notifier che registra le uscite invece di inviarle; permette di testare S1 senza numero WhatsApp e riusarlo per eval e reset demo | FN-31 | P1 | T-21, T-24 | MG | ☐ |
 | 9 | T-27 | RCS: rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | MG | ☐ |
 
 ### AG – Agent & AgentCore

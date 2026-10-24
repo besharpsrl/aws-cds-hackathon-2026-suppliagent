@@ -2,7 +2,7 @@
 
 > **Documento unico di handoff**: cosa devi fare tu, cosa fa Claude Code e come farglielo fare, quali file esistono e cosa contengono.
 > Usalo come scaletta: segui le sezioni in ordine e spunta le caselle.
-> Aggiornato al **23/10/2026 pomeriggio** (P0 completata) · Consegna Devpost: **28/10/2026 ore 21:00** (ora italiana) · Obiettivo interno: submission **entro il 28/10 mattina**
+> Aggiornato al **23/10/2026 pomeriggio** (P0 completata) · Consegna Devpost: **28/10/2026 ore 21:00** (ora italiana) · Obiettivo interno: submission **entro le 15:00 del 28/10** · Code freeze **27/10 ore 18:00**
 
 ---
 
@@ -25,12 +25,12 @@ Calendario sintetico (dettaglio in §5):
 
 | Giorno | Tu | Claude Code |
 |---|---|---|
-| **Ven 23/10** | Repo, account, canali, cliente, Devpost | Fondamenta (P0) e avvio walking skeleton (P1) |
-| **Sab 24/10** | Dataset bigliettini, approvazioni | P1 → P2: messaggio WhatsApp end-to-end, lettura e matching |
-| **Dom 25/10** | Revisioni, test con il telefono | P2 → P3: ordine completo, copilota, proattività, console |
-| **Lun 26/10** | Prova completa degli scenari | P3 e **code freeze** la sera |
-| **Mar 27/10** | Video, testi, ACE | Hardening, eval, ambiente `demo`, README giudici |
-| **Mer 28/10** | **Submission** al mattino | Solo bugfix |
+| **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
+| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · T-04 · T-42 → T-40 |
+| **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
+| **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
+| **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |
+| **Mer 28/10** | **Submission entro le 15:00** · controllo link | Solo bugfix |
 
 ---
 
@@ -60,7 +60,7 @@ gh pr create --fill                    # la CI parte sulla PR: deve essere verde
 - [ ] Account dedicato + budget con avvisi
 - [ ] Accesso ai modelli Bedrock: Claude con profilo `eu.` e Titan Text Embeddings V2 (`aws bedrock list-inference-profiles --region eu-west-1`)
 - [ ] Confermare l'account da usare (oggi il profilo `default` punta a `115908659817`, ruolo `beSharp-BedrockAccessRole`) e lanciare `npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-1 --tags Project="Hackathon AWS CDS" --tags Owner=matteo.goretti@besharp.it` (una volta sola)
-- [ ] Prima del primo deploy: task **T-13** (tag obbligatori in CDK) fatto da Claude Code
+- [x] Prima del primo deploy: task **T-13** (tag obbligatori in CDK) fatto da Claude Code (branch `feat/FN-32-mandatory-tags`, vedi `docs/DONE.md`)
 - [ ] Risorse create a mano da console (EUM Social/numero WhatsApp, eventuali identità SES, budget): aggiungere gli stessi due tag
 - [ ] Primo deploy `dev` (`cd infra && npx cdk deploy --all -c env=dev`), dopo aver letto `cdk diff`
 - [ ] Crediti: quelli AWS ($50) probabilmente non arrivano in tempo (3–5 giorni, scadono il 31/10) → confermare un budget interno beSharp
@@ -92,7 +92,7 @@ gh pr create --fill                    # la CI parte sulla PR: deve essere verde
 - [ ] **Dataset di prova**: ~15 bigliettini scritti a mano da persone diverse (fotografati) + qualche vocale → li usa Claude Code per lettura ed eval (task T-05)
 - [ ] Approvare i deploy su `dev` quando Claude Code li chiede; rivedere e fare merge delle PR
 - [ ] Provare gli scenari dal proprio telefono (S1 per primo)
-- [ ] Lunedì 26 sera: **code freeze**
+- [ ] Martedì 27 ore 18:00: **code freeze**
 
 ### 1.4 Martedì–mercoledì (27–28/10)
 - [ ] Deploy sull'ambiente `demo` (una sola persona)
@@ -159,6 +159,27 @@ Claude Code usa da solo i **subagent** del progetto quando servono:
 | `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi |
 
 I **team di agenti** non servono finché ogni stream ha una persona (guida §11).
+
+
+## 3bis. Piano per un team di una persona (deciso il 24/10)
+
+**Principio**: nel weekend S1 end-to-end testato **con il simulatore** (T-14), senza dipendere da Meta; lunedì si collega WhatsApp reale e si rifinisce; martedì alle 18:00 code freeze. Perimetro Must/Should/Could in `docs/04_BACKLOG.md` §1bis.
+
+**Sessioni di Claude Code** (massimo 3 in parallelo: il limite è la tua attenzione su piani e PR)
+
+| Sessione | Comando | Task, in ordine | Deploy |
+|---|---|---|---|
+| **Integrazione** | `claude` nella checkout principale | T-13 → T-28 (solo testi) → merge PR → poi resta per merge e stack condivisi | Foundation/Data e stack condivisi, sempre da `main` aggiornato |
+| **Piattaforma** (IN + CH) | `claude -w piattaforma` | T-04 → T-20 (solo SES + EUM Social) → T-21 → T-23 → T-22 → T-24 base → **T-14** → T-07 → T-26 (solo email conferma con PDF) | Solo i propri stack (`cdk deploy <stack> --exclusively -c env=dev`) |
+| **Agente** (AG) | `claude -w agente` | T-42 → T-40 → T-41 → T-43 → T-06 → T-44 → T-45 → T-46 → T-47 | Solo i propri stack |
+| **Console** (CO), da domenica pomeriggio | `claude -w console` | T-60 → T-61 → T-62 (dati mock, poi API reali) | Solo i propri stack |
+
+**Regole**
+- Ogni sessione fa `git pull --rebase origin main` prima di iniziare un task e prima di ogni deploy.
+- Nessuna sessione fa deploy di uno stack di un'altra; gli stack condivisi solo dalla sessione Integrazione.
+- Un task = una PR piccola; merge appena la CI è verde, così le altre sessioni ripartono da `main` aggiornato.
+- Checkpoint: **Dom h13** "ciao" via simulatore → risposta dell'agente; **Dom h20** foto via simulatore → righe, matching, conferma, ERP mock, email PDF; **Lun h18** stesso flusso su WhatsApp reale.
+- Se un checkpoint salta di più di 3 ore: si taglia dal Should, non si sposta il freeze.
 
 ---
 
@@ -241,12 +262,12 @@ Topic: `aws`, `amazon-bedrock`, `bedrock-agentcore`, `strands-agents`, `whatsapp
 
 | Giorno | Tu | Claude Code (backlog) |
 |---|---|---|
-| **Ven 23/10** | §1.1 push e PR · §1.2 account, canali, cliente, Devpost, ACE · owner degli stream | ✅ T-01, T-03, T-02 · T-28 testi template · avvio T-04, T-20, T-42 |
-| **Sab 24/10** | Dataset bigliettini e vocali · approvazioni deploy `dev` · revisione PR | T-04, T-05, T-21, T-23, T-22, T-24, T-40, T-41, T-60, T-61 · T-06 · prototipo lettura bigliettini |
-| **Dom 25/10** | Prove S1 dal telefono · revisione PR | T-07, T-25, T-43, T-44, T-45, T-46, T-47, T-48, T-49, T-62 · T-26, T-27, T-09 |
-| **Lun 26/10** | Prove S1–S7 · **code freeze la sera** | T-08, T-50, T-51, T-52, T-63, T-64, T-65 · avvio T-53 |
-| **Mar 27/10** | Deploy `demo` · video · ACE · testi submission | T-10, T-11, T-53 (report), T-66 · bugfix |
-| **Mer 28/10** | **Submission al mattino** · controllo link | Solo bugfix |
+| **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
+| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · T-04 · T-42 → T-40 |
+| **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
+| **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
+| **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |
+| **Mer 28/10** | **Submission entro le 15:00** · controllo link | Solo bugfix |
 
 ---
 
