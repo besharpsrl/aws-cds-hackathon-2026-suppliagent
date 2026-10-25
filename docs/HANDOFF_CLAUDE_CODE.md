@@ -166,7 +166,7 @@ git push -u origin chore/p0-foundations
 gh pr create --fill
 ```
 
-Dopo la CI verde e la revisione, fai il merge su `main`.
+Dopo la CI verde e la revisione, fai il merge su `main`. Il deploy **non** passa dalla CI: si fa sempre da locale con `cd infra && npx cdk deploy --all -c env=dev`.
 
 ## 8. Sessioni parallele – uno stream per persona
 

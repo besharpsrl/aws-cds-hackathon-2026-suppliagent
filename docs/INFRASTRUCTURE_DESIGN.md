@@ -386,7 +386,8 @@ SuppliAgent/
 └── README.md
 ```
 
-- GitHub Actions: CI (T-02, `.github/workflows/ci.yml`) su PR e push su `main` con lint, type check, test e `cdk synth` + cdk-nag, senza credenziali AWS. **Da fare**: deploy con **OIDC** (`main` → `dev`, manuale → `demo`); oggi il deploy è manuale.
+- GitHub Actions: CI (T-02, `.github/workflows/ci.yml`) su PR e push su `main` con lint, type check, test e `cdk synth` + cdk-nag, senza credenziali AWS.
+- **Deploy da locale** (decisione del 25/10): `cd infra && npx cdk deploy --all -c env=<env>` con il profilo AWS dello sviluppatore; nessuna pipeline di deploy (OIDC) per l'hackathon. La CI resta un controllo automatico e non blocca il deploy.
 
 ## 11. Configurazione e prerequisiti manuali
 
@@ -405,12 +406,14 @@ Prerequisiti non automatizzabili:
 1. WABA collegata a EUM Social; **template WhatsApp approvati**.
 2. Dominio SES verificato, uscita dalla sandbox, MX per l'inbound.
 3. Agente RCS, inviti tester, origination identity SMS.
-4. Accesso ai modelli Bedrock (Claude, Titan Embeddings) in eu-west-1.
+4. Accesso ai modelli Bedrock (Claude, Titan Embeddings) in eu-west-1. Sull'account `471112860008` (in *channel program*) Claude va abilitato tramite il distributore/AWS: vedi §12.
 5. **Export del catalogo dal cliente** (anonimizzato) e schede tecniche.
 
 ## 12. Punti aperti
 
 > Solo i punti ancora aperti; quelli chiusi sono in [DONE.md](./DONE.md).
+
+- [ ] ⛔ **Claude non invocabile** sull'account `471112860008`: `Access to this model is not available for channel program accounts` su tutti i profili `eu.anthropic.*` (25/10). Blocca agente, lettura bigliettini e copilota. Opzioni: sblocco tramite distributore/AWS (preferita), altro account beSharp con Claude abilitato, fallback **Amazon Nova** (`eu.amazon.nova-pro-v1:0`, funzionante) da decidere esplicitamente (AGENTS §11)
 
 - [ ] ID esatto del profilo `eu.` per la versione Claude scelta
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
