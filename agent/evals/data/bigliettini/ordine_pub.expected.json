@@ -1,0 +1,82 @@
+{
+  "image": "ordine_pub.jpeg",
+  "requestedDelivery": null,
+  "lines": [
+    {
+      "rawText": "10 wurstel",
+      "product": "wurstel",
+      "quantity": 10,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "4 salsicce calabre",
+      "product": "salsicce calabresi",
+      "quantity": 4,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "20 hamburger (PANE)",
+      "product": "pane per hamburger",
+      "quantity": 20,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "30 BIRRA PAULANER",
+      "product": "birra Paulaner",
+      "quantity": 30,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "7 patate (SACCHI)",
+      "product": "patate",
+      "quantity": 7,
+      "unit": "sacco",
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "CAFFÈ",
+      "product": "caffè",
+      "quantity": null,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "2 CARCIOFI SOTT'OLIO",
+      "product": "carciofi sott'olio",
+      "quantity": 2,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "MELANZANE",
+      "product": "melanzane",
+      "quantity": null,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "CRAUTI",
+      "product": "crauti",
+      "quantity": null,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    }
+  ],
+  "struckOut": [],
+  "notes": [
+    "P.S. ricordati l'acconto di 10€ dell'altra volta"
+  ]
+}

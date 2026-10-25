@@ -1,0 +1,74 @@
+{
+  "image": "ordine_bar.jpeg",
+  "requestedDelivery": null,
+  "lines": [
+    {
+      "rawText": "4 BRIOCHES YOGURT",
+      "product": "brioche allo yogurt",
+      "quantity": 4,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "4 BRIOCHES PISTACCHIO",
+      "product": "brioche al pistacchio",
+      "quantity": 4,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "30 BRIOCHES VUOTE",
+      "product": "brioche vuote",
+      "quantity": 30,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "2 NUTELLA",
+      "product": "Nutella",
+      "quantity": 2,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "3 LATTE",
+      "product": "latte",
+      "quantity": 3,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "10 ZUCCHERO",
+      "product": "zucchero",
+      "quantity": 10,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "CAFFÈ 4 SCATOLE",
+      "product": "caffè",
+      "quantity": 4,
+      "unit": "scatola",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "CAMOMILLA",
+      "product": "camomilla",
+      "quantity": null,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    }
+  ],
+  "struckOut": [],
+  "notes": [
+    "SCONTO!! (freccia verso la camomilla): richiesta di sconto, da non applicare"
+  ]
+}

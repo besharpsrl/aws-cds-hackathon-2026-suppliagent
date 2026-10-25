@@ -1,0 +1,106 @@
+{
+  "image": "ordine_ristorante.jpeg",
+  "requestedDelivery": "giovedì",
+  "lines": [
+    {
+      "rawText": "FDL 10 KG",
+      "product": "fior di latte",
+      "quantity": 10,
+      "unit": "kg",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "pelati 3 CS",
+      "product": "pomodori pelati",
+      "quantity": 3,
+      "unit": "cassa",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "2kg mozz bufala",
+      "product": "mozzarella di bufala",
+      "quantity": 2,
+      "unit": "kg",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "olio evo 2 latte da 5",
+      "product": "olio extravergine di oliva",
+      "quantity": 2,
+      "unit": "latta",
+      "packageSize": "5 L",
+      "needsClarification": false
+    },
+    {
+      "rawText": "farina 00 4 SACCHI",
+      "product": "farina tipo 00",
+      "quantity": 4,
+      "unit": "sacco",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "GRANA GRATT. 1",
+      "product": "grana grattugiato",
+      "quantity": 1,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "basilico 2 mazzi",
+      "product": "basilico",
+      "quantity": 2,
+      "unit": "mazzo",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "crudo 1,5 kg",
+      "product": "prosciutto crudo",
+      "quantity": 1.5,
+      "unit": "kg",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "ACQUA NAT 6CS",
+      "product": "acqua naturale",
+      "quantity": 6,
+      "unit": "cassa",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "il solito caffè",
+      "product": "caffè",
+      "quantity": null,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "BIRRA MORETTI 33 x 2 CT",
+      "product": "birra Moretti",
+      "quantity": 2,
+      "unit": "cartone",
+      "packageSize": "33 cl",
+      "needsClarification": false
+    },
+    {
+      "rawText": "tovaglioli",
+      "product": "tovaglioli",
+      "quantity": null,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    }
+  ],
+  "struckOut": [
+    "prosciutto cotto 1"
+  ],
+  "notes": []
+}
