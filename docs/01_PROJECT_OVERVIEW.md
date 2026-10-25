@@ -88,7 +88,7 @@ flowchart LR
     end
     subgraph Core[SuppliAgent – eu-west-1]
         ING[Ingestion & Routing<br/>FIFO + debounce]
-        AG[Agente<br/>AgentCore + Strands + Claude eu.]
+        AG[Agente<br/>AgentCore + Strands + Amazon Nova eu.]
         TOOLS[Tool di dominio<br/>clienti · catalogo · matching · listini ·<br/>stock · ordini · raccomandazioni]
         CAT[Catalog intelligence<br/>S3 Vectors + Knowledge Base]
         ORD[Ordini, PDF, ERP adapter]
@@ -124,7 +124,7 @@ flowchart LR
 |---|---|---|
 | Canali | Ricevere e inviare messaggi | EUM Social, SES v2, EUM SMS/RCS v2 |
 | Ingestion & Routing | Normalizzare, identificare contatto e **ruolo**, ordinare per chat, raggruppare messaggi ravvicinati | SNS, SQS FIFO, Lambda, DynamoDB |
-| Agente | Ragionare, leggere i bigliettini, usare i tool, ricordare | AgentCore, Strands, Bedrock Claude `eu.`, Guardrails, Transcribe |
+| Agente | Ragionare, leggere i bigliettini, usare i tool, ricordare | AgentCore, Strands, Bedrock Amazon Nova `eu.`, Guardrails, Transcribe |
 | Catalog intelligence | Trovare il prodotto giusto da testo impreciso; rispondere sulle schede tecniche | S3 Vectors, Titan Embeddings, Bedrock Knowledge Base |
 | Ordini | Ciclo di vita, validazioni, PDF, invio all'ERP | Lambda, EventBridge, ERP adapter |
 | Notifier | Unico punto di uscita, scelta del canale | Lambda + client CDS |

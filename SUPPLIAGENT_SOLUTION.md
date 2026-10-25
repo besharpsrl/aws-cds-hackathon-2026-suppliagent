@@ -82,7 +82,7 @@ flowchart LR
     end
     subgraph Core[SuppliAgent – eu-west-1]
         ING[Ingestion<br/>FIFO + debounce]
-        AG[Agente<br/>AgentCore + Strands<br/>Claude eu.]
+        AG[Agente<br/>AgentCore + Strands<br/>Amazon Nova eu.]
         T[Tool: catalogo · matching ·<br/>listini · stock · ordini ·<br/>raccomandazioni · schede tecniche]
         KB[(Knowledge Base<br/>schede tecniche<br/>S3 Vectors)]
         DB[(DynamoDB + S3)]
@@ -155,7 +155,7 @@ Dettagli: [Infrastructure Design](./docs/INFRASTRUCTURE_DESIGN.md) · [Diagramma
 
 | Rischio | Mitigazione |
 |---|---|
-| Scrittura a mano poco leggibile | Claude vision + domande di chiarimento + storico cliente; dataset di bigliettini veri per i test |
+| Scrittura a mano poco leggibile | Nova Pro vision (Claude se abilitato sull'account) + domande di chiarimento + storico cliente; dataset di bigliettini veri per i test |
 | Dati del cliente riservati | Catalogo **anonimizzato o sintetico** derivato da quello reale; nessun dato personale reale |
 | Marchio del cliente nel video | Solo con autorizzazione scritta; altrimenti brand fittizio |
 | Integrazione ERP reale non fattibile in 2 settimane | ERP adapter con implementazione mock e interfaccia documentata |

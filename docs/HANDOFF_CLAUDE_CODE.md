@@ -207,7 +207,7 @@ docs/02_TECHNICAL_FLOWS.md (§2, F-02..F-10, §6 contratti), docs/03_FUNCTIONAL_
 docs/INFRASTRUCTURE_DESIGN.md §5.3 e §5.4.
 
 Procedi nell'ordine del backlog: T-42, T-40, T-41; in parallelo fai un prototipo di lettura dei bigliettini
-(Claude vision, output strutturato con pydantic) sui file di agent/evals/ e riportami precisione e problemi.
+(Nova Pro vision, output strutturato con pydantic) sui file di agent/evals/ e riportami precisione e problemi.
 Vincoli chiave: modello solo via inference profile eu.; il contesto (contactId, role, customerIds)
 è iniettato dal Dispatcher e non è modificabile dal modello; autorizzazione per ruolo dentro ogni tool
 con test negativi; i tool restituiscono dati, non testo per l'utente; max 1 suggerimento per ordine;

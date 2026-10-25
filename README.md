@@ -41,7 +41,7 @@ Built by [beSharp](https://www.besharp.it) for the **AWS Communication Developer
 
 <p align="center"><a href="docs/architecture.drawio">docs/architecture.drawio</a></p>
 
-- Region **eu-west-1**; Claude on Amazon Bedrock via the **`eu.` inference profile** (data and inference stay in the EU).
+- Region **eu-west-1**; **Amazon Nova** (Nova Pro for reasoning and handwritten-note vision, Nova Lite for fast classification) on Amazon Bedrock via the **`eu.` inference profiles** (data and inference stay in the EU).
 - **Strands Agents on Amazon Bedrock AgentCore** (Runtime, Memory, Gateway, Identity, Observability), Bedrock Guardrails, Bedrock Knowledge Bases, **Amazon S3 Vectors**, Amazon Transcribe.
 - Serverless ingestion: SNS → SQS FIFO (ordered per chat, parallel across chats) → debounce (one answer per burst of messages).
 - DynamoDB, S3, EventBridge, Lambda (Python 3.12), API Gateway (REST + WebSocket), Cognito, CloudFront, Firehose, Glue, Athena.

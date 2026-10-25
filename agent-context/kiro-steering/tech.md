@@ -5,7 +5,7 @@ inclusion: always
 # Tech – SuppliAgent
 
 ## Vincoli
-- Region **eu-west-1**; Claude solo via inference profile **`eu.`** (mai `global.`/`us.`).
+- Region **eu-west-1**; modello **Amazon Nova** (`eu.amazon.nova-pro-v1:0`, `eu.amazon.nova-lite-v1:0`) solo via inference profile **`eu.`** (mai `global.`/`us.`); Claude in futuro se abilitato sull'account.
 - IaC **AWS CDK v2 TypeScript**; tutto riproducibile con `cdk deploy --all`; `cdk-nag` (AwsSolutions) deve passare.
 - Client CDS ammessi (requisito di gara, devono essere chiamati davvero nel codice): `socialmessaging` (`SendWhatsAppMessage`), `pinpoint-sms-voice-v2` (`SendRcsMessage`, `SendTextMessage`), `sesv2` (`SendEmail`). **Vietati**: `pinpoint` v1, `pinpoint-email`, EUM Push.
 - Serverless e scale-to-zero: niente servizi con costo fisso (OpenSearch, NAT, RDS, istanze) senza approvazione. Ricerca vettoriale su **S3 Vectors**; schede tecniche su **Bedrock Knowledge Base** (vector store S3 Vectors).

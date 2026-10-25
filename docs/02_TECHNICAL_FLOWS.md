@@ -206,7 +206,7 @@ sequenceDiagram
 
 | Input | Tool | Note |
 |---|---|---|
-| Foto bigliettino | `extract_order_lines(image)` – Claude vision con output strutturato | gestisce abbreviazioni, cancellature, frecce, quantità prima/dopo il nome, unità ("cs", "kg", "pz", "ct") |
+| Foto bigliettino | `extract_order_lines(image)` – Nova Pro vision con output strutturato | gestisce abbreviazioni, cancellature, frecce, quantità prima/dopo il nome, unità ("cs", "kg", "pz", "ct") |
 | Vocale | Transcribe → `extract_order_lines(text)` | "tre casse di pelati e due chili di burro" |
 | Testo libero | `extract_order_lines(text)` | elenchi, frasi, mix |
 | Email con corpo o allegato | come sopra; PDF/Excel strutturato → parsing diretto delle colonne | ordini da gestionali del ristorante |

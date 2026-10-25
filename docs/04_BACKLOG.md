@@ -85,7 +85,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 1 | T-42 | Tool `customers`: `identify_contact`, `get_customer_profile` + autorizzazione per ruolo + test negativi | FN-03, 32 | P0–P1 | T-04 (seed) | MG | ☐ |
 | 2 | T-40 | `AgentStack`: ECR, AgentCore Runtime/Endpoint, Memory, Gateway (auth OAuth), Identity, Guardrail | FN-32 | P1 | T-03 | MG | ☐ |
 | 3 | T-41 | Agente Strands: entrypoint, contesto iniettato non modificabile (`contactId`, `role`, `customerIds`), prompt per ruolo (`customer`, `sales_rep`, `shared`), set di tool per ruolo, multilingua | FN-03, 04, 27 | P1 | T-40, T-22 | MG | ☐ |
-| 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Claude vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | MG | ☐ |
+| 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Nova Pro vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | MG | ☐ |
 | 5 | T-44 | Tool `catalog`: `match_products` (semantico + fuzzy + storico + unità), `search_catalog`, `ask_product_sheets` con citazioni | FN-07, 21 | P2 | T-06 | MG | ☐ |
 | 6 | T-45 | Tool `inventory_pricing`: `check_availability` (sostituti), `get_prices`, `get_delivery_options` (cut-off, giorni serviti) | FN-09, 10 | P2 | T-04 | MG | ☐ |
 | 7 | T-46 | Tool `orders`: draft/update/confirm (idempotente)/cancel/status/issue + macchina a stati ordine e righe | FN-12, 16, 17, 18 | P2 | T-03, T-07 | MG | ☐ |

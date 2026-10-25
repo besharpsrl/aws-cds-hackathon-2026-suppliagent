@@ -68,7 +68,7 @@
 - "Prova SuppliAgent in 5 minuti": numero WhatsApp, cliente di prova, bigliettino di esempio da fotografare, credenziali console `judge`
 
 ## 9. Registro delle decisioni architetturali (ADR)
-- ADR-001 Region `eu-west-1` e profilo Claude `eu.`
+- ADR-001 Region `eu-west-1`, profili `eu.` e modello Amazon Nova (Claude non abilitato sull'account)
 - ADR-002 SQS FIFO + debounce applicativo
 - ADR-003 S3 Vectors invece di OpenSearch (costi, scale-to-zero)
 - ADR-004 Matching ibrido semantico + lessicale + storico

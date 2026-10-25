@@ -247,7 +247,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | NFR-01 | Latenza prima risposta a un ordine da foto (dopo il debounce) | p50 ≤ 8 s, p95 ≤ 20 s |
 | NFR-02 | Latenza risposte conversazionali semplici | p50 ≤ 4 s |
 | NFR-03 | Scalabilità | Chat indipendenti in parallelo; nessuna capacità fissa |
-| NFR-04 | Residenza dati | `eu-west-1`, Claude profilo `eu.` |
+| NFR-04 | Residenza dati | `eu-west-1`, modelli Bedrock solo con profilo `eu.` (Amazon Nova) |
 | NFR-05 | Riproducibilità | Deploy da zero con README + `cdk deploy --all` |
 | NFR-06 | Costi | Entro crediti + budget interno, alert 25/50/80% |
 | NFR-07 | Tono | Cordiale, conciso, professionale; messaggi brevi adatti a chi lavora in cucina |

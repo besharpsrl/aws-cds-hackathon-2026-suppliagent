@@ -16,7 +16,7 @@
 | Contesto per Claude Code (istruzioni, comandi, subagent, hook, MCP) | ✅ attivo |
 | Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato e configurato · branch `chore/p0-foundations` **ancora da pushare + PR** (§1.1) |
 | Codice | ◐ **P0 fatta** (T-01, T-03, T-02): monorepo, CI, app CDK con Foundation e Data stack, `npm run check` verde · nessun deploy ancora |
-| Account AWS | ◐ account `471112860008` (condiviso con altri progetti beSharp), bootstrap già presente, **primo deploy `dev` fatto il 25/10** (Foundation + Data) · ⛔ **Claude su Bedrock non abilitato** (§1.2) · tag obbligatori: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it` |
+| Account AWS | ◐ account `471112860008` (condiviso con altri progetti beSharp), bootstrap già presente, **primo deploy `dev` fatto il 25/10** (Foundation + Data) · modello **Amazon Nova** (Claude non abilitato sull'account, §1.2) · tag obbligatori: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it` |
 | Devpost | ◐ iscritti e team creato |
 | Team | Una sola persona (MG): tutti gli stream sono suoi, lavoro con sessioni Claude Code parallele (§3) |
 | Canali (WhatsApp, SES, SMS/RCS), dati del cliente, ACE | ⬜ da fare (§1) |
@@ -45,7 +45,7 @@ git push -u origin chore/p0-foundations
 gh pr create --fill                    # la CI parte sulla PR: deve essere verde prima del merge
 ```
 
-- [ ] Push su GitHub dei branch (backup e requisito della submission). Il **deploy si fa sempre da locale** (`cdk deploy`) e non dipende dalla CI: la CI serve solo come controllo automatico su PR/`main`
+- [ ] Push su GitHub e **PR per ogni merge su `main`** (regola mantenuta; la CI gira sulla PR). Il **deploy si fa sempre da locale** (`cdk deploy`) e non dipende dalla CI
 - [x] GitHub → *Settings → Branches*: regola su `main` (PR obbligatoria, CI verde, niente force push)
 - [x] GitHub → *About*: descrizione e topic (vedi §4.6)
 - [x] Membri del team aggiunti al repo
@@ -58,7 +58,8 @@ gh pr create --fill                    # la CI parte sulla PR: deve essere verde
 
 **Account AWS** (eu-west-1)
 - [x] Account: `471112860008`, condiviso con altri progetti → nessun AWS Budget creato dal CDK; costi isolati con i tag (attivare `Project` ed `Env` come *cost allocation tags* in Billing)
-- [ ] ⛔ **Accesso a Claude su Bedrock**: i profili `eu.anthropic.*` esistono ma ogni chiamata risponde `Access to this model is not available for channel program accounts` (verificato il 25/10 su Sonnet/Haiku/Opus 4.5→5.5). Da sbloccare con il distributore/AWS (account in *channel program*) oppure decidere un fallback. Titan Text Embeddings V2 e Amazon Nova (`eu.amazon.nova-pro-v1:0`, `nova-lite`) funzionano
+- [x] Accesso ai modelli Bedrock: **Amazon Nova** Pro/Lite e Titan Text Embeddings V2 funzionanti (25/10) → il progetto usa Nova
+- [ ] (Opzionale) Chiedere al distributore/AWS l'abilitazione di Claude: l'account è in *channel program* e risponde `Access to this model is not available for channel program accounts`; se arriva, pianifichiamo il passaggio
 - [x] CDK bootstrap: già presente sull'account (`CDKToolkit` v30), non rifatto
 - [x] Prima del primo deploy: task **T-13** (tag obbligatori in CDK) fatto da Claude Code (branch `feat/FN-32-mandatory-tags`, vedi `docs/DONE.md`)
 - [ ] Risorse create a mano da console (EUM Social/numero WhatsApp, eventuali identità SES): aggiungere gli stessi due tag

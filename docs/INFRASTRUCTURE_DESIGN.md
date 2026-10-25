@@ -18,14 +18,14 @@
 | Due tipi di utente, un solo agente | Ruolo risolto dall'identità (`CUSTOMER_CONTACT` / `SALES_REP` / `BACKOFFICE`) → set di tool e istruzioni diversi |
 | Contesto cross-canale | Identità canonica come `actorId` di AgentCore Memory |
 | Integrazione futura con l'ERP reale | **ERP adapter** dietro interfaccia; implementazione mock per l'hackathon |
-| Dati in Europa | `eu-west-1`, Claude via inference profile **`eu.`** |
+| Dati in Europa | `eu-west-1`, Amazon Nova via inference profile **`eu.`** |
 | Sicurezza by default | KMS, IAM least privilege, Guardrails, Cognito, dati anonimizzati |
 
 ## 2. Account, region e ambienti
 
 - **Account** AWS `471112860008` (decisione del 24/10): account **condiviso** con altri progetti beSharp, già con bootstrap CDK. Per questo il CDK **non crea AWS Budgets** (un budget conterebbe la spesa di tutto l'account); i costi SuppliAgent si isolano con i tag obbligatori (`Project`, `Owner`, `Env`) in Cost Explorer.
 - **Region: `eu-west-1` (Irlanda)**. Vincolo: **dati e inferenza restano in Europa**.
-- **Modello**: Claude tramite inference profile **`eu.`**; il profilo `global.` **non** si usa.
+- **Modello**: **Amazon Nova** tramite inference profile **`eu.`**: `eu.amazon.nova-pro-v1:0` (ragionamento, tool use, vision) e `eu.amazon.nova-lite-v1:0` (classificazioni veloci); il profilo `global.` **non** si usa. *Decisione del 25/10*: sull'account `471112860008` (in *channel program*) Claude non è invocabile; se verrà abilitato, il passaggio a Claude sarà un task pianificato (cambio di `modelId`/`fastModelId` + eval di confronto).
 - **Ambienti**: `dev` e `demo` (congelato per video e judging, attivo fino al 12/11/2026). Parametri via CDK context (`-c env=demo`).
 - **Naming**: `suppliagent-<env>-<componente>`; tag: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it`, `Env=<env>` (decisione del 24/10: i primi due sono obbligatori su **tutte** le risorse dell'account).
 
@@ -36,7 +36,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 | AgentCore Runtime, Memory, Gateway, Identity, Observability | ✅ |
 | EUM Social (WhatsApp), EUM SMS v2, RCS (Italia supportata) | ✅ |
 | SES v2 + email receiving (receipt rules) | ✅ |
-| Bedrock Claude (profilo `eu.`), Titan Text Embeddings V2, Cohere Embed Multilingual | ✅ |
+| Bedrock Amazon Nova Pro/Lite (profilo `eu.`, verificato il 25/10), Titan Text Embeddings V2, Cohere Embed Multilingual | ✅ |
 | Bedrock Knowledge Bases, **S3 Vectors** | ✅ |
 | Transcribe, Textract | ✅ |
 
@@ -44,7 +44,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 
 1. **Channels (CDS)** – EUM Social (WhatsApp), SES v2 (outbound + inbound), EUM SMS/RCS v2.
 2. **Ingestion & Routing** – SNS → SQS FIFO → Inbound Router → TurnBuffer + `turn-flush` → Turn Dispatcher.
-3. **Agent** – AgentCore Runtime (Strands) + Memory + Gateway (tool MCP su Lambda) + Identity + Observability; Bedrock Claude `eu.` + Guardrails; Transcribe.
+3. **Agent** – AgentCore Runtime (Strands) + Memory + Gateway (tool MCP su Lambda) + Identity + Observability; Bedrock Amazon Nova `eu.` + Guardrails; Transcribe.
 4. **Catalog intelligence** – indice prodotti su **S3 Vectors** (ricerca semantica) + matching ibrido; **Bedrock Knowledge Base** sulle schede tecniche.
 5. **Order & Outbound** – servizio ordini, generazione PDF, **ERP adapter** (mock), **Notifier** con policy di canale, EventBridge Scheduler.
 6. **Proactive** – job giornaliero di **analisi riordini e insight cliente**.
@@ -156,7 +156,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 | Componente | Configurazione |
 |---|---|
 | **Runtime** | Container ARM64 (Python 3.12, Strands) da ECR; `runtimeSessionId = conversationId`; env: `MEMORY_ID`, `GATEWAY_URL`, `GUARDRAIL_ID`, `MODEL_ID` |
-| **Modello** | Claude (Sonnet più recente con profilo `eu.`) per ragionamento e **lettura dei bigliettini** (vision); modello più leggero (es. Haiku `eu.`) per classificazioni veloci |
+| **Modello** | **Nova Pro** (`eu.amazon.nova-pro-v1:0`) per ragionamento e **lettura dei bigliettini** (vision); **Nova Lite** (`eu.amazon.nova-lite-v1:0`) per classificazioni veloci. Claude è il target futuro se abilitato (vedi §2) |
 | **Ruoli** | Il Dispatcher passa `role`; il Runtime carica istruzioni e **sottoinsieme di tool** per ruolo (§5.3.1) |
 | **Memory** | `actorId = contactId`; strategie *semantic* (preferenze, prodotti abituali, note), *summary*, *user preference* (canale, lingua, orari) |
 | **Gateway** | Endpoint MCP con target Lambda; autenticazione OAuth (Cognito client credentials); **autorizzazione per ruolo** sui tool |
@@ -164,7 +164,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 | **Observability** | Tracce OTel → CloudWatch GenAI Observability: latenza per turno, token, tool, errori |
 | **Evaluations** | AgentCore Evaluations (GA, disponibile in eu-west-1): valutazioni on-demand sul dataset di progetto (lettura bigliettini, matching, intento, uso dei tool) ed evaluator built-in di qualità/sicurezza; usabile anche in CI |
 | **Guardrails** | PII, topic negati (prezzi di altri clienti, sconti non autorizzati, consigli sanitari), filtri contenuti |
-| **AI services** | **Transcribe** per i vocali; **Claude vision** per bigliettini e foto; **Textract** come fallback per documenti stampati (DDT, PDF) |
+| **AI services** | **Transcribe** per i vocali; **Nova Pro vision** per bigliettini e foto; **Textract** come fallback per documenti stampati (DDT, PDF) |
 
 #### 5.3.1 Tool esposti dal Gateway
 
@@ -172,7 +172,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 |---|---|---|---|
 | `identify_contact` | `tool-customers` | tutti | Contacts, Customers |
 | `get_customer_profile` | `tool-customers` | tutti (agente: solo portafoglio) | Customers, CustomerInsights |
-| `extract_order_lines` | `tool-order-intake` | tutti | S3 media → Claude vision / testo |
+| `extract_order_lines` | `tool-order-intake` | tutti | S3 media → Nova Pro vision / testo |
 | `match_products` | `tool-catalog` | tutti | S3 Vectors + Products + storico ordini |
 | `search_catalog` | `tool-catalog` | tutti | S3 Vectors + Products |
 | `ask_product_sheets` | `tool-catalog` | tutti | Bedrock Knowledge Base (schede tecniche) |
@@ -360,7 +360,7 @@ sequenceDiagram
 
 | Voce | Driver | Peso atteso |
 |---|---|---|
-| Bedrock Claude (testo + vision) | token per turno, immagini dei bigliettini | **Alto** |
+| Bedrock Amazon Nova (testo + vision) | token per turno, immagini dei bigliettini | **Alto** |
 | AgentCore | consumo per sessione/chiamata | Medio |
 | Embedding + S3 Vectors + Knowledge Base | indicizzazione catalogo, query | Basso |
 | WhatsApp | tariffe Meta + fee AWS | Basso–medio |
@@ -397,7 +397,7 @@ SuppliAgent/
 | `waPhoneNumberId` | ID numero WhatsApp su EUM Social |
 | `sesDomain` | `ordini.example.com` |
 | `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender |
-| `modelId` / `fastModelId` | profili Claude `eu.` |
+| `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |
 | `matchAutoThreshold` / `matchAskThreshold` | `0.85` / `0.5` |
 | `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | `3000` / `6000` / `15000` |
@@ -406,16 +406,15 @@ Prerequisiti non automatizzabili:
 1. WABA collegata a EUM Social; **template WhatsApp approvati**.
 2. Dominio SES verificato, uscita dalla sandbox, MX per l'inbound.
 3. Agente RCS, inviti tester, origination identity SMS.
-4. Accesso ai modelli Bedrock (Claude, Titan Embeddings) in eu-west-1. Sull'account `471112860008` (in *channel program*) Claude va abilitato tramite il distributore/AWS: vedi §12.
+4. Accesso ai modelli Bedrock (Amazon Nova, Titan Embeddings) in eu-west-1: già disponibili sull'account `471112860008`. Claude richiede l'abilitazione tramite il distributore/AWS (vedi §12).
 5. **Export del catalogo dal cliente** (anonimizzato) e schede tecniche.
 
 ## 12. Punti aperti
 
 > Solo i punti ancora aperti; quelli chiusi sono in [DONE.md](./DONE.md).
 
-- [ ] ⛔ **Claude non invocabile** sull'account `471112860008`: `Access to this model is not available for channel program accounts` su tutti i profili `eu.anthropic.*` (25/10). Blocca agente, lettura bigliettini e copilota. Opzioni: sblocco tramite distributore/AWS (preferita), altro account beSharp con Claude abilitato, fallback **Amazon Nova** (`eu.amazon.nova-pro-v1:0`, funzionante) da decidere esplicitamente (AGENTS §11)
+- [ ] Claude non invocabile sull'account `471112860008` (`Access to this model is not available for channel program accounts`, 25/10): per ora si usa **Amazon Nova** (§2). Se viene abilitato tramite il distributore/AWS, pianificare il passaggio (task dedicato con eval di confronto Nova vs Claude sui bigliettini)
 
-- [ ] ID esatto del profilo `eu.` per la versione Claude scelta
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
 - [ ] Key policy della CMK: oggi concede solo CloudWatch Logs ed EventBridge; aggiungere `ses.amazonaws.com` (inbound-mail, T-20) e `sns.amazonaws.com` (SNS → SQS cifrate, T-21) quando servono
 - [ ] ERP del cliente (per documentare l'adapter futuro)
