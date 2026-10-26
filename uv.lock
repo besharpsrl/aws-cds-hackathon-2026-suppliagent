@@ -6,6 +6,7 @@ requires-python = "==3.12.*"
 members = [
     "suppliagent",
     "suppliagent-agent",
+    "suppliagent-notifier",
     "suppliagent-shared",
 ]
 
@@ -1111,6 +1112,11 @@ requires-dist = [
     { name = "bedrock-agentcore", specifier = ">=1.24.2" },
     { name = "strands-agents", specifier = ">=1.62.0" },
 ]
+
+[[package]]
+name = "suppliagent-notifier"
+version = "0.1.0"
+source = { virtual = "services/notifier" }
 
 [[package]]
 name = "suppliagent-shared"

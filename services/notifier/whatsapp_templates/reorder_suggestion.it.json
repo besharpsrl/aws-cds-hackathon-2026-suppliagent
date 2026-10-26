@@ -1,0 +1,46 @@
+{
+  "name": "reorder_suggestion",
+  "language": "it",
+  "category": "MARKETING",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Ciao {{1}}, di solito a quest'ora hai già riordinato {{2}}.\n\nVuoi ripetere l'ordine del {{3}}? La prossima consegna disponibile è {{4}}: prima di confermare ti mostriamo il riepilogo.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "fior di latte e pelati",
+            "20 ottobre",
+            "giovedì 29 ottobre"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Assistente virtuale ordini · messaggio automatico"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Riordina uguale"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Modifica"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "No grazie"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Stop proposte"
+        }
+      ]
+    }
+  ]
+}

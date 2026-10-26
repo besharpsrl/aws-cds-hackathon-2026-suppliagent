@@ -1,0 +1,43 @@
+{
+  "name": "delivery_update",
+  "language": "en",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Delivery on its way"
+    },
+    {
+      "type": "BODY",
+      "text": "Hi {{1}}, order {{2}} will be delivered today between {{3}} and {{4}}.\n\nWhen it arrives, let us know if everything is fine.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "ORD-1042",
+            "9:00 AM",
+            "11:00 AM"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Virtual ordering assistant · automated message"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Received"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Report a problem"
+        }
+      ]
+    }
+  ]
+}

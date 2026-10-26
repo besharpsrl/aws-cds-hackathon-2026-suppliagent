@@ -1,0 +1,38 @@
+{
+  "name": "order_pending_reminder",
+  "language": "it",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Ciao {{1}}, la tua bozza d'ordine con {{2}} righe non è ancora confermata.\n\nPer ricevere la consegna di {{3}} conferma entro {{4}}, altrimenti la bozza scade a fine giornata.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "12",
+            "giovedì 29 ottobre",
+            "oggi alle 18:00"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Assistente virtuale ordini · messaggio automatico"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Vedi riepilogo"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Annulla bozza"
+        }
+      ]
+    }
+  ]
+}
