@@ -8,6 +8,14 @@
 
 ## 26/10/2026
 
+### T-62 (parte UI con dati mock) – Inbox ordini + dettaglio con bigliettino · FN-28
+- **Cosa**: inbox (`/`) con filtri stato, righe incerte, problemi di consegna, handoff, ordinata per ultimo aggiornamento e ricaricata ogni 2 s; dettaglio (`/orders/:orderId`) con la **foto del bigliettino a sinistra e le righe a destra**: un riquadro per riga (da `imageRegion` normalizzata), selezione sincronizzata riga↔riquadro, righe corrette evidenziate ("Corrected by …"), scelta tra i candidati per le righe `AMBIGUOUS`/`UNMATCHED` (disabilitata per `judge`, FN-28/FN-32).
+- **Dati mock** (`console/src/orders/fixtures.ts`): 4 ordini sintetici (pub, ristorante, bar, email con handoff e problema di consegna) sulle foto anonimizzate di `agent/evals/data/bigliettini/` con riquadri posizionati a mano; contratti di `02 §2.3/§2.4/§6.3`. Banner "Mock data" nell'inbox; `VITE_ORDERS_SOURCE=api` passa all'API reale (`GET /orders`, `GET /orders/{id}` di T-60).
+- **Assunzioni da allineare con T-46**: il riepilogo ordine porta `customerName`, `uncertainLines`, `handoff`; la riga porta il nome prodotto (`name`); `source` sull'ordine; la correzione riga è un'azione lato server (oggi `httpOrdersApi.correctLine` lancia "not available").
+- **Test**: `console/src/orders/*.test.ts(x)` (21: filtri, inbox, dettaglio: immagine e righe affiancate, posizione dei riquadri, selezione sincronizzata, righe corrette, ordine senza immagine, scelta candidato, `judge` read-only, errori di caricamento); `npm run check` verde, `vite build` ok.
+- **Resta** (riga T-62 nel backlog): collegamento alle API reali e correzione lato server, quando T-46 è su `main`.
+- **Commit**: `88e591e` (branch `feat/FN-28-orders-views`).
+
 ### T-61 – Scaffold console React + Vite + TS · FN-28
 - **Cosa**: `console/` con Vite + React 19 + TypeScript, React Router, React Query, Amplify Auth (solo client). Login Cognito (SRP), `AuthProvider`/`useAuth`, route guard `RequireRole`, layout con logo da `assets/brand/`, email/ruoli e badge *Read-only* per il solo `judge`, client `apiFetch` con ID token verso `VITE_API_URL`. Pagina `Orders` vuota (T-62).
 - **Scelte**: token Cognito in `sessionStorage` (non `localStorage`, AGENTS §7); ruoli letti da `cognito:groups`, il guard è solo UI (l'API applica gli stessi ruoli); nessuna UI per il cambio password (l'admin imposta password permanente, `ponytail` in `AuthContext`); niente librerie UI/CSS, solo `styles.css`.

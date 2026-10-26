@@ -54,6 +54,95 @@ body {
 [role='alert'] {
   color: #b42318;
 }
-.status {
+p.status {
   padding: 1.5rem;
+}
+.notice {
+  padding: 0.5rem 0.75rem;
+  background: #fff7d6;
+  border-radius: 4px;
+}
+.filters {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+table.orders,
+table.lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.orders th,
+table.orders td,
+table.lines th,
+table.lines td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e4e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+span.status {
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: #e4e7eb;
+}
+.status-NEEDS_CLARIFICATION,
+.status-AMBIGUOUS,
+.status-UNMATCHED,
+.status-DELIVERY_ISSUE,
+.status-OUT_OF_STOCK {
+  background: #fde68a;
+}
+.status-CONFIRMED,
+.status-MATCHED,
+.status-DELIVERED,
+.status-SUBMITTED {
+  background: #c7f0d2;
+}
+.detail {
+  display: grid;
+  grid-template-columns: minmax(280px, 40%) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.ticket {
+  position: sticky;
+  top: 1rem;
+  line-height: 0;
+}
+.ticket img {
+  width: 100%;
+  border-radius: 4px;
+}
+.region {
+  position: absolute;
+  padding: 0;
+  border: 2px solid rgba(37, 99, 235, 0.35);
+  background: transparent;
+  cursor: pointer;
+}
+.region[data-corrected='true'] {
+  border-color: rgba(22, 163, 74, 0.7);
+}
+.region[data-active='true'] {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.2);
+}
+table.lines tr {
+  cursor: pointer;
+}
+table.lines tr[aria-selected='true'] {
+  background: #eaf1ff;
+}
+table.lines tr[data-corrected='true'] td:first-child {
+  border-left: 4px solid #16a34a;
+}
+.candidates {
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
 }
