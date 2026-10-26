@@ -25,6 +25,38 @@
 - **Test**: `tests/test_seed.py` (validazione, chiavi univoche, riferimenti, scenari demo coperti, scrittura su DynamoDB con moto).
 - **Commit**: `218b823` (PR `feat/FN-31-seed-core`).
 
+### T-62 (parte UI con dati mock) – Inbox ordini + dettaglio con bigliettino · FN-28
+- **Cosa**: inbox (`/`) con filtri stato, righe incerte, problemi di consegna, handoff, ordinata per ultimo aggiornamento e ricaricata ogni 2 s; dettaglio (`/orders/:orderId`) con la **foto del bigliettino a sinistra e le righe a destra**: un riquadro per riga (da `imageRegion` normalizzata), selezione sincronizzata riga↔riquadro, righe corrette evidenziate ("Corrected by …"), scelta tra i candidati per le righe `AMBIGUOUS`/`UNMATCHED` (disabilitata per `judge`, FN-28/FN-32).
+- **Dati mock** (`console/src/orders/fixtures.ts`): 4 ordini sintetici (pub, ristorante, bar, email con handoff e problema di consegna) sulle foto anonimizzate di `agent/evals/data/bigliettini/` con riquadri posizionati a mano; contratti di `02 §2.3/§2.4/§6.3`. Banner "Mock data" nell'inbox; `VITE_ORDERS_SOURCE=api` passa all'API reale (`GET /orders`, `GET /orders/{id}` di T-60).
+- **Assunzioni da allineare con T-46**: il riepilogo ordine porta `customerName`, `uncertainLines`, `handoff`; la riga porta il nome prodotto (`name`); `source` sull'ordine; la correzione riga è un'azione lato server (oggi `httpOrdersApi.correctLine` lancia "not available").
+- **Test**: `console/src/orders/*.test.ts(x)` (21: filtri, inbox, dettaglio: immagine e righe affiancate, posizione dei riquadri, selezione sincronizzata, righe corrette, ordine senza immagine, scelta candidato, `judge` read-only, errori di caricamento); `npm run check` verde, `vite build` ok.
+- **Resta** (riga T-62 nel backlog): collegamento alle API reali e correzione lato server, quando T-46 è su `main`.
+- **Commit**: `88e591e` (branch `feat/FN-28-orders-views`).
+
+### T-61 – Scaffold console React + Vite + TS · FN-28
+- **Cosa**: `console/` con Vite + React 19 + TypeScript, React Router, React Query, Amplify Auth (solo client). Login Cognito (SRP), `AuthProvider`/`useAuth`, route guard `RequireRole`, layout con logo da `assets/brand/`, email/ruoli e badge *Read-only* per il solo `judge`, client `apiFetch` con ID token verso `VITE_API_URL`. Pagina `Orders` vuota (T-62).
+- **Scelte**: token Cognito in `sessionStorage` (non `localStorage`, AGENTS §7); ruoli letti da `cognito:groups`, il guard è solo UI (l'API applica gli stessi ruoli); nessuna UI per il cambio password (l'admin imposta password permanente, `ponytail` in `AuthContext`); niente librerie UI/CSS, solo `styles.css`.
+- **Dipendenze aggiunte** (AGENTS §6, ok dell'utente): react, react-dom, react-router-dom, @tanstack/react-query, aws-amplify; dev: vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/{react,jest-dom,user-event}, @types/react{,-dom}.
+- **Test**: `console/src/**/*.test.ts(x)` (15: ruoli, guard con loading/signed-out/ruolo mancante/gruppo assente, login, client API); `npm run check` verde, `vite build` ok.
+- **Non incluso**: deploy della SPA sul bucket (comandi in `console/README.md`); config via `.env.local` da `.env.example`.
+- **Commit**: `94d26a8` (branch `feat/FN-28-console-scaffold`).
+
+### T-20 – ChannelsStack: SES + EUM Social · FN-01
+- **Cosa**: `ChannelsStack` con 3 topic SNS cifrati con la CMK (`wa-events` per l'event destination della WABA, `mail-inbound`, `email-events`; publish solo dai service principal `social-messaging`/`ses` con `aws:SourceAccount`), configuration set SES `suppliagent-<env>-cs` (TLS obbligatorio, reputation metrics, event destination SNS su send/delivery/bounce/complaint/open/click). Con `-c sesDomain=<dominio>`: identity SES (Easy DKIM), receipt rule set `suppliagent-<env>-inbound` (S3 `inbound-mail/mail/` cifrato KMS + notifica su `mail-inbound`) e sua attivazione. `FoundationStack`: key policy della CMK per `ses`, `social-messaging`, `sns` e bucket policy `inbound-mail` per SES (entrambe con `aws:SourceAccount`).
+- **Scelte**: parametri legati a passi manuali da context CDK e pubblicati su SSM (`waPhoneNumberId`, `sesDomain`, `sesFromAddress`, default `UNSET`) più `waEventsTopicArn` e `sesConfigurationSet`: collegare il numero WhatsApp = `-c waPhoneNumberId=<id>`, senza modificare il codice. Senza `sesDomain` nessuna identity né rule set (account senza rule set attivo il 26/10, SES in sandbox). Receipt rule in L1 per non far dipendere Foundation da Channels. **Fuori scope** (spostato in T-27): EUM SMS/RCS v2.
+- **Test**: `infra/test/channels-stack.test.ts` (topic e policy, configuration set, con/senza dominio, SSM, grant in Foundation, cdk-nag dev/demo con e senza dominio); `npm run check` verde.
+- **Da fare a mano**: vedi README «Manual steps» (event destination della WABA, DNS DKIM/MX, uscita dalla sandbox SES).
+- **Commit**: branch `feat/FN-01-channels-stack`.
+
+### T-60 – `ConsoleStack` (versione ridotta) · FN-28, FN-32
+- **Cosa**: Cognito (gruppi `backoffice`, `sales_rep`, `judge`; self sign-up off, attributo custom `repId`, client SPA senza secret, SRP); bucket S3 + CloudFront con OAC per la SPA (log su bucket dedicato); API REST `/v1` con authorizer Cognito (`GET /orders`, `GET /orders/{orderId}`) e Lambda `console_api` (`services/console_api/`) **in sola lettura** su `Orders` (+ URL presigned a 5 min per l'immagine del bigliettino). Output: `UserPoolId`, `UserPoolClientId`, `ApiUrl`, `ConsoleUrl`, `SiteBucketName`.
+- **Scelte**: ruolo dai claim Cognito, mai dal body; `backoffice`/`judge` vedono tutto, `sales_rep` solo `repId` del proprio claim (`custom:repId`) e un ordine altrui risponde 404; bucket SPA in SSE-S3 (l'OAC non usa la CMK senza toccare la key policy di Foundation); bucket SPA/log `RETAIN` (niente `autoDeleteObjects`, il suo provider crea un log group senza tag); IAM con statement espliciti (GetItem/Query/Scan, `s3:GetObject`, `kms:Decrypt`).
+- **Assunzione**: l'ordine porta `imageS3Uri` (`s3://bucket/key`) con la foto del bigliettino; da allineare con T-46/T-22.
+- **Rinviati**: WebSocket + broadcaster (T-63), `rep_chat` (T-64), **WAF** (costo fisso, AGENTS §11: decidere prima della demo; ack `AwsSolutions-CFR2`/`APIG3` da rimuovere se lo si aggiunge), correzione righe (scrittura, con T-46), paginazione liste (max 100).
+- **Test**: `infra/test/console-stack.test.ts` (gruppi, client, OAC, authorizer su ogni metodo, Orders solo lettura), `services/console_api/tests/test_handler.py` (14, inclusa autorizzazione negativa per ruolo/portafoglio); `npm run check` verde (cdk-nag dev+demo).
+- **Deploy**: non eseguito (`cdk deploy suppliagent-dev-console --exclusively -c env=dev` dopo conferma).
+- **Commit**: `141a6e0` (branch `feat/FN-28-console-stack`).
+
 ### T-28 – Testi dei template WhatsApp · FN-12, FN-19
 - **Cosa**: 8 template (IT/EN) in formato `template-definition` di Meta in `services/notifier/whatsapp_templates/`: `order_confirmation`, `order_pending_reminder`, `delivery_update` (UTILITY) e `reorder_suggestion` (MARKETING); revisione e regole di contenuto in [09_CONTENT_AND_TEMPLATES](./09_CONTENT_AND_TEMPLATES.md).
 - **Scelte**: nessun pulsante conferma un ordine senza riepilogo; footer "Assistente virtuale ordini"; nessun nome del distributore; *Stop proposte* revoca il consenso proattivo.

@@ -26,7 +26,7 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 
 | Priorità | Quando | Task |
 |---|---|---|
-| **Must** – S1 end-to-end | Sab–Dom | T-04 (dati sintetici), T-20 (solo SES + EUM Social), T-21, T-23, T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
+| **Must** – S1 end-to-end | Sab–Dom | T-04 (dati sintetici), T-21, T-23, T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
 | **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati (**T-29**), T-25, T-49, T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
 | **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65, T-66 |
 
@@ -46,9 +46,9 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 | Ondata | Quando | IN | CH | AG | CO |
 |---|---|---|---|---|---|
 | 1 | 23/10 mattina | – | – | – | – |
-| 2 | 23/10 pomeriggio | T-04 (avvio) | T-20 | – | – |
-| 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | T-60 |
-| 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | T-61 |
+| 2 | 23/10 pomeriggio | T-04 (avvio) | – | – | – |
+| 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | – |
+| 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | – |
 | 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
 | 6 | 25/10 | T-09 | T-26, T-27 | T-46, T-47, T-48, T-49, T-53 (avvio) | T-63 |
 | 7 | 25–26/10 | T-08 | – | T-50, T-51, T-52 | T-64, T-65 |
@@ -76,7 +76,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-20 | `ChannelsStack`: SES (identity, configuration set, receipt rule → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out), EUM Social (event destination SNS), topic SNS | FN-01 | P0–P1 | T-03 | MG | ☐ |
 | 2 | T-29 | **Invio dei template WhatsApp a Meta** e approvazione: dopo il collegamento della WABA a EUM Social, invio degli 8 JSON di `services/notifier/whatsapp_templates/` con `aws socialmessaging create-whatsapp-message-template` (comando in [09 §1](./09_CONTENT_AND_TEMPLATES.md)); verifica stato `APPROVED`; se Meta rifiuta o cambia categoria, correzione dei JSON (test verde) e reinvio; aggiornare 09 con l'esito | FN-12, 19 | P1 (appena c'è la WABA) | T-28, WABA collegata (T-20 / azione manuale) | MG | ☐ |
 | 3 | T-21 | `MessagingStack` + `inbound_router`: SQS FIFO + DLQ, normalizzazione WhatsApp/email/SMS/web, identità e ruolo, idempotenza, read receipt, check handoff | FN-01, 03, 26 | P1 | T-20, T-03 | MG | ☐ |
 | 4 | T-23 | `media_fetcher` (WhatsApp media → S3) ed estrazione allegati email | FN-05, 06 | P1 | T-21 | MG | ☐ |
@@ -85,7 +84,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 7 | T-25 | Messaggi interattivi WhatsApp (button/list) e parsing delle risposte | FN-08, 12 | P2 | T-24 | MG | ☐ |
 | 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel) | FN-06, 14 | P2 | T-24, T-07 | MG | ☐ |
 | 8b | T-14 | **Simulatore canali + test end-to-end**: script che pubblica eventi WhatsApp sintetici (testo, foto, vocale) sul topic SNS di EUM Social e modalità `sandbox` del Notifier che registra le uscite invece di inviarle; permette di testare S1 senza numero WhatsApp e riusarlo per eval e reset demo | FN-31 | P1 | T-21, T-24 | MG | ☐ |
-| 9 | T-27 | RCS: rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | MG | ☐ |
+| 9 | T-27 | RCS: **infra EUM SMS v2** (configuration set, event destinations, opt-out list, topic `sms-inbound`, rimasta fuori da T-20) + rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | MG | ☐ |
 
 ### AG – Agent & AgentCore
 
@@ -109,21 +108,19 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-60 | `ConsoleStack`: Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API REST + WebSocket, S3 + CloudFront (OAC) + WAF | FN-28, 32 | P1 | T-03 | MG | ☐ |
-| 2 | T-61 | Scaffold console React + Vite + TS: auth, layout, brand (`assets/brand/`) | FN-28 | P1 | T-60 | MG | ☐ |
-| 3 | T-62 | Inbox ordini + dettaglio con **immagine del bigliettino affiancata alle righe** e correzione righe (parte con dati mock, poi API reali) | FN-28 | P2 | T-46 | MG | ☐ |
-| 4 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
-| 5 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
-| 6 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
-| 7 | T-66 | Ruolo `judge` in sola lettura, rifiniture demo | FN-31 | P4 | T-62 | MG | ☐ |
+| 1 | T-62 | **Collegare a API reali** inbox e dettaglio ordine (UI con mock già fatta, vedi DONE): `VITE_ORDERS_SOURCE=api`, `PATCH` correzione riga in `console_api` (oggi `correctLine` lancia errore), `customerName`/`uncertainLines`/`handoff` nel riepilogo, nome prodotto sulla riga, `imageS3Uri` | FN-28 | P2 | T-46 | MG | ☐ |
+| 2 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
+| 3 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
+| 4 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
+| 5 | T-66 | Ruolo `judge` in sola lettura, rifiniture demo | FN-31 | P4 | T-62 | MG | ☐ |
 
 ## 4. Suggerimento di assegnazione
 
 | Stream | Persone | Primi task |
 |---|---|---|
 | IN | 1 | T-01 → T-03 → T-04 (con il cliente) → T-06; T-11 in parallelo appena possibile |
-| CH | 1 | T-20 → T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
+| CH | 1 | T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
 | AG | 1–2 | T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
-| CO | 1 | T-60 → T-61 con dati mock, poi T-62 |
+| CO | 1 | T-62 con dati mock, poi con le API reali |
 
 Ogni stream lavora in un **git worktree** separato (`claude -w <nome>`) con una propria sessione di Claude Code (vedi [HANDOFF_CLAUDE_CODE.md](./HANDOFF_CLAUDE_CODE.md)).

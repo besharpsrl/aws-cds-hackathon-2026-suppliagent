@@ -6,6 +6,7 @@ requires-python = "==3.12.*"
 members = [
     "suppliagent",
     "suppliagent-agent",
+    "suppliagent-console-api",
     "suppliagent-notifier",
     "suppliagent-shared",
     "suppliagent-tool-customers",
@@ -1072,6 +1073,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "suppliagent-agent" },
+    { name = "suppliagent-console-api" },
     { name = "suppliagent-shared" },
     { name = "suppliagent-tool-customers" },
 ]
@@ -1088,6 +1090,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "suppliagent-agent", editable = "agent" },
+    { name = "suppliagent-console-api", editable = "services/console_api" },
     { name = "suppliagent-shared", editable = "services/shared" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
 ]
@@ -1114,6 +1117,21 @@ dependencies = [
 requires-dist = [
     { name = "bedrock-agentcore", specifier = ">=1.24.2" },
     { name = "strands-agents", specifier = ">=1.62.0" },
+]
+
+[[package]]
+name = "suppliagent-console-api"
+version = "0.1.0"
+source = { editable = "services/console_api" }
+dependencies = [
+    { name = "aws-lambda-powertools" },
+    { name = "boto3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aws-lambda-powertools", specifier = ">=3.37.0" },
+    { name = "boto3", specifier = ">=1.43.118" },
 ]
 
 [[package]]

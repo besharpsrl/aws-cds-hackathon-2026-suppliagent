@@ -300,6 +300,8 @@ Convenzioni implementate (T-03): attributi chiave tutti stringa; GSI chiamati `b
 - **Real-time**: Streams di `Messages`/`Orders` → Broadcaster → WebSocket.
 - **Handoff**: `mode = HUMAN`, risposta del back office via Notifier, *Release* all'agente.
 
+Stato (T-60, 26/10): implementati Cognito (utenti creati dall'admin; per un `sales_rep` impostare l'attributo `custom:repId`), S3 + CloudFront (OAC) e API REST `/v1/orders` in sola lettura (`services/console_api`, ruolo dai claim del token). **Non ancora**: WAF (costo fisso, da decidere prima della demo), WebSocket/broadcaster (T-63), `rep-chat` (T-64). L'ordine espone la foto del bigliettino come `imageS3Uri`.
+
 ### 5.9 Analytics & Observability
 
 - Eventi CDS (SES, EUM SMS/RCS, EUM Social) + eventi applicativi ([02 §6.4](./02_TECHNICAL_FLOWS.md)) → Firehose → S3 Parquet → Glue → Athena.
@@ -405,8 +407,8 @@ SuppliAgent/
 | Parametro | Esempio |
 |---|---|
 | `env` / `region` | `demo` / `eu-west-1` |
-| `waPhoneNumberId` | ID numero WhatsApp su EUM Social |
-| `sesDomain` | `ordini.example.com` |
+| `waPhoneNumberId` | ID numero WhatsApp su EUM Social (context CDK `-c waPhoneNumberId=…` → SSM; `UNSET` finché non c'è) |
+| `sesDomain` | `ordini.example.com` (context CDK `-c sesDomain=…`: crea identity e rule set inbound) |
 | `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender |
 | `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |
@@ -427,6 +429,5 @@ Prerequisiti non automatizzabili:
 - [ ] Claude non invocabile sull'account `471112860008` (`Access to this model is not available for channel program accounts`, 25/10): per ora si usa **Amazon Nova** (§2). Se viene abilitato tramite il distributore/AWS, pianificare il passaggio (task dedicato con eval di confronto Nova vs Claude sui bigliettini)
 
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
-- [ ] Key policy della CMK: oggi concede solo CloudWatch Logs ed EventBridge; aggiungere `ses.amazonaws.com` (inbound-mail, T-20) e `sns.amazonaws.com` (SNS → SQS cifrate, T-21) quando servono
 - [ ] ERP del cliente (per documentare l'adapter futuro)
 - [ ] Soglie di matching tarate sui bigliettini reali

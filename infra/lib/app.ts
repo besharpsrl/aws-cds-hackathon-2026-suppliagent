@@ -28,7 +28,14 @@ export function buildApp(app: App, config: EnvConfig) {
   const foundation = new FoundationStack(app, name('foundation'), common);
   const data = new DataStack(app, name('data'), { ...common, key: foundation.key });
   const catalog = after(new CatalogStack(app, name('catalog'), common), foundation, data);
-  const channels = after(new ChannelsStack(app, name('channels'), common), foundation);
+  const channels = after(
+    new ChannelsStack(app, name('channels'), {
+      ...common,
+      key: foundation.key,
+      inboundMailBucket: foundation.inboundMailBucket,
+    }),
+    foundation,
+  );
   const agent = after(new AgentStack(app, name('agent'), common), data, catalog);
   const messaging = after(
     new MessagingStack(app, name('messaging'), common),
@@ -38,7 +45,12 @@ export function buildApp(app: App, config: EnvConfig) {
   );
   const proactive = after(new ProactiveStack(app, name('proactive'), common), data, messaging);
   const consoleStack = after(
-    new ConsoleStack(app, name('console'), common),
+    new ConsoleStack(app, name('console'), {
+      ...common,
+      key: foundation.key,
+      ordersTable: data.tables.Orders,
+      mediaBucket: foundation.mediaBucket,
+    }),
     data,
     messaging,
     agent,
