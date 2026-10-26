@@ -15,3 +15,9 @@ class NotFoundError(SuppliAgentError):
 
 class AccessDeniedError(SuppliAgentError):
     code = "ACCESS_DENIED"
+
+
+class ChannelUnavailableError(SuppliAgentError):
+    """The message cannot go out on this channel now (e.g. WhatsApp window closed, E-09)."""
+
+    code = "CHANNEL_UNAVAILABLE"
