@@ -7,6 +7,7 @@ members = [
     "suppliagent",
     "suppliagent-agent",
     "suppliagent-console-api",
+    "suppliagent-inbound-router",
     "suppliagent-notifier",
     "suppliagent-shared",
     "suppliagent-tool-customers",
@@ -1074,6 +1075,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "suppliagent-agent" },
     { name = "suppliagent-console-api" },
+    { name = "suppliagent-inbound-router" },
     { name = "suppliagent-shared" },
     { name = "suppliagent-tool-customers" },
 ]
@@ -1091,6 +1093,7 @@ dev = [
 requires-dist = [
     { name = "suppliagent-agent", editable = "agent" },
     { name = "suppliagent-console-api", editable = "services/console_api" },
+    { name = "suppliagent-inbound-router", editable = "services/inbound_router" },
     { name = "suppliagent-shared", editable = "services/shared" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
 ]
@@ -1133,6 +1136,17 @@ requires-dist = [
     { name = "aws-lambda-powertools", specifier = ">=3.37.0" },
     { name = "boto3", specifier = ">=1.43.118" },
 ]
+
+[[package]]
+name = "suppliagent-inbound-router"
+version = "0.1.0"
+source = { editable = "services/inbound_router" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
 name = "suppliagent-notifier"

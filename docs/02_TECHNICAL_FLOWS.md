@@ -80,7 +80,7 @@ Ogni riga conserva: `rawText`, `rawQuantity`, `sourceMessageId`, eventuale `imag
 sequenceDiagram
     autonumber
     participant CH as Canale (EUM Social / SES / EUM SMS / chat web)
-    participant Q as SNS → SQS FIFO
+    participant Q as SNS → SQS inbound
     participant R as Inbound Router
     participant B as TurnBuffer
     participant FQ as SQS turn-flush
@@ -108,10 +108,10 @@ sequenceDiagram
 
 ### 3.1 Normalizzazione per canale
 
-| Canale | Sorgente | Estrazione | Chat (`MessageGroupId`) |
+| Canale | Sorgente | Estrazione | Chat (conversazione) |
 |---|---|---|---|
 | WhatsApp | SNS da EUM Social | testo, image/audio/document, `interactive` reply (button/list), `context` | numero (E.164) |
-| Email | SES receipt rule → S3 + SNS | mittente, oggetto, corpo pulito, allegati (foto, PDF, Excel) | indirizzo mittente |
+| Email | SES receipt rule → S3 + SNS | mittente (identità solo con DMARC `PASS`), oggetto, corpo pulito, allegati (foto, PDF, Excel) | indirizzo mittente |
 | RCS / SMS | SNS two-way | testo, postback suggested reply, keyword STOP/HELP | numero |
 | Chat web | WebSocket → `rep-chat` | testo, allegati caricati | `userId` Cognito |
 
@@ -380,7 +380,7 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 
 | ID | Errore | Gestione |
 |---|---|---|
-| E-01 | Evento duplicato | Dedup FIFO + idempotenza su `providerMessageId` |
+| E-01 | Evento duplicato | Idempotenza su `providerMessageId` (scrittura condizionata in `Messages`; la coda standard consegna almeno una volta) |
 | E-02 | Download media fallito | Retry ×3; poi richiesta di reinvio |
 | E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
 | E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |

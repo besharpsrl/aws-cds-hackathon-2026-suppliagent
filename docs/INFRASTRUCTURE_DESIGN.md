@@ -13,7 +13,7 @@
 | Punteggio "Technical Execution" (40%) | 3 servizi CDS **bidirezionali** + AgentCore (Runtime, Memory, Gateway, Identity, Observability) + Bedrock Knowledge Base |
 | Riproducibilità | Tutto in CDK, deploy con `npx cdk deploy --all`; prerequisiti di canale documentati (§11) |
 | Serverless / scale-to-zero | Nessun server sempre acceso; nessun servizio con costo fisso orario elevato (es. niente OpenSearch cluster) |
-| Scalabilità + ordine per chat | **SQS FIFO** con `MessageGroupId = chat`: chat diverse in **parallelo**, messaggi della stessa chat **in sequenza** |
+| Scalabilità + ordine per chat | **SQS standard** + idempotenza su `providerMessageId`: chat diverse in **parallelo**; l'ordine nella chat viene dal timestamp di ricezione AWS e il lock per conversazione del debounce serializza i turni (SNS standard non consegna a code FIFO, decisione del 26/10) |
 | Una risposta per raffica | **Debounce applicativo** per conversazione (§5.2.2) |
 | Due tipi di utente, un solo agente | Ruolo risolto dall'identità (`CUSTOMER_CONTACT` / `SALES_REP` / `BACKOFFICE`) → set di tool e istruzioni diversi |
 | Contesto cross-canale | Identità canonica come `actorId` di AgentCore Memory |
@@ -43,7 +43,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 ## 3. Vista d'insieme
 
 1. **Channels (CDS)** – EUM Social (WhatsApp), SES v2 (outbound + inbound), EUM SMS/RCS v2.
-2. **Ingestion & Routing** – SNS → SQS FIFO → Inbound Router → TurnBuffer + `turn-flush` → Turn Dispatcher.
+2. **Ingestion & Routing** – SNS → SQS `inbound` → Inbound Router → TurnBuffer + `turn-flush` → Turn Dispatcher.
 3. **Agent** – AgentCore Runtime (Strands) + Memory + Gateway (tool MCP su Lambda) + Identity + Observability; Bedrock Amazon Nova `eu.` + Guardrails; Transcribe.
 4. **Catalog intelligence** – indice prodotti su **S3 Vectors** (ricerca semantica) + matching ibrido; **Bedrock Knowledge Base** sulle schede tecniche.
 5. **Order & Outbound** – servizio ordini, generazione PDF, **ERP adapter** (mock), **Notifier** con policy di canale, EventBridge Scheduler.
@@ -60,7 +60,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 | 3 | `CatalogStack` | S3 Vectors bucket + indice `products`, Lambda di indicizzazione catalogo, **Bedrock Knowledge Base** (schede tecniche, vector store S3 Vectors) + data source S3 | Foundation, Data |
 | 4 | `ChannelsStack` | SES (identity dominio, configuration set, receipt rule set → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out list), EUM Social (event destination SNS), topic SNS inbound | Foundation |
 | 5 | `AgentStack` | ECR image, AgentCore Runtime + Endpoint, AgentCore Memory, AgentCore Gateway + target Lambda, Bedrock Guardrail, ruoli IAM | Data, Catalog |
-| 6 | `MessagingStack` | SQS FIFO inbound + DLQ, SQS `turn-flush` + DLQ, Lambda Inbound Router, Turn Dispatcher, Media Fetcher, Notifier, Order PDF Generator, ERP Adapter, EventBridge Scheduler | Channels, Agent, Data |
+| 6 | `MessagingStack` | SQS `inbound` + DLQ, SQS `turn-flush` + DLQ, Lambda Inbound Router, Turn Dispatcher, Media Fetcher, Notifier, Order PDF Generator, ERP Adapter, EventBridge Scheduler | Channels, Agent, Data |
 | 7 | `ProactiveStack` | EventBridge Scheduler giornaliero, Lambda **Insights & Reorder Analyzer**, Lambda **Proactive Trigger** | Data, Messaging |
 | 8 | `ConsoleStack` | Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API Gateway REST + WebSocket, Lambda API/broadcaster/rep-chat, S3 + CloudFront (OAC) + WAF | Data, Messaging, Agent |
 | 9 | `AnalyticsStack` | Firehose (eventi CDS + applicativi) → S3 Parquet, Glue Catalog, Athena workgroup e viste KPI, CloudWatch Dashboard + allarmi | Channels, Foundation |
@@ -98,8 +98,8 @@ Disponibilità servizi verificata il 09–12/10/2026:
 
 ```
 SNS (wa-events | sms-inbound | mail-inbound)
-   → SQS FIFO "inbound.fifo"   (MessageGroupId = chat, dedup = providerMessageId)
-   → Lambda Inbound Router     (batch size 1, scala con i message group attivi)
+   → SQS standard "inbound"   (SSE-KMS, DLQ dopo 3 ricezioni; envelope SNS conservato)
+   → Lambda Inbound Router     (batch size 1, scala con i messaggi in coda)
         ├─ append su DynamoDB "TurnBuffer"
         └─ SQS standard "turn-flush" (DelaySeconds = finestra di attesa)
    → Lambda Turn Dispatcher    (debounce + lock per conversazione)
@@ -109,14 +109,14 @@ SNS (wa-events | sms-inbound | mail-inbound)
 
 La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda `rep-chat`) e usa lo **stesso** TurnBuffer/Dispatcher, con `channel = WEB`.
 
-**Inbound Router**
-1. **Normalizza** l'evento nel `NormalizedMessage`.
-2. **Risolve l'identità e il ruolo**: `ChannelIdentities` → `contactId`, `role` (`CUSTOMER_CONTACT` | `SALES_REP`), `customerIds[]` (un contatto può gestire più locali; un agente ha un portafoglio).
-3. **Idempotenza** su `providerMessageId`.
+**Inbound Router** (`services/inbound_router`; stato al 26/10 tra parentesi)
+1. **Normalizza** l'evento nel `NormalizedMessage` (WhatsApp ed email in T-21; SMS/RCS con T-27, chat web con T-64).
+2. **Risolve l'identità e il ruolo**: `ChannelIdentities` → `contactId`, `role` (`CUSTOMER_CONTACT` | `SALES_REP`), `customerIds[]` (un contatto può gestire più locali; un agente ha un portafoglio). Email: solo con DMARC `PASS` (§5.3.2). Una conversazione per contatto su tutti i canali (`conv_<contactId>`, F-15); mittenti sconosciuti: una per indirizzo; evento `conversation.started` alla creazione.
+3. **Idempotenza** su `providerMessageId` (`PutItem` condizionata su `Messages`, `messageId` derivato da `providerMessageId`).
 4. **Media** → Media Fetcher (WhatsApp) o estrazione allegati MIME (email).
-5. **Read receipt** WhatsApp immediato.
-6. **Handoff check**: `mode = HUMAN` → solo console.
-7. **Accoda nel TurnBuffer** e programma il flush.
+5. **Read receipt** WhatsApp immediato (con il Notifier, T-24: è l'unico che chiama le API di invio).
+6. **Handoff check**: `mode = HUMAN` → solo console (T-22; il Router non azzera mai `mode`).
+7. **Accoda nel TurnBuffer** e programma il flush (T-22).
 8. Scrive in `Messages` → Stream → console live.
 
 **NormalizedMessage**
@@ -142,13 +142,14 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 ```
 
 #### 5.2.1 Parallelismo e ordinamento
-- L'ordine FIFO vale solo **dentro lo stesso `MessageGroupId`** (una chat): chat diverse sono elaborate **in parallelo**, la concorrenza Lambda cresce con le chat attive.
-- **High-throughput mode** attivo; un messaggio in errore blocca solo la propria chat.
+- **Perché non FIFO** (decisione del 26/10, T-21): SES e EUM Social pubblicano solo su topic SNS **standard** (EUM Social non supporta topic FIFO) e un topic standard non consegna a code FIFO. Un forwarder verso una FIFO aggiungerebbe una Lambda per un ordinamento che il debounce già garantisce.
+- Chat diverse sono elaborate **in parallelo**; due messaggi della stessa chat possono essere elaborati in parallelo dal Router, ma: `Messages` ha sort key `receivedAt#messageId` (timestamp di ricezione AWS, 1 ms tra i messaggi dello stesso evento), il TurnBuffer va riletto in ordine di `receivedAt`, il lock del Dispatcher serializza i turni. Le scritture del Router sono atomiche (creazione conversazione con `UpdateItem`, `PutItem` condizionata).
+- Un messaggio in errore viene ritentato 3 volte e poi finisce in DLQ senza bloccare altre chat (E-10).
 
 #### 5.2.2 Debounce
 - Tabella `TurnBuffer` (PK `conversationId`): messaggi in attesa, `lastMessageAt`, `firstMessageAt`, lock `turnInProgress` con TTL.
 - Il Router accoda e invia un flush ritardato con `token = lastMessageAt`; il Dispatcher procede solo se nessun messaggio più recente è arrivato e nessun turno è in corso, poi **svuota il buffer atomicamente** e invoca l'agente **una volta**.
-- Finestre: testo ~3 s, media ~6 s, massimo 15 s dal primo messaggio. Il batching window nativo di Lambda non è disponibile su FIFO, quindi il debounce è applicativo.
+- Finestre: testo ~3 s, media ~6 s, massimo 15 s dal primo messaggio. Il batching window nativo di Lambda non raggruppa per chat, quindi il debounce è applicativo.
 - Dettaglio dei casi: [02 §3.3](./02_TECHNICAL_FLOWS.md).
 
 ### 5.3 Agent layer – Amazon Bedrock AgentCore
@@ -191,7 +192,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 #### 5.3.2 Contesto chiamante e autorizzazione nei tool (deciso il 26/10, T-42)
 
 - Ogni tool del Gateway riceve, oltre ai propri argomenti, un argomento **`caller`** = `{role, contactId, channelAddress, conversationId}`. Lo imposta il **codice dell'agente** (T-41) dalla richiesta di turno del Dispatcher (02 §6.2): è tolto dallo schema mostrato al modello e **sovrascritto** a ogni chiamata (`{**argomenti_del_modello, "caller": contesto}`, con test in T-41), quindi il modello non può né vederlo né cambiarlo. Dopo un `identify_contact` → `MATCHED` l'agente rilegge il contesto da `ChannelIdentities` (o al turno successivo dal Dispatcher), mai dall'output del tool.
-- `channelAddress` è il **mittente verificato** normalizzato dal Dispatcher (`CANALE#indirizzo`, telefono E.164), mai testo del messaggio o `Reply-To`. **Requisito per T-21**: le email in ingresso senza verdetti SES `PASS` di SPF/DKIM (o DMARC) non vengono associate a un'identità (resta `UNKNOWN`), altrimenti basta falsificare il `From` per avere lo scope di un contatto.
+- `channelAddress` è il **mittente verificato** normalizzato dal Dispatcher (`CANALE#indirizzo`, telefono E.164), mai testo del messaggio o `Reply-To`. **Requisito per T-21** (fatto: il Router associa un'identità a un'email solo con `dmarcVerdict = PASS`, l'unico verdetto che verifica l'allineamento con il `From`; altrimenti `UNKNOWN`): le email in ingresso senza verdetti SES `PASS` di SPF/DKIM (o DMARC) non vengono associate a un'identità (resta `UNKNOWN`), altrimenti basta falsificare il `From` per avere lo scope di un contatto.
 - Il tool si fida solo di **chi** è il chiamante (`role` + `contactId`); **cosa** può vedere lo ricava sempre da DynamoDB (`suppliagent_shared.auth.caller_scope`): `Contacts.customerIds` per un contatto, `Customers.repId` (GSI `by-repId`) per un agente; mai da `customerIds` passati nella chiamata. Campi in più in `caller` → `INVALID_INPUT`.
 - **Fail-closed**: `Scope.customer_ids` contiene solo i locali di un contatto `VERIFIED` (o il portafoglio dell'agente); i locali di un contatto `PENDING_VERIFICATION` stanno in `Scope.pending_customer_ids`, che un tool usa **solo se lo dichiara** (oggi: profilo base del locale; in T-46 le bozze d'ordine, F-02.C2). Prezzi, ordini e storico: solo `customer_ids`. Qualsiasi altro stato del contatto → nessun accesso.
 - Identificazione (`identify_contact`, chiamante `UNKNOWN`): servono codice cliente o P.IVA **e** nome del locale; massimo **3 tentativi per conversazione** (contatore `Conversations.identifyAttempts`), poi `IDENTIFICATION_FAILED` → handoff (F-02.C4). Un indirizzo già registrato non viene mai riassegnato. Limite residuo: chi usa indirizzi email sempre nuovi ottiene conversazioni nuove (aggiungere un limite per dominio o globale se serve).
@@ -364,7 +365,7 @@ sequenceDiagram
 
 ## 8. Resilienza e scalabilità
 
-- FIFO per chat + debounce; DLQ con allarmi; idempotenza su `providerMessageId` e su `confirm_order` (chiave di idempotenza per evitare ordini doppi).
+- Coda inbound idempotente + debounce con lock per conversazione; DLQ con allarmi; idempotenza su `providerMessageId` e su `confirm_order` (chiave di idempotenza per evitare ordini doppi).
 - Retry con backoff su CDS, Bedrock, ERP adapter; fallback di canale.
 - ERP non disponibile → ordine `CONFIRMED` con invio all'ERP in coda (retry), il cliente riceve comunque conferma di presa in carico.
 - Tutto serverless/managed; nessuna capacità fissa.

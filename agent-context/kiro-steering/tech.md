@@ -13,7 +13,7 @@ inclusion: always
 ## Stack
 - Lambda e agent: **Python 3.12 ARM64**, boto3, **AWS Lambda Powertools** (logger, tracer, metrics, idempotency), pydantic v2.
 - Agent: **Strands Agents su Amazon Bedrock AgentCore** (Runtime, Memory con `actorId = contactId`, Gateway MCP con tool su Lambda, Identity, Observability), Bedrock Guardrails, Transcribe.
-- Ingestion: SNS → **SQS FIFO** (`MessageGroupId = chat`) → Inbound Router → TurnBuffer (DynamoDB) + SQS `turn-flush` → Turn Dispatcher (debounce + lock).
+- Ingestion: SNS → SQS `inbound` (standard + DLQ, idempotenza su `providerMessageId`) → Inbound Router → TurnBuffer (DynamoDB) + SQS `turn-flush` → Turn Dispatcher (debounce + lock).
 - Dati: DynamoDB on-demand (PITR, KMS), S3 (KMS). Console: React + Vite + TypeScript, Cognito, API Gateway REST + WebSocket.
 - Tooling: `uv`, `ruff`, `mypy`, `pytest`, `moto`; `npm`, `eslint`, `prettier`, `vitest`.
 
