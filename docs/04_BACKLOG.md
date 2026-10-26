@@ -109,7 +109,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-62 | Inbox ordini + dettaglio con **immagine del bigliettino affiancata alle righe** e correzione righe (parte con dati mock, poi API reali) | FN-28 | P2 | T-46 | MG | ☐ |
+| 1 | T-62 | **Collegare a API reali** inbox e dettaglio ordine (UI con mock già fatta, vedi DONE): `VITE_ORDERS_SOURCE=api`, `PATCH` correzione riga in `console_api` (oggi `correctLine` lancia errore), `customerName`/`uncertainLines`/`handoff` nel riepilogo, nome prodotto sulla riga, `imageS3Uri` | FN-28 | P2 | T-46 | MG | ☐ |
 | 2 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
 | 3 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
 | 4 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
