@@ -1,4 +1,8 @@
-import { signIn as amplifySignIn, signOut as amplifySignOut } from 'aws-amplify/auth';
+import {
+  confirmSignIn,
+  signIn as amplifySignIn,
+  signOut as amplifySignOut,
+} from 'aws-amplify/auth';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { loadUser, type AuthUser } from './session';
@@ -7,7 +11,9 @@ export type AuthState =
   { status: 'loading' } | { status: 'signedOut' } | { status: 'signedIn'; user: AuthUser };
 
 export type AuthValue = AuthState & {
-  signIn: (email: string, password: string) => Promise<void>;
+  /** `newPasswordRequired`: first access with a temporary password, finish with `confirmNewPassword`. */
+  signIn: (email: string, password: string) => Promise<{ newPasswordRequired: boolean }>;
+  confirmNewPassword: (newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -36,9 +42,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...state,
       async signIn(email, password) {
         const { nextStep } = await amplifySignIn({ username: email, password });
-        // ponytail: users get a permanent password from the admin; no new-password challenge UI.
+        // Users created from the Cognito console start with a temporary password.
+        if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+          return { newPasswordRequired: true };
+        }
         if (nextStep.signInStep !== 'DONE') {
-          throw new Error('This account needs a password reset: ask the administrator.');
+          throw new Error(`Unsupported sign-in step: ${nextStep.signInStep}`);
+        }
+        await refresh();
+        return { newPasswordRequired: false };
+      },
+      async confirmNewPassword(newPassword) {
+        const { nextStep } = await confirmSignIn({ challengeResponse: newPassword });
+        if (nextStep.signInStep !== 'DONE') {
+          throw new Error(`Unsupported sign-in step: ${nextStep.signInStep}`);
         }
         await refresh();
       },

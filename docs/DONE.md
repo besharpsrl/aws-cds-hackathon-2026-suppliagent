@@ -10,7 +10,7 @@
 
 ### T-61 – Scaffold console React + Vite + TS · FN-28
 - **Cosa**: `console/` con Vite + React 19 + TypeScript, React Router, React Query, Amplify Auth (solo client). Login Cognito (SRP), `AuthProvider`/`useAuth`, route guard `RequireRole`, layout con logo da `assets/brand/`, email/ruoli e badge *Read-only* per il solo `judge`, client `apiFetch` con ID token verso `VITE_API_URL`. Pagina `Orders` vuota (T-62).
-- **Scelte**: token Cognito in `sessionStorage` (non `localStorage`, AGENTS §7); ruoli letti da `cognito:groups`, il guard è solo UI (l'API applica gli stessi ruoli); nessuna UI per il cambio password (l'admin imposta password permanente, `ponytail` in `AuthContext`); niente librerie UI/CSS, solo `styles.css`.
+- **Scelte**: token Cognito in `sessionStorage` (non `localStorage`, AGENTS §7); ruoli letti da `cognito:groups`, il guard è solo UI (l'API applica gli stessi ruoli); primo accesso con password temporanea (utente creato da console Cognito) gestito con il passo "nuova password" nel login (fix successivo, PR `fix/FN-28-console-new-password`); niente librerie UI/CSS, solo `styles.css`.
 - **Dipendenze aggiunte** (AGENTS §6, ok dell'utente): react, react-dom, react-router-dom, @tanstack/react-query, aws-amplify; dev: vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/{react,jest-dom,user-event}, @types/react{,-dom}.
 - **Test**: `console/src/**/*.test.ts(x)` (15: ruoli, guard con loading/signed-out/ruolo mancante/gruppo assente, login, client API); `npm run check` verde, `vite build` ok.
 - **Non incluso**: deploy della SPA sul bucket (comandi in `console/README.md`); config via `.env.local` da `.env.example`.
