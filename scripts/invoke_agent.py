@@ -2,6 +2,11 @@
 
 Usage:
   uv run python scripts/invoke_agent.py --env dev --address WHATSAPP#+393330000001 --text "ciao"
+  uv run python scripts/invoke_agent.py --env dev --address WHATSAPP#+393330000001 \\
+      --image s3://suppliagent-dev-media-<account>/media/con_001/t1/note.jpg
+
+`--image`/`--audio` take the S3 URI of a file already uploaded under `media/<contactId>/…` (what the
+Inbound Router does for real messages); repeat them for several attachments in one turn.
 
 Resolves the role from ChannelIdentities (TECHNICAL_FLOWS §3.2), builds the turn request (§6.2)
 and calls InvokeAgentRuntime. The same --conversation keeps the history (same runtime session).
@@ -53,11 +58,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--env", required=True, choices=["dev", "demo"])
     parser.add_argument("--address", required=True, help="CHANNEL#address, e.g. WHATSAPP#+39...")
-    parser.add_argument("--text", required=True)
+    parser.add_argument("--text")
+    parser.add_argument("--image", action="append", default=[], metavar="S3_URI")
+    parser.add_argument("--audio", action="append", default=[], metavar="S3_URI")
     parser.add_argument("--conversation", help="default: derived from the address")
     parser.add_argument("--profile")
     parser.add_argument("--region", default="eu-west-1")
     args = parser.parse_args()
+    if not (args.text or args.image or args.audio):
+        parser.error("give --text, --image or --audio")
 
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
     digest = hashlib.sha256(args.address.encode()).hexdigest()[:12]
@@ -72,7 +81,11 @@ def main() -> None:
             {
                 "messageId": f"cli_{uuid.uuid4().hex[:8]}",
                 "ts": datetime.now(UTC).isoformat(timespec="seconds"),
-                "text": args.text,
+                **({"text": args.text} if args.text else {}),
+                "attachments": [
+                    *({"type": "image", "s3Uri": uri} for uri in args.image),
+                    *({"type": "audio", "s3Uri": uri} for uri in args.audio),
+                ],
             }
         ],
         **caller,
