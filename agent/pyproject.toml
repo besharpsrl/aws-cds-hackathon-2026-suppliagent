@@ -6,6 +6,10 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "strands-agents>=1.62.0",
   "bedrock-agentcore>=1.24.2",
+  # imported directly; already in the lock as dependencies of the two above
+  "boto3>=1.43.118",
+  "httpx>=0.28.1",
+  "pydantic>=2.14.1",
 ]
 
 [build-system]

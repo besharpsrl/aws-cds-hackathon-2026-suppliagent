@@ -1,7 +1,7 @@
 # SuppliAgent – Backlog e piano di lavoro
 
 > Stato: **v0.2** · Aggiornato il 23/10/2026 (ri-ordinato sul calendario reale, perimetro invariato)
-> Contiene **solo il lavoro da fare**: a task completato la riga si rimuove e il task va in [DONE.md](./DONE.md) (`/implement-fn` lo fa in automatico). Una dipendenza `T-xx` che non compare più qui è completata.
+> Contiene **solo il lavoro da fare**, con la descrizione completa di ogni task (anche di quelli non ancora assegnati). **Assegnazione alle sessioni, ordine e dipendenze tra sessioni: [START_HERE §3bis](../START_HERE.md)** (fonte unica). A task completato, nella stessa PR: la riga si rimuove da qui, il task va in [DONE.md](./DONE.md) e diventa ✅ in START_HERE §3bis. Una dipendenza `T-xx` che non compare più qui è completata.
 > Riferimenti: [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md) · [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) · [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md)
 
 ---
@@ -26,33 +26,21 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 
 | Priorità | Quando | Task |
 |---|---|---|
-| **Must** – S1 end-to-end | Sab–Dom | T-04 (dati sintetici), T-21, T-23, T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
-| **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati (**T-29**), T-25, T-49, T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
+| **Must** – S1 end-to-end | Sab–Dom | T-04 (dati sintetici), T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
+| **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati (**T-29**), T-25, T-49, T-54 (Memory, Guardrail), T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
 | **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65 |
 
 **PR accorpate** (deciso il 26/10): i task che toccano lo stesso stack e non sono testabili da soli vanno in **una sola PR**, con un commit per task; tutti gli altri task = una PR ciascuno.
 
 | Branch / PR | Task | Perché insieme |
 |---|---|---|
-| `feat/FN-01-inbound-pipeline` | T-21 + T-23 | stesso `MessagingStack`; il router senza media fetcher non gestisce le foto |
 | `feat/FN-26-debounce-notifier` | T-22 + T-24 (base) | servono entrambi perché una risposta esca |
 | `feat/FN-03-agent-runtime` | T-40 + T-41 | il runtime senza agente non è testabile |
 | `feat/FN-12-order-flow` | T-45 + T-46 + T-47 | stato ordine e conversazione d'ordine si testano solo insieme |
 
-## 2. Sequenza consigliata (ondate parallele)
+## 2. Sequenza e assegnazione
 
-Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di stream diversi vanno in parallelo.
-
-| Ondata | Quando | IN | CH | AG | CO |
-|---|---|---|---|---|---|
-| 1 | 23/10 mattina | – | – | – | – |
-| 2 | 23/10 pomeriggio | T-04 (avvio) | – | – | – |
-| 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | – |
-| 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | – |
-| 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
-| 6 | 25/10 | T-09 | T-26, T-27 | T-46, T-47, T-48, T-49, T-53 (avvio) | T-63 |
-| 7 | 25–26/10 | T-08 | – | T-50, T-51, T-52 | T-64, T-65 |
-| 8 | 27–28/10 | T-10, T-11, T-12 | bugfix | T-53 (report eval), bugfix | bugfix |
+Ordine dei task per sessione e dipendenze tra sessioni: [START_HERE §3bis](../START_HERE.md). Le colonne "Dipende da" qui sotto restano la descrizione completa delle dipendenze di ogni task.
 
 ## 3. Task (in ordine di esecuzione per stream)
 
@@ -66,10 +54,10 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 2 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | MG | ☐ |
 | 3 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | MG | ☐ |
 | 4 | T-07 | ERP adapter mock (`submit/update/cancel/getStatus`, simulazione pianificazione e consegna) + `order_pdf` + regola EventBridge `order.confirmed` | FN-13, 14 | P2 | T-03 | MG | ☐ |
-| 5 | T-09 | `AnalyticsStack`: Firehose → S3 Parquet → Glue → viste Athena KPI; dashboard e allarmi CloudWatch | FN-30, 33 | P2–P3 | T-03 | MG | ☐ |
+| 5 | T-09 | `AnalyticsStack`: Firehose → S3 Parquet → Glue → viste Athena KPI; dashboard e allarmi CloudWatch (incluso il target di notifica dell'allarme `suppliagent-<env>-inbound-dlq` creato in T-21) | FN-30, 33 | P2–P3 | T-03 | MG | ☐ |
 | 6 | T-08 | `ProactiveStack`: `insights_analyzer` (riordini scaduti, prodotti smessi, gap vs simili), `proactive_trigger`, scheduler | FN-19, 20 | P3 | T-04, T-22 | MG | ☐ |
 | 7 | T-10 | Ambiente `demo`, script reset, README sezione giudici, cliente/bigliettino di prova | FN-31 | P4 | tutti | MG | ☐ |
-| 8 | T-11 | Opportunità ACE, export PNG del diagramma, testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | MG | ☐ |
+| 8 | T-11 | Opportunità ACE, export PNG del diagramma (aggiornare prima `architecture.drawio`: coda `inbound` standard e niente Lambda Media Fetcher, decisioni T-21/T-23), testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | MG | ☐ |
 | 9 | T-12 | Copione e registrazione video (≤ 3 min) | – | P4 (copione da P2) | T-10 | MG | ☐ |
 
 ### CH – Canali CDS
@@ -77,29 +65,26 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
 | 2 | T-29 | **Invio dei template WhatsApp a Meta** e approvazione: dopo il collegamento della WABA a EUM Social, invio degli 8 JSON di `services/notifier/whatsapp_templates/` con `aws socialmessaging create-whatsapp-message-template` (comando in [09 §1](./09_CONTENT_AND_TEMPLATES.md)); verifica stato `APPROVED`; se Meta rifiuta o cambia categoria, correzione dei JSON (test verde) e reinvio; aggiornare 09 con l'esito | FN-12, 19 | P1 (appena c'è la WABA) | T-28, WABA collegata (T-20 / azione manuale) | MG | ☐ |
-| 3 | T-21 | `MessagingStack` + `inbound_router`: SQS FIFO + DLQ, normalizzazione WhatsApp/email/SMS/web, identità e ruolo, idempotenza, read receipt, check handoff | FN-01, 03, 26 | P1 | T-20, T-03 | MG | ☐ |
-| 4 | T-23 | `media_fetcher` (WhatsApp media → S3) ed estrazione allegati email | FN-05, 06 | P1 | T-21 | MG | ☐ |
-| 5 | T-22 | `TurnBuffer` + coda `turn-flush` + `turn_dispatcher` (debounce, lock, drain, re-flush) | FN-26 | P1 | T-21 | MG | ☐ |
-| 6 | T-24 | `notifier`: unico punto di uscita, policy di canale, finestra 24h/template, fallback RCS→SMS, fasce orarie, opt-out, idempotenza (versione base in P1, completa in P2) | FN-01, 14, 15 | P1–P2 | T-20 | MG | ☐ |
+| 5 | T-22 | `TurnBuffer` + coda `turn-flush` + `turn_dispatcher` (debounce, lock, drain in ordine di `receivedAt`, re-flush); nel Router: append al TurnBuffer e **check handoff** (`mode = HUMAN` → niente turno), rimasti fuori da T-21 | FN-26, 24 | P1 | T-21 | MG | ☐ |
+| 6 | T-24 | `notifier`: unico punto di uscita, policy di canale, finestra 24h/template, fallback RCS→SMS, fasce orarie, opt-out, idempotenza, **read receipt** WhatsApp dei messaggi in ingresso (rimasto fuori da T-21); dal Router (T-21/T-23): richiesta di reinvio per media non scaricati (E-02), avviso per allegati rifiutati senza `s3Uri` (E-13), **nessuna risposta** a email con `senderVerified = false` (backscatter) (versione base in P1, completa in P2) | FN-01, 14, 15 | P1–P2 | T-20 | MG | ☐ |
 | 7 | T-25 | Messaggi interattivi WhatsApp (button/list) e parsing delle risposte | FN-08, 12 | P2 | T-24 | MG | ☐ |
-| 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel) | FN-06, 14 | P2 | T-24, T-07 | MG | ☐ |
+| 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel; ingresso già nel Router, T-23); F-02.C3 (indirizzo sconosciuto che risponde a `ordine+<id>@`: contatto dall'ordine, associazione in attesa di conferma) | FN-06, 14 | P2 | T-24, T-07 | MG | ☐ |
 | 8b | T-14 | **Simulatore canali + test end-to-end**: script che pubblica eventi WhatsApp sintetici (testo, foto, vocale) sul topic SNS di EUM Social e modalità `sandbox` del Notifier che registra le uscite invece di inviarle; permette di testare S1 senza numero WhatsApp e riusarlo per eval e reset demo | FN-31 | P1 | T-21, T-24 | MG | ☐ |
-| 9 | T-27 | RCS: **infra EUM SMS v2** (configuration set, event destinations, opt-out list, topic `sms-inbound`, rimasta fuori da T-20) + rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | MG | ☐ |
+| 9 | T-27 | RCS: **infra EUM SMS v2** (configuration set, event destinations, opt-out list, topic `sms-inbound`, rimasta fuori da T-20) + sottoscrizione del topic alla coda `inbound` e normalizzazione SMS/RCS nel Router (rimaste fuori da T-21) + rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | MG | ☐ |
 
 ### AG – Agent & AgentCore
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 2 | T-40 | `AgentStack`: ECR, AgentCore Runtime/Endpoint, Memory, Gateway (auth OAuth), Identity, Guardrail | FN-32 | P1 | T-03 | MG | ☐ |
-| 3 | T-41 | Agente Strands: entrypoint, contesto iniettato non modificabile (`contactId`, `role`, `customerIds`), prompt per ruolo (`customer`, `sales_rep`, `shared`), set di tool per ruolo, multilingua | FN-03, 04, 27 | P1 | T-40, T-22 | MG | ☐ |
 | 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Nova Pro vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | MG | ☐ |
 | 5 | T-44 | Tool `catalog`: `match_products` (semantico + fuzzy + storico + unità), `search_catalog`, `ask_product_sheets` con citazioni | FN-07, 21 | P2 | T-06 | MG | ☐ |
 | 6 | T-45 | Tool `inventory_pricing`: `check_availability` (sostituti), `get_prices`, `get_delivery_options` (cut-off, giorni serviti) | FN-09, 10 | P2 | T-04 | MG | ☐ |
-| 7 | T-46 | Tool `orders`: draft/update/confirm (idempotente)/cancel/status/issue + macchina a stati ordine e righe | FN-12, 16, 17, 18 | P2 | T-03, T-07 | MG | ☐ |
+| 7 | T-46 | Tool `orders`: draft/update/confirm (idempotente)/cancel/status/issue + macchina a stati ordine e righe; `confirm_order` da pulsante solo se `interactiveReply.contextId` è il messaggio di conferma inviato per quell'ordine (l'id del pulsante si può falsificare) | FN-12, 16, 17, 18 | P2 | T-03, T-07 | MG | ☐ |
 | 8 | T-47 | Logica conversazionale ordine: chiarimenti raggruppati, sostituti, vincoli, riepilogo, conferma, promemoria e scadenza bozza | FN-08, 09, 12 | P2 | T-43…T-46, T-25 | MG | ☐ |
 | 9 | T-48 | Primo contatto: informativa e consenso proattivo | FN-02 | P2 | T-41 | MG | ☐ |
-| 10 | T-49 | `handoff_to_human` e gestione `mode = HUMAN` / release | FN-24 | P2 | T-41, T-21 | MG | ☐ |
+| 10 | T-49 | `handoff_to_human` e gestione `mode = HUMAN` / release | FN-24 | P2 | T-41, T-22 | MG | ☐ |
 | 11 | T-53 | Eval runner + metriche (lettura righe, matching, intento, n. scambi) con **AgentCore Evaluations** (on-demand + evaluator custom) e dataset di progetto; report — avvio in P2, report finale in P4 | FN-04, 05, 07 | P2–P4 | T-05 | MG | ☐ |
+| 11b | T-54 | Completamento dell'agente dopo la versione ridotta di T-40/T-41: AgentCore Memory (`actorId = contactId`, storico e preferenze al posto della memoria di sessione), Bedrock Guardrail (PII, topic negati), prompt e set di tool `sales_rep` completi, Observability/OTel (`aws-opentelemetry-distro`), retention e CMK del log group del Runtime, verifica multilingua con gli eval; testo e allegati dei messaggi passati al modello come **contenuto non fidato** (delimitato), mai come istruzioni (revisione T-21/T-23); se c'è tempo, hardening dai rilievi di T-40/T-41 (INFRASTRUCTURE_DESIGN §12) | FN-03, 04, 25, 27, 32 | P2 | T-40, T-41 | MG | ☐ |
 | 12 | T-50 | Tool `reco` + politica suggerimenti (max 1, consenso, motivazione) | FN-11, 20 | P3 | T-08 | MG | ☐ |
 | 13 | T-51 | Tool `sales`: briefing, agenda, ordine per conto del cliente (solo portafoglio) | FN-20, 22, 23 | P3 | T-42, T-50 | MG | ☐ |
 | 14 | T-52 | Turno proattivo di riordino (template, pulsanti, cooldown) | FN-19 | P3 | T-08, T-24 | MG | ☐ |
@@ -110,16 +95,9 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 |---|---|---|---|---|---|---|---|
 | 1 | T-62 | **Collegare a API reali** inbox e dettaglio ordine (UI con mock già fatta, vedi DONE): `VITE_ORDERS_SOURCE=api`, `PATCH` correzione riga in `console_api` (oggi `correctLine` lancia errore), `customerName`/`uncertainLines`/`handoff` nel riepilogo, nome prodotto sulla riga, `imageS3Uri` | FN-28 | P2 | T-46 | MG | ☐ |
 | 2 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
-| 3 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
+| 3 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming; `NormalizedMessage` con `channel = WEB`) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
 | 4 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
 
-## 4. Suggerimento di assegnazione
+## 4. Assegnazione
 
-| Stream | Persone | Primi task |
-|---|---|---|
-| IN | 1 | T-01 → T-03 → T-04 (con il cliente) → T-06; T-11 in parallelo appena possibile |
-| CH | 1 | T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
-| AG | 1–2 | T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
-| CO | 1 | T-62 con dati mock, poi con le API reali |
-
-Ogni stream lavora in un **git worktree** separato (`claude -w <nome>`) con una propria sessione di Claude Code (vedi [HANDOFF_CLAUDE_CODE.md](./HANDOFF_CLAUDE_CODE.md)).
+Vedi [START_HERE §3bis](../START_HERE.md): ogni sessione Claude Code lavora in un **git worktree** separato (`claude -w <nome>`). Lo stream nelle tabelle sopra (IN, CH, AG, CO) indica l'area, non la sessione.

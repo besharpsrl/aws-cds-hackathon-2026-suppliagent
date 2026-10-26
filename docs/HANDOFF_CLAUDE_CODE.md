@@ -191,7 +191,7 @@ Lavori sullo stream CH (Canali CDS) di SuppliAgent. Leggi CLAUDE.md, docs/04_BAC
 docs/02_TECHNICAL_FLOWS.md §3 e F-11, docs/INFRASTRUCTURE_DESIGN.md §5.1, §5.2, §5.5 (Notifier).
 
 Procedi nell'ordine del backlog (T-20, T-21, T-23, T-22, T-24, poi T-25..T-27), un task alla volta con /implement-fn.
-Vincoli chiave: SQS FIFO con MessageGroupId = chat, debounce con TurnBuffer + turn-flush,
+Vincoli chiave: coda inbound SQS standard (idempotenza, ordine dal timestamp), debounce con TurnBuffer + turn-flush,
 idempotenza su providerMessageId, solo il Notifier chiama le API di invio CDS,
 client ammessi: socialmessaging, sesv2, pinpoint-sms-voice-v2. Nessun deploy senza chiedere.
 Prima di usare un'API CDS verifica parametri e formato con aws-docs-researcher.

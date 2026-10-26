@@ -2,6 +2,7 @@
 
 # ruff: noqa: N815 - field names are the camelCase wire names (02 §6).
 
+import os
 import re
 import unicodedata
 from difflib import SequenceMatcher
@@ -25,7 +26,8 @@ from suppliagent_shared.models import (
 
 SOURCE = "suppliagent.tool-customers"
 VENUE_SIMILARITY = 0.8
-MAX_IDENTIFY_ATTEMPTS = 3  # F-02.C4, per conversation
+# F-02.C4, per conversation; SSM parameter identificationMaxAttempts, passed by CDK as env var
+MAX_IDENTIFY_ATTEMPTS = int(os.environ.get("IDENTIFICATION_MAX_ATTEMPTS", "3"))
 LAST_ORDERS = 5
 VENUE_FIELDS = ("customerId", "venueName", "venueType", "city", "deliveryDays")
 INTERNAL_FIELDS = ("legalName", "zone", "priceListId", "repId")  # sales reps only
@@ -186,6 +188,7 @@ def _register(args: IdentifyContactInput, customer: dict[str, Any], method: str)
             "contactId": contact.contactId,
             "role": Role.CUSTOMER_CONTACT,
             "verified": False,
+            "conversationId": caller.conversationId,
         }
     )
     # ponytail: two conditional writes, not a transaction; a crash in between leaves an

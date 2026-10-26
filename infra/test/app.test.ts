@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { App, CfnResource, type ITaggable, Stack, TagManager, Validations } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as kms from 'aws-cdk-lib/aws-kms';
@@ -10,9 +9,7 @@ import { getConfig } from '../config/environments.js';
 import { buildApp } from '../lib/app.js';
 import { PythonLambda } from '../lib/constructs/python-lambda.js';
 import { TABLES } from '../lib/stacks/data-stack.js';
-
-// Same feature flags as `cdk synth`.
-const { context } = JSON.parse(readFileSync(new URL('../cdk.json', import.meta.url), 'utf8'));
+import { context } from './context.js';
 
 const build = (env = 'dev') => {
   const app = new App({ context });
@@ -40,6 +37,7 @@ describe('app', () => {
       'suppliagent-dev-agent',
       'suppliagent-dev-channels',
       'suppliagent-dev-data',
+      'suppliagent-dev-foundation',
     ]);
     expect(deps(stacks.analytics)).toEqual([
       'suppliagent-dev-channels',

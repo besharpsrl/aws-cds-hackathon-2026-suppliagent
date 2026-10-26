@@ -1,0 +1,23 @@
+# SuppliAgent – note per GitHub Copilot
+
+Le regole di progetto sono in `AGENTS.md` (caricato in automatico). Qui solo ciò che vale in più per Copilot.
+
+## Priorità delle fonti
+
+- **Calendario e stato del progetto: `START_HERE.md`** (code freeze 27/10 ore 18:00, submission entro le 15:00 del 28/10). Comportamento e requisiti: `docs/`. `AGENTS.md` riassume: in caso di conflitto segnalalo e correggilo.
+- Stato condiviso tra le sessioni parallele, versionato: assegnazione e dipendenze in `START_HERE.md` §3bis (fonte unica), descrizione dei task in `docs/04_BACKLOG.md`, fatto in `docs/DONE.md`. A fine task si aggiornano tutti e tre nella stessa PR. Le todo list della chat non sono un registro.
+
+## Modo di lavorare
+
+- Prima di implementare leggi la scheda `FN-xx` (03) e i flussi `F-xx` (02); parti dai criteri di accettazione e scrivi prima i test.
+- Proponi un piano breve e attendi conferma prima di scrivere codice.
+- Verifica con i comandi di `AGENTS.md` §6; delega ai subagent di progetto (`test-runner`, `code-reviewer`, `security-reviewer`, `aws-docs-researcher`).
+- Se documenti (`START_HERE.md`, `docs/*`, `AGENTS.md`) sono indietro rispetto a git o AWS, segnalalo e correggili nello stesso lavoro.
+- Flusso Git: branch `feat/FN-xx-…`, push e PR aperta dall'agente; merge su `main` solo da parte dello sviluppatore. Mai push su `main`, mai force push.
+
+## Terminale
+
+- Solo comandi non interattivi; `git --no-pager`; niente server o watcher in modalità sincrona.
+- `gh` solo con `GH_PROMPT_DISABLED=1 GH_PAGER=cat`; mai `gh auth login`, `--web` o comandi che aprono editor o browser. Se `gh` fallisce, fornisci il link di compare e il corpo della PR.
+- Mai leggere `.env*`, `seed/private/**`, `seed/raw/**`.
+- `cdk deploy`, comandi `aws` mutanti, `git rebase`/`reset`, `rm`, `docker`: solo dopo conferma esplicita, dichiarando profilo, account e region per AWS.

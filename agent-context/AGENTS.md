@@ -17,7 +17,7 @@
 
 | Vincolo | Implicazione per il codice |
 |---|---|
-| Consegna **28/10/2026 21:00 (ora italiana)**; code freeze interno **23/10** | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
+| Consegna **28/10/2026 21:00 (ora italiana)**, submission interna entro le 15:00; code freeze interno **27/10 ore 18:00** (calendario in `START_HERE.md`) | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
 | Il codice deve **importare e chiamare** almeno un client CDS valido | Usare **solo**: `socialmessaging` (`SendWhatsAppMessage`), `pinpoint-sms-voice-v2` (`SendRcsMessage`, `SendTextMessage`), `sesv2` (`SendEmail`). **Vietati**: `pinpoint` (v1), `pinpoint-email`, EUM Push |
 | Lavoro **nuovo** (dal 14/09/2026) | Non copiare codice preesistente senza dichiararlo nel README (sezione "Pre-existing code") |
 | Repo con **licenza open source** visibile | Non rimuovere `LICENSE` |
@@ -37,8 +37,9 @@ Leggi **prima di implementare** la parte che ti riguarda:
 | `docs/02_TECHNICAL_FLOWS.md` | **Come** si comporta: stati, flussi `F-xx`, casi `F-xx.Cn`, errori `E-xx`, contratti JSON, parametri |
 | `docs/INFRASTRUCTURE_DESIGN.md` | Stack CDK, tabelle, code, IAM, sicurezza |
 | `docs/architecture.drawio` | Diagramma |
-| `docs/04_BACKLOG.md` | Task `T-xx` **ancora da fare**: ordine, dipendenze, stato |
-| `docs/DONE.md` | Lavoro completato: a task chiuso si **rimuove** la riga dal backlog (o da `TODO_DOCS.md`, §12 di INFRASTRUCTURE_DESIGN) e si aggiunge qui con data, commit e verifica |
+| `docs/04_BACKLOG.md` | Task `T-xx` **ancora da fare**: descrizione completa, FN, dipendenze (anche dei task non ancora assegnati) |
+| `START_HERE.md` §3bis | **Assegnazione dei task alle sessioni** (fonte unica): ordine, dipendenze tra sessioni (bloccanti o di integrazione), stato |
+| `docs/DONE.md` | Lavoro completato: a task chiuso, nella stessa PR, si **rimuove** la riga dal backlog (o da `TODO_DOCS.md`, §12 di INFRASTRUCTURE_DESIGN), si segna ✅ in START_HERE §3bis e si aggiunge qui con data, commit e verifica |
 | `docs/HANDOFF_CLAUDE_CODE.md` | Setup, prompt di avvio e prompt per stream |
 | `docs/TODO_DOCS.md` | Documenti ancora mancanti (es. agent spec, contratti) |
 
@@ -52,7 +53,7 @@ Regole:
 Region **`eu-west-1`** · modello **Amazon Nova via inference profile `eu.`** (`eu.amazon.nova-pro-v1:0` per ragionamento e vision, `eu.amazon.nova-lite-v1:0` per classificazioni veloci; mai `global.` o `us.`). Decisione del 25/10: Claude non è abilitato sull'account (*channel program*); il passaggio a Claude, se sbloccato, sarà un task pianificato. Il codice legge il modello da configurazione (`MODEL_ID`/`FAST_MODEL_ID`), mai hard-coded · IaC **AWS CDK (TypeScript)** · agente **Strands Agents su Amazon Bedrock AgentCore**.
 
 ```
-Canali CDS (WhatsApp · SES in/out · SMS/RCS) ─► SNS ─► SQS FIFO (group = chat) ─► Inbound Router
+Canali CDS (WhatsApp · SES in/out · SMS/RCS) ─► SNS ─► SQS inbound (standard + DLQ) ─► Inbound Router
    ─► TurnBuffer (DynamoDB) + SQS turn-flush (delay) ─► Turn Dispatcher (debounce + lock)
    ─► AgentCore Runtime (Strands, ruoli) ◄─► Memory · Gateway (tool MCP su Lambda) · Identity · Observability
         tool ─► DynamoDB · S3 Vectors (catalogo) · Bedrock Knowledge Base (schede tecniche) · Transcribe
@@ -79,12 +80,12 @@ SuppliAgent/
 │   ├── lib/constructs/          # construct riutilizzabili (es. LambdaFunction con defaults)
 │   └── config/                  # config per ambiente (dev, demo)
 ├── agent/                       # Strands agent (Python) per AgentCore Runtime
-│   ├── src/suppliagent_agent/   # entrypoint, prompt per ruolo, orchestrazione
-│   ├── prompts/                 # system prompt: customer.md, sales_rep.md, shared.md
-│   ├── evals/                   # dataset (bigliettini, vocali, conversazioni) + runner
-│   └── Dockerfile
+│   ├── main.py                  # entrypoint dello zip (code deploy, niente container)
+│   ├── src/suppliagent_agent/   # app AgentCore, turno, tool per ruolo, SigV4 verso il Gateway
+│   │   └── prompts/             # system prompt: customer.md, sales_rep.md, shared.md
+│   └── evals/                   # dataset (bigliettini, vocali, conversazioni) + runner
 ├── services/                    # Lambda (Python 3.12) – una cartella per funzione
-│   ├── inbound_router/  turn_dispatcher/  media_fetcher/  notifier/
+│   ├── inbound_router/  turn_dispatcher/  notifier/   # media → S3 dentro inbound_router
 │   ├── order_pdf/  erp_adapter/  catalog_indexer/  insights_analyzer/  proactive_trigger/
 │   ├── console_api/  rep_chat/  broadcaster/
 │   ├── tools/                   # target del Gateway: customers, order_intake, catalog,
@@ -118,9 +119,9 @@ npm ci && uv sync
 # Tutti i controlli (gli stessi della CI)
 npm run check          # = lint + typecheck + test + synth
 npm run lint           # eslint + prettier --check + ruff check + ruff format --check
-npm run typecheck      # tsc (workspaces) + mypy services agent tests
+npm run typecheck      # tsc (workspaces) + mypy services agent tests seed scripts
 npm test               # vitest (workspaces) + pytest
-npm run synth          # cdk synth -c env=dev (cdk-nag v3: errori = synth fallita)
+npm run synth          # cdk synth -c env=dev (cdk-nag v3: errori = synth fallita; serve `uv`: impacchetta Lambda e agente)
 npm run format         # prettier --write + ruff format
 
 # Infra
@@ -134,6 +135,9 @@ npm run dev -w console | npm run build -w console | npm test -w console
 # Dati demo
 uv run python seed/seed.py --env dev        # carica dati di prova
 uv run python seed/reset.py --env dev       # ripristina lo scenario demo
+
+# Agente deployato (finché il Dispatcher T-22 non è su main)
+uv run python scripts/invoke_agent.py --env dev --address 'WHATSAPP#+393330000001' --text "ciao"
 ```
 
 ## 7. Convenzioni di codice
@@ -177,7 +181,7 @@ uv run python seed/reset.py --env dev       # ripristina lo scenario demo
 3. **Massimo 1 suggerimento per ordine**, solo con consenso proattivo – FN-11.
 4. Riordino proattivo: max **1 proposta ogni 7 giorni** per cliente, mai in fascia notturna, mai senza consenso – FN-19.
 5. WhatsApp: fuori dalla finestra di 24h **solo template approvati**; fallback SMS/email – F-11.
-6. SQS FIFO con `MessageGroupId = chat`; tutte le risposte passano dal **debounce** (una risposta per raffica) – FN-26.
+6. Coda `inbound` **standard** (SNS standard non consegna a code FIFO, decisione del 26/10): idempotenza su `providerMessageId`, ordine per chat dal timestamp di ricezione AWS; tutte le risposte passano dal **debounce** (una risposta per raffica, lock per conversazione) – FN-26.
 7. Tutti gli invii passano dal **Notifier**; nessun altro componente chiama le API di invio CDS.
 8. L'agente si dichiara **assistente virtuale**; niente sconti, prezzi o condizioni fuori listino; niente dati di altri clienti.
 9. Lingua: quella del contatto (IT/EN), memorizzata come preferenza.

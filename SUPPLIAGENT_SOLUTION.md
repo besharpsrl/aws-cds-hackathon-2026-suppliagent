@@ -81,7 +81,7 @@ flowchart LR
         EUM[EUM SMS/RCS]
     end
     subgraph Core[SuppliAgent – eu-west-1]
-        ING[Ingestion<br/>FIFO + debounce]
+        ING[Ingestion<br/>SQS + debounce]
         AG[Agente<br/>AgentCore + Strands<br/>Amazon Nova eu.]
         T[Tool: catalogo · matching ·<br/>listini · stock · ordini ·<br/>raccomandazioni · schede tecniche]
         KB[(Knowledge Base<br/>schede tecniche<br/>S3 Vectors)]

@@ -80,6 +80,9 @@ class ChannelIdentity(Item):
     contactId: ContactId | RepId  # sales reps are addressed by `repId`
     role: Role
     verified: bool
+    # Set by identify_contact: the router keeps routing this address to the conversation in which
+    # it was identified, so session, handoff and buffer survive the identification.
+    conversationId: str | None = None
 
 
 class OrderLine(Item):

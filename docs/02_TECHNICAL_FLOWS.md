@@ -80,15 +80,16 @@ Ogni riga conserva: `rawText`, `rawQuantity`, `sourceMessageId`, eventuale `imag
 sequenceDiagram
     autonumber
     participant CH as Canale (EUM Social / SES / EUM SMS / chat web)
-    participant Q as SNS → SQS FIFO
+    participant Q as SNS → SQS inbound
     participant R as Inbound Router
     participant B as TurnBuffer
     participant FQ as SQS turn-flush
     participant D as Turn Dispatcher
     participant A as AgentCore Runtime
-    CH->>Q: evento (group = chat, dedup = providerMessageId)
-    Q->>R: consegna in ordine per chat
-    R->>R: normalizza · identità e ruolo · idempotenza · media · read receipt
+    CH->>Q: evento (SNS standard, almeno una consegna)
+    Q->>R: consegna (chat diverse in parallelo)
+    R->>R: normalizza · identità e ruolo · media · idempotenza su providerMessageId
+    R-->>R: read receipt via Notifier (T-24)
     alt mode = HUMAN
         R-->>R: solo console
     else mode = AGENT
@@ -108,10 +109,10 @@ sequenceDiagram
 
 ### 3.1 Normalizzazione per canale
 
-| Canale | Sorgente | Estrazione | Chat (`MessageGroupId`) |
+| Canale | Sorgente | Estrazione | Chat (conversazione) |
 |---|---|---|---|
 | WhatsApp | SNS da EUM Social | testo, image/audio/document, `interactive` reply (button/list), `context` | numero (E.164) |
-| Email | SES receipt rule → S3 + SNS | mittente, oggetto, corpo pulito, allegati (foto, PDF, Excel) | indirizzo mittente |
+| Email | SES receipt rule → S3 + SNS | mittente (identità solo con DMARC `PASS`), oggetto, corpo pulito, allegati (foto, PDF, Excel) | indirizzo mittente |
 | RCS / SMS | SNS two-way | testo, postback suggested reply, keyword STOP/HELP | numero |
 | Chat web | WebSocket → `rep-chat` | testo, allegati caricati | `userId` Cognito |
 
@@ -146,6 +147,8 @@ sequenceDiagram
 | Audio | → S3 | `transcribe` → testo nel turno |
 | PDF / Excel | → S3 | ordine strutturato del cliente (estrazione righe) o documento generico |
 | Video, sticker | non elaborati | richiesta cortese di foto o testo |
+
+I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`attachments[].s3Uri`); tipi ammessi e limiti in [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md). Un allegato rifiutato resta in `attachments` **senza `s3Uri`**: l'agente sa che c'era e chiede un altro formato (E-13).
 
 ## 4. Flussi
 
@@ -380,8 +383,8 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 
 | ID | Errore | Gestione |
 |---|---|---|
-| E-01 | Evento duplicato | Dedup FIFO + idempotenza su `providerMessageId` |
-| E-02 | Download media fallito | Retry ×3; poi richiesta di reinvio |
+| E-01 | Evento duplicato | Idempotenza su `providerMessageId`: scrittura in transazione del messaggio e di una guardia `dedup#<messageId>` (TTL 7 giorni nel TurnBuffer), quindi anche con timestamp diverso; la coda standard consegna almeno una volta |
+| E-02 | Download media fallito | Retry ×3 (riconsegna SQS), poi DLQ; richiesta di reinvio al cliente quando c'è il Notifier (T-24) |
 | E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
 | E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |
 | E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato |
@@ -392,7 +395,7 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 | E-10 | Messaggio in DLQ | Allarme; redrive; blocca solo quella chat |
 | E-11 | Lock orfano | Scadenza `turnLockTtlMs` |
 | E-12 | Turno oltre il tempo massimo | Cortesia, retry una volta, poi handoff `LOW_CONFIDENCE` |
-| E-13 | Allegato non consentito/malevolo | Scartato, cliente informato |
+| E-13 | Allegato non consentito/malevolo | Non salvato (tipo fuori whitelist, firma dei byte diversa dal tipo dichiarato, oltre 10 MB, virus scan SES diverso da `PASS`): resta nel messaggio senza `s3Uri` e il cliente viene informato. I media WhatsApp non passano da un antivirus |
 
 ## 6. Contratti
 
@@ -421,6 +424,12 @@ Vedi [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md).
   "arrivedDuringPreviousTurn": false
 }
 ```
+
+Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent.py`):
+- `bedrock-agentcore:InvokeAgentRuntime` sull'ARN letto da SSM `/suppliagent/<env>/agentRuntimeArn` (il Dispatcher ha bisogno di questo solo permesso).
+- `runtimeSessionId = uuid5(NAMESPACE_URL, "suppliagent:" + conversationId)`: stessa conversazione → stessa sessione → stesso storico (fino a T-54 lo storico vive nella sessione del Runtime).
+- `messages[].text` porta il testo del messaggio (assente per i soli allegati); `channelAddress` è il mittente verificato (INFRASTRUCTURE_DESIGN §5.3.2). Campi non previsti vengono ignorati.
+- Risposta: `{"conversationId", "reply"}` con il testo da inviare tramite il Notifier, oppure `{"error": "INVALID_REQUEST"}`. Un errore dell'invocazione (eccezione nel Runtime, throttling Bedrock, Gateway non raggiungibile) arriva come errore di `InvokeAgentRuntime`: il Dispatcher lo tratta come E-05 / E-12.
 
 ### 6.3 Riga d'ordine (estratto di `Orders`)
 

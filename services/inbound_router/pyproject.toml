@@ -1,0 +1,13 @@
+[project]
+name = "suppliagent-inbound-router"
+version = "0.1.0"
+description = "Inbound Router (T-21): normalizes WhatsApp and email events, resolves identity and role, stores messages"
+requires-python = ">=3.12,<3.13"
+dependencies = ["suppliagent-shared"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "inbound_router"

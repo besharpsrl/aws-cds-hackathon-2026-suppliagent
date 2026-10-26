@@ -1,11 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { App } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { describe, expect, it } from 'vitest';
 import { getConfig } from '../config/environments.js';
 import { buildApp } from '../lib/app.js';
-
-const { context } = JSON.parse(readFileSync(new URL('../cdk.json', import.meta.url), 'utf8'));
+import { context } from './context.js';
 
 const channels = (extraContext: Record<string, string> = {}, env = 'dev') => {
   const app = new App({ context: { ...context, ...extraContext } });
@@ -86,7 +84,7 @@ describe('ChannelsStack (T-20, FN-01)', () => {
       });
     });
 
-    it('stores inbound mail in S3 (KMS) and notifies SNS, then activates the rule set', () => {
+    it('stores inbound mail in S3 (bucket SSE-KMS, not SES client-side) and notifies SNS', () => {
       template.hasResourceProperties('AWS::SES::ReceiptRule', {
         Rule: Match.objectLike({
           Enabled: true,
@@ -96,7 +94,7 @@ describe('ChannelsStack (T-20, FN-01)', () => {
             Match.objectLike({
               S3Action: Match.objectLike({
                 ObjectKeyPrefix: 'mail/',
-                KmsKeyArn: Match.anyValue(),
+                KmsKeyArn: Match.absent(),
                 TopicArn: Match.anyValue(),
               }),
             }),

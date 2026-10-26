@@ -68,7 +68,7 @@
 
 ## 9. Registro delle decisioni architetturali (ADR)
 - ADR-001 Region `eu-west-1`, profili `eu.` e modello Amazon Nova (Claude non abilitato sull'account)
-- ADR-002 SQS FIFO + debounce applicativo
+- ADR-002 SQS standard + debounce applicativo con lock (SNS standard non consegna a FIFO; decisione del 26/10, INFRASTRUCTURE_DESIGN §5.2)
 - ADR-003 S3 Vectors invece di OpenSearch (costi, scale-to-zero)
 - ADR-004 Matching ibrido semantico + lessicale + storico
 - ADR-005 Un solo agente con ruoli e autorizzazione nei tool
