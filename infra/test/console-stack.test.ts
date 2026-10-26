@@ -48,6 +48,12 @@ describe('ConsoleStack (T-60, FN-28, FN-32)', () => {
     });
   });
 
+  it('does not enable stage logging (needs the shared account-level CloudWatch role)', () => {
+    const [stage] = Object.values(template.findResources('AWS::ApiGateway::Stage'));
+    expect(stage.Properties.AccessLogSetting).toBeUndefined();
+    expect(JSON.stringify(stage.Properties.MethodSettings)).not.toContain('LoggingLevel');
+  });
+
   it('protects every API method with the Cognito authorizer', () => {
     const methods = Object.values(template.findResources('AWS::ApiGateway::Method'));
     const nonPreflight = methods.filter((m) => m.Properties.HttpMethod !== 'OPTIONS');

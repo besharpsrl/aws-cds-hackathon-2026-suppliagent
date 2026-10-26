@@ -15,7 +15,6 @@ import type { ITableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
 import type { EnvConfig } from '../../config/environments.js';
@@ -192,17 +191,10 @@ export class ConsoleStack extends Stack {
       reason: 'Presigned URLs for any photo in the media bucket; read-only (s3:GetObject).',
     });
 
-    const accessLogs = new logs.LogGroup(this, 'ApiAccessLogs', {
-      logGroupName: `/aws/apigateway/${prefix}-console`,
-      retention: config.logRetention,
-      encryptionKey: key,
-    });
     this.api = new apigw.RestApi(this, 'Api', {
       restApiName: `${prefix}-console`,
       deployOptions: {
         stageName: 'v1',
-        accessLogDestination: new apigw.LogGroupLogDestination(accessLogs),
-        accessLogFormat: apigw.AccessLogFormat.jsonWithStandardFields(),
         throttlingBurstLimit: 50,
         throttlingRateLimit: 25,
       },
@@ -232,11 +224,15 @@ export class ConsoleStack extends Stack {
       validateRequestParameters: true,
       validateRequestBody: true,
     });
-    Validations.of(this.api).acknowledge({
-      id: 'AwsSolutions-APIG6',
-      reason:
-        'Access logs are on; execution logging needs the account-wide API Gateway CloudWatch role, which is shared with other projects.',
-    });
+    // Stage logging needs the account-wide API Gateway CloudWatch role (apigateway UpdateAccount):
+    // unset here and shared with other projects, so it is not ours to change. Lambda logs cover the API.
+    for (const id of ['AwsSolutions-APIG1', 'AwsSolutions-APIG6']) {
+      Validations.of(this.api).acknowledge({
+        id,
+        reason:
+          'API Gateway account has no CloudWatch Logs role; account setting shared with other projects.',
+      });
+    }
     for (const method of this.api.methods) {
       if (method.httpMethod !== 'OPTIONS') {
         (method.node.defaultChild as apigw.CfnMethod).requestValidatorId =

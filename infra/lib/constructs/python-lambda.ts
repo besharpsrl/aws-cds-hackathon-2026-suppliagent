@@ -1,4 +1,4 @@
-import { Duration, Stack, Validations } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, Validations } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -37,6 +37,8 @@ export class PythonLambda extends Construct {
       logGroupName: `/aws/lambda/${functionName}`,
       retention: config.logRetention,
       encryptionKey: key,
+      // Fixed name: with the default RETAIN a rolled-back deploy leaves the group behind and the next one fails.
+      removalPolicy: RemovalPolicy.DESTROY,
     });
 
     if (props.withDlq) {
