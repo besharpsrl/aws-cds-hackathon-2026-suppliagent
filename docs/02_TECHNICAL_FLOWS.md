@@ -514,6 +514,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `quietHours` | 21:00–07:00 |
 | `deliveryAutoConfirm` | true (fine giornata) |
 | `identificationMaxAttempts` | 3 |
+| `notifierSandbox` | `true` in `dev`, `false` in `demo` (il Notifier registra le uscite invece di inviarle) |
 
 ## 8. Tracciabilità e logging
 

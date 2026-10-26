@@ -11,6 +11,7 @@ members = [
     "suppliagent-notifier",
     "suppliagent-shared",
     "suppliagent-tool-customers",
+    "suppliagent-turn-dispatcher",
 ]
 
 [[package]]
@@ -1076,8 +1077,10 @@ dependencies = [
     { name = "suppliagent-agent" },
     { name = "suppliagent-console-api" },
     { name = "suppliagent-inbound-router" },
+    { name = "suppliagent-notifier" },
     { name = "suppliagent-shared" },
     { name = "suppliagent-tool-customers" },
+    { name = "suppliagent-turn-dispatcher" },
 ]
 
 [package.dev-dependencies]
@@ -1094,8 +1097,10 @@ requires-dist = [
     { name = "suppliagent-agent", editable = "agent" },
     { name = "suppliagent-console-api", editable = "services/console_api" },
     { name = "suppliagent-inbound-router", editable = "services/inbound_router" },
+    { name = "suppliagent-notifier", editable = "services/notifier" },
     { name = "suppliagent-shared", editable = "services/shared" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
+    { name = "suppliagent-turn-dispatcher", editable = "services/turn_dispatcher" },
 ]
 
 [package.metadata.requires-dev]
@@ -1157,7 +1162,13 @@ requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 [[package]]
 name = "suppliagent-notifier"
 version = "0.1.0"
-source = { virtual = "services/notifier" }
+source = { editable = "services/notifier" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
 name = "suppliagent-shared"
@@ -1180,6 +1191,17 @@ requires-dist = [
 name = "suppliagent-tool-customers"
 version = "0.1.0"
 source = { editable = "services/tools/customers" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
+name = "suppliagent-turn-dispatcher"
+version = "0.1.0"
+source = { editable = "services/turn_dispatcher" }
 dependencies = [
     { name = "suppliagent-shared" },
 ]

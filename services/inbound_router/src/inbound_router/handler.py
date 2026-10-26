@@ -1,15 +1,18 @@
 """Inbound Router (T-21, FN-01, FN-03; INFRASTRUCTURE_DESIGN §5.2).
 
 SQS `inbound` (SNS envelope, batch of 1) -> normalize -> identity and role -> media to S3 (T-23)
--> conversation -> `Messages`. Appending to the TurnBuffer and the handoff check (`mode = HUMAN`)
-arrive with T-22, the read receipt with the Notifier (T-24: the only sender, AGENTS §8.7).
+-> conversation -> `Messages` + TurnBuffer (T-22, one transaction) -> `turn-flush` (Dispatcher).
+`mode = HUMAN` (handoff) and unverified senders store the message only. The WhatsApp read receipt
+goes through the Notifier (T-24: the only sender, AGENTS §8.7).
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `INBOUND_MAIL_BUCKET`, `ORDER_DOMAIN` (SES domain,
-empty = no order correlation), plus those of `media`.
+empty = no order correlation), `TURN_FLUSH_QUEUE_URL`, `NOTIFIER_FUNCTION_NAME`,
+`DEBOUNCE_TEXT_MS`, `DEBOUNCE_MEDIA_MS`, plus those of `media`.
 """
 
 import hashlib
 import json
+import math
 import os
 import time
 from datetime import UTC, datetime
@@ -43,6 +46,16 @@ logger = Logger(service="inbound-router")
 @cache
 def _s3() -> Any:
     return boto3.client("s3")
+
+
+@cache
+def _sqs() -> Any:
+    return boto3.client("sqs")
+
+
+@cache
+def _lambda() -> Any:
+    return boto3.client("lambda")
 
 
 def handler(event: dict[str, Any], _context: Any) -> None:
@@ -82,7 +95,9 @@ def _store(raw: RawMessage) -> None:
     message_id = "msg_" + uuid5(NAMESPACE_URL, raw.provider_message_id).hex
     # Before any write: a failed download is retried with nothing half-stored.
     attachments = media.store(raw, identity.contact_id or conversation_id, message_id)
-    if _touch_conversation(conversation_id, identity):
+    created, mode = _touch_conversation(conversation_id, identity)
+    _record_inbound(conversation_id, identity, raw)
+    if created:
         put_event(
             SOURCE,
             "conversation.started",
@@ -108,12 +123,49 @@ def _store(raw: RawMessage) -> None:
             "locale": LOCALES[identity.language],
         }
     )
-    if _put_message(message):
+    # HUMAN: the agent stays silent (FN-24). Unverified sender: never answered (backscatter, T-24).
+    buffered = mode == "AGENT" and raw.sender_verified
+    if _put_message(message, buffered):
         # Never log message content, numbers or addresses (AGENTS §7).
         logger.info("message stored", channel=raw.channel, role=identity.role)
+        if raw.channel == "WHATSAPP":
+            _read_receipt(
+                conversation_id, raw.provider_message_id, f"{message.receivedAt}#{message_id}"
+            )
     else:
         logger.info("duplicate delivery ignored", channel=raw.channel)
-    # T-22: append to the TurnBuffer here, idempotently (a retry lands in the duplicate branch).
+    # Also on a duplicate: a crash between the transaction and this send would leave the message
+    # in the buffer with no flush; an extra flush is a no-op for the Dispatcher.
+    if buffered:
+        _schedule_flush(conversation_id, bool(attachments))
+
+
+def _schedule_flush(conversation_id: str, has_media: bool) -> None:
+    ms = int(os.environ["DEBOUNCE_MEDIA_MS" if has_media else "DEBOUNCE_TEXT_MS"])
+    _sqs().send_message(
+        QueueUrl=os.environ["TURN_FLUSH_QUEUE_URL"],
+        MessageBody=json.dumps({"conversationId": conversation_id}),
+        DelaySeconds=min(900, math.ceil(ms / 1000)),
+    )
+
+
+def _read_receipt(conversation_id: str, provider_message_id: str, ts_message_id: str) -> None:
+    """Best effort: a failed receipt must not fail (and so redeliver) the message."""
+    try:
+        _lambda().invoke(
+            FunctionName=os.environ["NOTIFIER_FUNCTION_NAME"],
+            InvocationType="Event",
+            Payload=json.dumps(
+                {
+                    "kind": "read_receipt",
+                    "conversationId": conversation_id,
+                    "providerMessageId": provider_message_id,
+                    "tsMessageId": ts_message_id,
+                }
+            ).encode(),
+        )
+    except Exception:
+        logger.exception("read receipt not requested")
 
 
 def _conversation_id(identity: Identity, raw: RawMessage) -> str:
@@ -129,9 +181,9 @@ def _conversation_id(identity: Identity, raw: RawMessage) -> str:
     return f"conv_u{digest[:16]}"
 
 
-def _touch_conversation(conversation_id: str, identity: Identity) -> bool:
+def _touch_conversation(conversation_id: str, identity: Identity) -> tuple[bool, str]:
     """Creates the conversation or updates it, keeping `mode` (handoff) and the identification
-    attempts the tools keep on the same item. True when it did not exist."""
+    attempts the tools keep on the same item. Returns (it did not exist, its `mode`)."""
     sets = ["#role = :role", "#mode = if_not_exists(#mode, :agent)", "lastMessageAt = :now"]
     values: dict[str, Any] = {
         ":role": identity.role,
@@ -148,13 +200,51 @@ def _touch_conversation(conversation_id: str, identity: Identity) -> bool:
         ExpressionAttributeValues=values,
         ReturnValues="ALL_OLD",
     )
-    return "Attributes" not in response
+    old = response.get("Attributes")
+    return old is None, (old or {}).get("mode", "AGENT")
 
 
-def _put_message(message: NormalizedMessage) -> bool:
+def _record_inbound(conversation_id: str, identity: Identity, raw: RawMessage) -> None:
+    """Where to answer (`lastInbound*`, the only address the Notifier uses) and, on WhatsApp, the
+    start of the 24 h window. Verified senders only, and only if this message is newer than what
+    is stored: a redelivery or a redriven old message must not move them back. ponytail: the two
+    updates are not atomic with each other; a crash between them leaves the older window start,
+    corrected by the next message."""
+    if not raw.sender_verified:
+        return
+
+    def newer(attribute: str, sets: list[str], values: dict[str, Any]) -> None:
+        try:
+            table("conversations").update_item(
+                Key={"conversationId": conversation_id},
+                UpdateExpression="SET " + ", ".join(sets),
+                ConditionExpression=f"attribute_not_exists({attribute}) OR {attribute} < :at",
+                ExpressionAttributeValues={":at": raw.received_at} | values,
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+                raise
+
+    newer(
+        "lastInboundAt",
+        [
+            "lastInboundAt = :at",
+            "lastInboundChannel = :channel",
+            "lastInboundFrom = :from",
+            "lastInboundLocale = :locale",
+        ],
+        {":channel": raw.channel, ":from": raw.sender, ":locale": LOCALES[identity.language]},
+    )
+    if raw.channel == "WHATSAPP":
+        newer("lastWhatsappInboundAt", ["lastWhatsappInboundAt = :at"], {})
+
+
+def _put_message(message: NormalizedMessage, buffered: bool) -> bool:
     """False if this provider message was already stored. The guard item keyed by `messageId`
     (derived from `providerMessageId`) catches a redelivery even with a new timestamp or in
-    another conversation (E-01); it expires through the TurnBuffer TTL."""
+    another conversation (E-01); it expires through the TurnBuffer TTL. With `buffered` the message
+    is appended to the conversation's TurnBuffer in the same transaction (T-22), so a redelivery
+    cannot append it twice nor lose it."""
     item = message.model_dump(by_alias=True, exclude_none=True, mode="json")
     item["tsMessageId"] = f"{message.receivedAt}#{message.messageId}"
     guard = {
@@ -162,29 +252,67 @@ def _put_message(message: NormalizedMessage) -> bool:
         "expiresAt": int(time.time()) + DEDUP_TTL_SECONDS,
     }
     messages = table("messages")
+    transaction = [
+        {
+            "Put": {
+                "TableName": messages.name,
+                "Item": item,
+                "ConditionExpression": "attribute_not_exists(tsMessageId)",
+            }
+        },
+        {
+            "Put": {
+                "TableName": table("turn-buffer").name,
+                "Item": guard,
+                "ConditionExpression": "attribute_not_exists(conversationId)",
+            }
+        },
+    ]
+    if buffered:
+        transaction.append(_buffer_append(message))
     try:
         # The resource's client takes plain Python values, like the Table API.
-        messages.meta.client.transact_write_items(
-            TransactItems=[
-                {
-                    "Put": {
-                        "TableName": messages.name,
-                        "Item": item,
-                        "ConditionExpression": "attribute_not_exists(tsMessageId)",
-                    }
-                },
-                {
-                    "Put": {
-                        "TableName": table("turn-buffer").name,
-                        "Item": guard,
-                        "ConditionExpression": "attribute_not_exists(conversationId)",
-                    }
-                },
-            ]
-        )
+        messages.meta.client.transact_write_items(TransactItems=transaction)
     except ClientError as e:
         reasons = e.response.get("CancellationReasons", [])
         if any(r.get("Code") == "ConditionalCheckFailed" for r in reasons):
             return False
         raise  # e.g. a conflicting concurrent duplicate: retried, then a duplicate
     return True
+
+
+def _buffer_append(message: NormalizedMessage) -> dict[str, Any]:
+    """The TurnBuffer update that queues a message for the next turn (02 §3.3). `caller` is the
+    latest sender: the turn is answered on that channel. The item outlives the burst by a day."""
+    entry = message.model_dump(
+        by_alias=True,
+        exclude_none=True,
+        mode="json",
+        include={"messageId", "text", "attachments", "interactiveReply", "orderId"},
+    )
+    entry["ts"] = message.receivedAt
+    now_ms = int(time.time() * 1000)
+    entry["at"] = now_ms  # when we got it: what the debounce counts from (ts is the provider's)
+    caller = message.model_dump(
+        by_alias=True,
+        exclude_none=True,
+        mode="json",
+        include={"channel", "from_", "role", "contactId", "customerIds", "locale"},
+    )
+    return {
+        "Update": {
+            "TableName": table("turn-buffer").name,
+            "Key": {"conversationId": message.conversationId},
+            "UpdateExpression": (
+                "SET pending = list_append(if_not_exists(pending, :none), :entry),"
+                " #caller = :caller, expiresAt = :expires"
+            ),
+            "ExpressionAttributeNames": {"#caller": "caller"},
+            "ExpressionAttributeValues": {
+                ":none": [],
+                ":entry": [entry],
+                ":caller": caller,
+                ":expires": now_ms // 1000 + 24 * 3600,
+            },
+        }
+    }

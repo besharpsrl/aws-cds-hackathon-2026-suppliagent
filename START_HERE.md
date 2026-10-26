@@ -194,7 +194,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Branch / PR | Attende | Priorità | Stato |
 |---|---|---|---|---|---|
 | 1 | T-21 + T-23 | `feat/FN-01-inbound-pipeline` | – | Must | ✅ PR #16 |
-| 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ☐ |
+| 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ✅ PR da aprire |
 | 3 | T-14 simulatore canali + test end-to-end | | ↺ T-41 (Agente) per la risposta reale | Must | ☐ |
 | 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | | – | Must | ☐ |
 | 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
@@ -202,6 +202,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | 7 | T-29 invio template a Meta (ID EUM Social sempre da SSM) | | WABA collegata (tu) | Should | ☐ |
 | 8 | T-08 `ProactiveStack` | | – | Could | ☐ |
 | 9 | T-24 completo, T-27 RCS | | – | Could | ☐ |
+| 10 | T-67 errori del turno nel Dispatcher (cortesia E-05, handoff E-12) | | ↺ T-49 (Agente) | Should | ☐ |
 
 **Agente** (AG)
 
@@ -211,8 +212,8 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | 2 | T-43 `order_intake` (lettura bigliettini) | | ↺ T-23 (Piattaforma): fino ad allora immagini caricate a mano su S3 | Must | ☐ |
 | 3 | T-06 (**solo** indice prodotti S3 Vectors, niente Knowledge Base) | | – | Must | ☐ |
 | 4 | T-44 `catalog` (matching) | | – | Must | ☐ |
-| 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 (Piattaforma), ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 (Piattaforma: senza, `invoke_agent.py`) | Must | ☐ |
-| 6 | T-49 `handoff_to_human` | | ↺ T-22 (Piattaforma: controllo `mode = HUMAN` nel router, spostato da T-21) | Should | ☐ |
+| 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 (Piattaforma), ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 ✅ | Must | ☐ |
+| 6 | T-49 `handoff_to_human` | | T-22 ✅ (il controllo `mode = HUMAN` è già nel Router) | Should | ☐ |
 | 7 | T-54 (prima Guardrail e Memory) | | – | Should | ☐ |
 | 8 | T-53 eval leggera | | ↺ T-05 (Integrazione): si parte dai 3 bigliettini in `agent/evals/` | Should | ☐ |
 | 9 | T-48 primo contatto e consenso | | – | Should | ☐ |

@@ -34,7 +34,6 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 
 | Branch / PR | Task | Perché insieme |
 |---|---|---|
-| `feat/FN-26-debounce-notifier` | T-22 + T-24 (base) | servono entrambi perché una risposta esca |
 | `feat/FN-03-agent-runtime` | T-40 + T-41 | il runtime senza agente non è testabile |
 | `feat/FN-12-order-flow` | T-45 + T-46 + T-47 | stato ordine e conversazione d'ordine si testano solo insieme |
 
@@ -65,8 +64,8 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
 | 2 | T-29 | **Invio dei template WhatsApp a Meta** e approvazione: dopo il collegamento della WABA a EUM Social, invio degli 8 JSON di `services/notifier/whatsapp_templates/` con `aws socialmessaging create-whatsapp-message-template` (comando in [09 §1](./09_CONTENT_AND_TEMPLATES.md)); verifica stato `APPROVED`; se Meta rifiuta o cambia categoria, correzione dei JSON (test verde) e reinvio; aggiornare 09 con l'esito | FN-12, 19 | P1 (appena c'è la WABA) | T-28, WABA collegata (T-20 / azione manuale) | MG | ☐ |
-| 5 | T-22 | `TurnBuffer` + coda `turn-flush` + `turn_dispatcher` (debounce, lock, drain in ordine di `receivedAt`, re-flush); nel Router: append al TurnBuffer e **check handoff** (`mode = HUMAN` → niente turno), rimasti fuori da T-21 | FN-26, 24 | P1 | T-21 | MG | ☐ |
-| 6 | T-24 | `notifier`: unico punto di uscita, policy di canale, finestra 24h/template, fallback RCS→SMS, fasce orarie, opt-out, idempotenza, **read receipt** WhatsApp dei messaggi in ingresso (rimasto fuori da T-21); dal Router (T-21/T-23): richiesta di reinvio per media non scaricati (E-02), avviso per allegati rifiutati senza `s3Uri` (E-13), **nessuna risposta** a email con `senderVerified = false` (backscatter) (versione base in P1, completa in P2) | FN-01, 14, 15 | P1–P2 | T-20 | MG | ☐ |
+| 6 | T-24 | Completamento del `notifier` (la base — risposte su WhatsApp ed email, sandbox, idempotenza, read receipt — è in DONE): template fuori dalla finestra 24h (F-11.C2, con T-29), fallback di canale e RCS→SMS, fasce orarie, opt-out; dal Router (T-21/T-23): richiesta di reinvio per media non scaricati (E-02) e avviso per allegati rifiutati senza `s3Uri` (E-13); fallimenti di invio: retry ×3 e fallback (E-09) | FN-01, 14, 15 | P2 | T-20 | MG | ☐ |
+| 6b | T-67 | Errori del turno nel Dispatcher (E-05, E-12): messaggio di cortesia al cliente al primo errore del Runtime, secondo errore → `handoff_to_human` `LOW_CONFIDENCE` (oggi: solo retry SQS ×3, poi DLQ con i messaggi lasciati nel buffer e nessun avviso); tetto alla lunghezza di `pending` | FN-26, 24 | P2 | T-49 | MG | ☐ |
 | 7 | T-25 | Messaggi interattivi WhatsApp (button/list) e parsing delle risposte | FN-08, 12 | P2 | T-24 | MG | ☐ |
 | 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel; ingresso già nel Router, T-23); F-02.C3 (indirizzo sconosciuto che risponde a `ordine+<id>@`: contatto dall'ordine, associazione in attesa di conferma) | FN-06, 14 | P2 | T-24, T-07 | MG | ☐ |
 | 8b | T-14 | **Simulatore canali + test end-to-end**: script che pubblica eventi WhatsApp sintetici (testo, foto, vocale) sul topic SNS di EUM Social e modalità `sandbox` del Notifier che registra le uscite invece di inviarle; permette di testare S1 senza numero WhatsApp e riusarlo per eval e reset demo | FN-31 | P1 | T-21, T-24 | MG | ☐ |
