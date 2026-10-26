@@ -68,7 +68,7 @@ Le cose che Claude Code non può fare: account, accessi, contatti con cliente e 
 - [ ] Crediti: quelli AWS ($50) probabilmente non arrivano in tempo (3–5 giorni, scadono il 31/10) → confermare un budget interno beSharp
 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
-- [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova
+- [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova → procedura passo passo in `docs/WABA_SETUP.md`
 - [ ] **Template WhatsApp** inviati a Meta: testi pronti (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`); appena la WABA è collegata a EUM Social si inviano con il task **T-29** (comando in 09 §1)
 - [ ] **SES**: dominio verificato (DNS), **richiesta di uscita dalla sandbox oggi**, record MX per la ricezione
 - [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
