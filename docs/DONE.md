@@ -8,6 +8,13 @@
 
 ## 26/10/2026
 
+### T-04 (parte) – Dati di prova: anagrafiche, storico, insight · FN-31
+- **Cosa**: dati **sintetici** in `seed/data/` per `Customers` (6 locali), `Contacts` (5), `ChannelIdentities` (10, numeri fittizi), `SalesReps` (2), `OrderHistory` (8 settimane, 99 ordini con pattern di riordino), `CustomerInsights` (riordini attesi, prodotti smessi, ≤ 1 suggerimento); modelli pydantic in `suppliagent_shared.models`; `seed/seed.py --env <env>` valida e scrive (PutItem, idempotente). Dettagli in [seed/README](../seed/README.md).
+- **Scelte**: portafoglio dell'agente = `Customers.repId` (nessuna lista duplicata in `SalesReps`); `Contacts.customerId` = locale principale (GSI) + `customerIds` per tutti i locali; indirizzi canale `CANALE#indirizzo` (telefono E.164); numero reale per la demo solo in `seed/private/` (ignorato da git); `mypy_path` alla root per mappare i package sotto `services/`.
+- **Resto di T-04** (catalogo, listini, promo, stock, calendario, `reset.py`): resta nel backlog, sessione Agente con T-06/T-45.
+- **Test**: `tests/test_seed.py` (validazione, chiavi univoche, riferimenti, scenari demo coperti, scrittura su DynamoDB con moto).
+- **Commit**: `218b823` (PR `feat/FN-31-seed-core`).
+
 ### T-62 (parte UI con dati mock) – Inbox ordini + dettaglio con bigliettino · FN-28
 - **Cosa**: inbox (`/`) con filtri stato, righe incerte, problemi di consegna, handoff, ordinata per ultimo aggiornamento e ricaricata ogni 2 s; dettaglio (`/orders/:orderId`) con la **foto del bigliettino a sinistra e le righe a destra**: un riquadro per riga (da `imageRegion` normalizzata), selezione sincronizzata riga↔riquadro, righe corrette evidenziate ("Corrected by …"), scelta tra i candidati per le righe `AMBIGUOUS`/`UNMATCHED` (disabilitata per `judge`, FN-28/FN-32).
 - **Dati mock** (`console/src/orders/fixtures.ts`): 4 ordini sintetici (pub, ristorante, bar, email con handoff e problema di consegna) sulle foto anonimizzate di `agent/evals/data/bigliettini/` con riquadri posizionati a mano; contratti di `02 §2.3/§2.4/§6.3`. Banner "Mock data" nell'inbox; `VITE_ORDERS_SOURCE=api` passa all'API reale (`GET /orders`, `GET /orders/{id}` di T-60).

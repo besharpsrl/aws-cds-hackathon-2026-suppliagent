@@ -1,0 +1,19 @@
+[
+  {
+    "repId": "rep_001",
+    "name": "Marco Rinaldi",
+    "zones": [
+      "MI-NORD",
+      "MI-CENTRO"
+    ],
+    "language": "it"
+  },
+  {
+    "repId": "rep_002",
+    "name": "Giulia Ferri",
+    "zones": [
+      "MI-SUD"
+    ],
+    "language": "it"
+  }
+]

@@ -1,0 +1,99 @@
+[
+  {
+    "customerId": "cus_001",
+    "customerCode": "C10001",
+    "vatNumber": "IT90000000001",
+    "venueName": "Pizzeria Il Forno Antico",
+    "legalName": "Forno Antico S.r.l.",
+    "venueType": "pizzeria",
+    "city": "Milano",
+    "zone": "MI-CENTRO",
+    "deliveryDays": [
+      "MON",
+      "THU"
+    ],
+    "repId": "rep_001",
+    "priceListId": "LIST_STD"
+  },
+  {
+    "customerId": "cus_002",
+    "customerCode": "C10002",
+    "vatNumber": "IT90000000002",
+    "venueName": "Trattoria Da Nino",
+    "legalName": "Da Nino di Rossi N. & C. S.n.c.",
+    "venueType": "trattoria",
+    "city": "Milano",
+    "zone": "MI-NORD",
+    "deliveryDays": [
+      "TUE",
+      "FRI"
+    ],
+    "repId": "rep_001",
+    "priceListId": "LIST_STD"
+  },
+  {
+    "customerId": "cus_003",
+    "customerCode": "C10003",
+    "vatNumber": "IT90000000003",
+    "venueName": "Bar Aurora",
+    "legalName": "Aurora Caffe S.r.l.s.",
+    "venueType": "bar",
+    "city": "Milano",
+    "zone": "MI-CENTRO",
+    "deliveryDays": [
+      "MON",
+      "WED",
+      "FRI"
+    ],
+    "repId": "rep_001",
+    "priceListId": "LIST_STD"
+  },
+  {
+    "customerId": "cus_004",
+    "customerCode": "C10004",
+    "vatNumber": "IT90000000004",
+    "venueName": "The Old Anchor Pub",
+    "legalName": "Old Anchor S.r.l.",
+    "venueType": "pub",
+    "city": "Milano",
+    "zone": "MI-SUD",
+    "deliveryDays": [
+      "WED",
+      "SAT"
+    ],
+    "repId": "rep_002",
+    "priceListId": "LIST_BEVERAGE"
+  },
+  {
+    "customerId": "cus_005",
+    "customerCode": "C10005",
+    "vatNumber": "IT90000000005",
+    "venueName": "Pizzeria Il Forno Antico - Navigli",
+    "legalName": "Forno Antico S.r.l.",
+    "venueType": "pizzeria",
+    "city": "Milano",
+    "zone": "MI-SUD",
+    "deliveryDays": [
+      "MON",
+      "THU"
+    ],
+    "repId": "rep_002",
+    "priceListId": "LIST_STD"
+  },
+  {
+    "customerId": "cus_006",
+    "customerCode": "C10006",
+    "vatNumber": "IT90000000006",
+    "venueName": "Osteria del Ponte",
+    "legalName": "Osteria del Ponte S.a.s.",
+    "venueType": "osteria",
+    "city": "Milano",
+    "zone": "MI-SUD",
+    "deliveryDays": [
+      "TUE",
+      "FRI"
+    ],
+    "repId": "rep_002",
+    "priceListId": "LIST_STD"
+  }
+]

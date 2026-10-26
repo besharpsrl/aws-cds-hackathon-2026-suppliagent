@@ -62,7 +62,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | MG | ☐ |
+| 1 | T-04 | Dati di prova – **resto** (anagrafiche, storico e insight fatti il 26/10, vedi DONE): catalogo anonimizzato/sintetico (sinonimi, unità, multipli; deve contenere gli SKU dello storico), listini, promo, stock con esauriti e sostituti, calendario consegne; `seed/reset.py`. Sessione Agente, con T-06/T-45 | FN-31 | P0–P1 | T-03, dati cliente | MG | ◐ |
 | 2 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | MG | ☐ |
 | 3 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | MG | ☐ |
 | 4 | T-07 | ERP adapter mock (`submit/update/cancel/getStatus`, simulazione pianificazione e consegna) + `order_pdf` + regola EventBridge `order.confirmed` | FN-13, 14 | P2 | T-03 | MG | ☐ |
