@@ -8,6 +8,15 @@
 
 ## 26/10/2026
 
+### T-60 – `ConsoleStack` (versione ridotta) · FN-28, FN-32
+- **Cosa**: Cognito (gruppi `backoffice`, `sales_rep`, `judge`; self sign-up off, attributo custom `repId`, client SPA senza secret, SRP); bucket S3 + CloudFront con OAC per la SPA (log su bucket dedicato); API REST `/v1` con authorizer Cognito (`GET /orders`, `GET /orders/{orderId}`) e Lambda `console_api` (`services/console_api/`) **in sola lettura** su `Orders` (+ URL presigned a 5 min per l'immagine del bigliettino). Output: `UserPoolId`, `UserPoolClientId`, `ApiUrl`, `ConsoleUrl`, `SiteBucketName`.
+- **Scelte**: ruolo dai claim Cognito, mai dal body; `backoffice`/`judge` vedono tutto, `sales_rep` solo `repId` del proprio claim (`custom:repId`) e un ordine altrui risponde 404; bucket SPA in SSE-S3 (l'OAC non usa la CMK senza toccare la key policy di Foundation); bucket SPA/log `RETAIN` (niente `autoDeleteObjects`, il suo provider crea un log group senza tag); IAM con statement espliciti (GetItem/Query/Scan, `s3:GetObject`, `kms:Decrypt`).
+- **Assunzione**: l'ordine porta `imageS3Uri` (`s3://bucket/key`) con la foto del bigliettino; da allineare con T-46/T-22.
+- **Rinviati**: WebSocket + broadcaster (T-63), `rep_chat` (T-64), **WAF** (costo fisso, AGENTS §11: decidere prima della demo; ack `AwsSolutions-CFR2`/`APIG3` da rimuovere se lo si aggiunge), correzione righe (scrittura, con T-46), paginazione liste (max 100).
+- **Test**: `infra/test/console-stack.test.ts` (gruppi, client, OAC, authorizer su ogni metodo, Orders solo lettura), `services/console_api/tests/test_handler.py` (14, inclusa autorizzazione negativa per ruolo/portafoglio); `npm run check` verde (cdk-nag dev+demo).
+- **Deploy**: non eseguito (`cdk deploy suppliagent-dev-console --exclusively -c env=dev` dopo conferma).
+- **Commit**: `141a6e0` (branch `feat/FN-28-console-stack`).
+
 ### T-28 – Testi dei template WhatsApp · FN-12, FN-19
 - **Cosa**: 8 template (IT/EN) in formato `template-definition` di Meta in `services/notifier/whatsapp_templates/`: `order_confirmation`, `order_pending_reminder`, `delivery_update` (UTILITY) e `reorder_suggestion` (MARKETING); revisione e regole di contenuto in [09_CONTENT_AND_TEMPLATES](./09_CONTENT_AND_TEMPLATES.md).
 - **Scelte**: nessun pulsante conferma un ordine senza riepilogo; footer "Assistente virtuale ordini"; nessun nome del distributore; *Stop proposte* revoca il consenso proattivo.
