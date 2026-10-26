@@ -8,6 +8,13 @@
 
 ## 26/10/2026
 
+### T-20 – ChannelsStack: SES + EUM Social · FN-01
+- **Cosa**: `ChannelsStack` con 3 topic SNS cifrati con la CMK (`wa-events` per l'event destination della WABA, `mail-inbound`, `email-events`; publish solo dai service principal `social-messaging`/`ses` con `aws:SourceAccount`), configuration set SES `suppliagent-<env>-cs` (TLS obbligatorio, reputation metrics, event destination SNS su send/delivery/bounce/complaint/open/click). Con `-c sesDomain=<dominio>`: identity SES (Easy DKIM), receipt rule set `suppliagent-<env>-inbound` (S3 `inbound-mail/mail/` cifrato KMS + notifica su `mail-inbound`) e sua attivazione. `FoundationStack`: key policy della CMK per `ses`, `social-messaging`, `sns` e bucket policy `inbound-mail` per SES (entrambe con `aws:SourceAccount`).
+- **Scelte**: parametri legati a passi manuali da context CDK e pubblicati su SSM (`waPhoneNumberId`, `sesDomain`, `sesFromAddress`, default `UNSET`) più `waEventsTopicArn` e `sesConfigurationSet`: collegare il numero WhatsApp = `-c waPhoneNumberId=<id>`, senza modificare il codice. Senza `sesDomain` nessuna identity né rule set (account senza rule set attivo il 26/10, SES in sandbox). Receipt rule in L1 per non far dipendere Foundation da Channels. **Fuori scope** (spostato in T-27): EUM SMS/RCS v2.
+- **Test**: `infra/test/channels-stack.test.ts` (topic e policy, configuration set, con/senza dominio, SSM, grant in Foundation, cdk-nag dev/demo con e senza dominio); `npm run check` verde.
+- **Da fare a mano**: vedi README «Manual steps» (event destination della WABA, DNS DKIM/MX, uscita dalla sandbox SES).
+- **Commit**: branch `feat/FN-01-channels-stack`.
+
 ### T-60 – `ConsoleStack` (versione ridotta) · FN-28, FN-32
 - **Cosa**: Cognito (gruppi `backoffice`, `sales_rep`, `judge`; self sign-up off, attributo custom `repId`, client SPA senza secret, SRP); bucket S3 + CloudFront con OAC per la SPA (log su bucket dedicato); API REST `/v1` con authorizer Cognito (`GET /orders`, `GET /orders/{orderId}`) e Lambda `console_api` (`services/console_api/`) **in sola lettura** su `Orders` (+ URL presigned a 5 min per l'immagine del bigliettino). Output: `UserPoolId`, `UserPoolClientId`, `ApiUrl`, `ConsoleUrl`, `SiteBucketName`.
 - **Scelte**: ruolo dai claim Cognito, mai dal body; `backoffice`/`judge` vedono tutto, `sales_rep` solo `repId` del proprio claim (`custom:repId`) e un ordine altrui risponde 404; bucket SPA in SSE-S3 (l'OAC non usa la CMK senza toccare la key policy di Foundation); bucket SPA/log `RETAIN` (niente `autoDeleteObjects`, il suo provider crea un log group senza tag); IAM con statement espliciti (GetItem/Query/Scan, `s3:GetObject`, `kms:Decrypt`).

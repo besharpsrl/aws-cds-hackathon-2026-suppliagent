@@ -71,6 +71,10 @@ Full design: [`docs/INFRASTRUCTURE_DESIGN.md`](docs/INFRASTRUCTURE_DESIGN.md) (I
 
 **Manual prerequisites** (cannot be automated): WhatsApp Business Account linked to AWS End User Messaging Social and approved message templates; SES domain verification, production access and MX record; RCS agent registration and test devices; SMS origination identity.
 
+**Manual steps** (after `cdk deploy suppliagent-<env>-channels`):
+1. *WhatsApp*: link the WABA to AWS End User Messaging Social, then add an event destination pointing at the SNS topic `suppliagent-<env>-wa-events` (ARN in SSM `/suppliagent/<env>/waEventsTopicArn`); redeploy with `-c waPhoneNumberId=<phone-number-id>`.
+2. *Email*: deploy with `-c sesDomain=<domain>`, add the DKIM CNAME records shown by the SES identity and an `MX 10 inbound-smtp.eu-west-1.amazonaws.com` record, request SES production access (sandbox: verified recipients only). Only one SES receipt rule set can be active per region; the stack activates its own.
+
 ```bash
 uv sync
 cd infra && npm ci && npx cdk synth -c env=dev
