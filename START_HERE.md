@@ -26,7 +26,7 @@ Calendario sintetico (dettaglio in §5):
 | Giorno | Tu | Claude Code |
 |---|---|---|
 | **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
-| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ⬜ T-42 → T-40 |
+| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ✅ T-42 → T-40 + T-41 ridotti (26/10) |
 | **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
 | **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
 | **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |
@@ -265,7 +265,7 @@ Topic: `aws`, `amazon-bedrock`, `bedrock-agentcore`, `strands-agents`, `whatsapp
 | Giorno | Tu | Claude Code (backlog) |
 |---|---|---|
 | **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
-| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ⬜ T-42 → T-40 |
+| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ✅ T-42 → T-40 + T-41 ridotti (26/10) |
 | **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
 | **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
 | **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |
