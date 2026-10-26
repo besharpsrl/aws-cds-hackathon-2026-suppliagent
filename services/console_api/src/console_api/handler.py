@@ -14,6 +14,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 READ_ALL_ROLES = {"backoffice", "judge"}
+WRITE_ROLES = {"backoffice", "sales_rep"}
 SUMMARY_FIELDS = ("orderId", "customerId", "repId", "status", "createdAt", "updatedAt")
 HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 # ponytail: one page of 100, no pagination; add LastEvaluatedKey paging if the demo outgrows it.
@@ -100,6 +101,9 @@ def handler(event: dict[str, Any], _context: object) -> dict[str, Any]:
     if not groups & (READ_ALL_ROLES | {"sales_rep"}):
         return _response(403, {"error": "forbidden"})
     if event["httpMethod"] != "GET":
+        # `judge` is read-only (FN-28): refused before routing, no write endpoint can skip it.
+        if not groups & WRITE_ROLES:
+            return _response(403, {"error": "read_only"})
         return _response(405, {"error": "method_not_allowed"})
     resource = event["resource"]
     if resource == "/orders":

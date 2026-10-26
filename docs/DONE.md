@@ -8,6 +8,11 @@
 
 ## 26/10/2026
 
+### T-66 – Ruolo `judge` in sola lettura e rifiniture demo · FN-28, FN-31
+- **Cosa**: (1) `console_api` rifiuta con 403 `read_only` ogni metodo non-GET del `judge` **prima** del routing, così nessun endpoint di scrittura futuro (correzioni, T-46) può dimenticare il controllo; i gruppi sono additivi (un utente `judge`+`backoffice` non è bloccato). (2) Nel dettaglio ordine un avviso spiega al `judge` perché le correzioni sono disabilitate. (3) Pagina **Try the demo** (`/demo`, link nel menu) per i giudici: bigliettino di esempio scaricabile, passi per ordinare, numero WhatsApp ed email da `VITE_DEMO_WHATSAPP` / `VITE_DEMO_ORDER_EMAIL` (altrimenti "to be announced"). (4) Pagina "Page not found" con link di ritorno. (5) README: sezione giudici con il ruolo `judge` e la pagina demo.
+- **Test**: `services/console_api/tests` (+6: scrittura negata al `judge` su ogni metodo ed endpoint, gruppi additivi, 405 per gli altri ruoli), `console/src` (+9: avviso read-only, pagina demo con e senza canali configurati, 404, menu); `npm run check` verde.
+- **Resta per FN-31** (altri stream/azioni manuali): numero WhatsApp, email ordini, credenziali `judge` e URL nel README, script di reset dei dati demo, ambiente `demo` attivo fino al 12/11.
+
 ### Console online su `dev` · FN-28
 - **Cosa**: `scripts/deploy-console.sh [dev|demo]` (build con gli id letti dagli output di `suppliagent-<env>-console`, sync del bucket sito con cache lunga sugli asset e `no-cache` su `index.html`, invalidazione CloudFront). Eseguito su `dev` (account `471112860008`, `eu-west-1`): console su `https://d3po2gqnlfcxyr.cloudfront.net`, ordini su dati mock (`VITE_ORDERS_SOURCE=mock`).
 - **Verifica**: home 200, fallback SPA su `/orders/...` 200, CORS dell'API ok dall'origin CloudFront.

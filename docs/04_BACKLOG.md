@@ -28,7 +28,7 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 |---|---|---|
 | **Must** – S1 end-to-end | Sab–Dom | T-04 (dati sintetici), T-21, T-23, T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
 | **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati (**T-29**), T-25, T-49, T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
-| **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65, T-66 |
+| **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65 |
 
 **PR accorpate** (deciso il 26/10): i task che toccano lo stesso stack e non sono testabili da soli vanno in **una sola PR**, con un commit per task; tutti gli altri task = una PR ciascuno.
 
@@ -52,7 +52,7 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 | 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
 | 6 | 25/10 | T-09 | T-26, T-27 | T-46, T-47, T-48, T-49, T-53 (avvio) | T-63 |
 | 7 | 25–26/10 | T-08 | – | T-50, T-51, T-52 | T-64, T-65 |
-| 8 | 27–28/10 | T-10, T-11, T-12 | bugfix | T-53 (report eval), bugfix | T-66, bugfix |
+| 8 | 27–28/10 | T-10, T-11, T-12 | bugfix | T-53 (report eval), bugfix | bugfix |
 
 ## 3. Task (in ordine di esecuzione per stream)
 
@@ -112,7 +112,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 2 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
 | 3 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
 | 4 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
-| 5 | T-66 | Ruolo `judge` in sola lettura, rifiniture demo | FN-31 | P4 | T-62 | MG | ☐ |
 
 ## 4. Suggerimento di assegnazione
 

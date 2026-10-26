@@ -53,6 +53,7 @@ def call(
     rep_id: str | None = None,
     query: dict[str, str] | None = None,
     order_id: str | None = None,
+    method: str = "GET",
 ) -> tuple[int, dict[str, object]]:
     claims: dict[str, str] = {}
     if groups is not None:
@@ -60,7 +61,7 @@ def call(
     if rep_id:
         claims["custom:repId"] = rep_id
     event = {
-        "httpMethod": "GET",
+        "httpMethod": method,
         "resource": path,
         "pathParameters": {"orderId": order_id} if order_id else None,
         "queryStringParameters": query,
@@ -125,3 +126,20 @@ def test_detail_without_image_has_null_url() -> None:
 
 def test_missing_order_is_404() -> None:
     assert call("/orders/{orderId}", "backoffice", order_id="ord_x")[0] == 404
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
+def test_judge_is_read_only_whatever_the_endpoint(method: str) -> None:
+    # FN-28/FN-31: the judge role never writes; denied before routing, so future write endpoints
+    # (T-46 corrections) cannot forget the check.
+    for path, order_id in (("/orders", None), ("/orders/{orderId}", "ord_1")):
+        assert call(path, "judge", order_id=order_id, method=method)[0] == 403
+
+
+def test_judge_with_a_write_group_is_not_read_only() -> None:
+    # Groups are additive: a user who is also backoffice is not blocked by the judge rule.
+    assert call("/orders", "[judge backoffice]", method="POST")[0] == 405
+
+
+def test_non_get_is_not_allowed_for_other_roles_yet() -> None:
+    assert call("/orders", "backoffice", method="PATCH")[0] == 405
