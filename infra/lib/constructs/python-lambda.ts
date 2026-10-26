@@ -1,7 +1,4 @@
-import { cpSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { AssetHashType, Duration, RemovalPolicy, Stack, Validations } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, Validations } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -10,41 +7,12 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import type { EnvConfig } from '../../config/environments.js';
 
-const sharedPackage = fileURLToPath(
-  new URL('../../../services/shared/src/suppliagent_shared', import.meta.url),
-);
-const notCache = (path: string) => !/(__pycache__|\.pyc$)/.test(path);
-
-/**
- * Asset with the function's `src` plus `suppliagent_shared`, copied at synth time (no Docker, so CI
- * needs none). Third-party packages come from the runtime (boto3) and the Powertools layer (pydantic).
- */
-export function pythonCode(src: string): lambda.Code {
-  return lambda.Code.fromAsset(src, {
-    // Hash the bundle, not `src`: a change in the shared package must redeploy the function.
-    assetHashType: AssetHashType.OUTPUT,
-    bundling: {
-      image: lambda.Runtime.PYTHON_3_12.bundlingImage, // never used: local bundling always succeeds
-      local: {
-        tryBundle(outputDir: string) {
-          cpSync(src, outputDir, { recursive: true, filter: notCache });
-          cpSync(sharedPackage, join(outputDir, 'suppliagent_shared'), {
-            recursive: true,
-            filter: notCache,
-          });
-          return true;
-        },
-      },
-    },
-  });
-}
-
 export interface PythonLambdaProps {
   readonly config: EnvConfig;
   readonly key: IKey;
   /** Short component name, e.g. `inbound-router`; the function is named `suppliagent-<env>-<name>`. */
   readonly name: string;
-  /** Use `pythonCode()` for functions that import `suppliagent_shared`. */
+  // Python code with dependencies and suppliagent_shared: `uvBundling` (constructs/uv-bundling.ts).
   readonly code: lambda.Code;
   readonly handler: string;
   readonly environment?: Record<string, string>;

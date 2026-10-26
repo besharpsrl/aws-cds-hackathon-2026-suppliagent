@@ -1,4 +1,4 @@
-import { fileURLToPath } from 'node:url';
+import * as path from 'node:path';
 import { Duration, Stack, Validations, type StackProps } from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import type { ITableV2 } from 'aws-cdk-lib/aws-dynamodb';
@@ -6,6 +6,7 @@ import type { IEventBus } from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
@@ -13,7 +14,8 @@ import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import type { EnvConfig } from '../../config/environments.js';
-import { PythonLambda, pythonCode } from '../constructs/python-lambda.js';
+import { PythonLambda } from '../constructs/python-lambda.js';
+import { REPO_ROOT, uvBundling } from '../constructs/uv-bundling.js';
 
 export interface MessagingStackProps extends StackProps {
   readonly config: EnvConfig;
@@ -32,8 +34,6 @@ export interface MessagingStackProps extends StackProps {
     readonly turnBuffer: ITableV2;
   };
 }
-
-const routerCode = fileURLToPath(new URL('../../../services/inbound_router/src', import.meta.url));
 
 /**
  * Ingestion (T-21, FN-01, INFRASTRUCTURE_DESIGN §5.2): channel topics -> SQS `inbound` -> Inbound
@@ -71,7 +71,18 @@ export class MessagingStack extends Stack {
       config,
       key,
       name: 'inbound-router',
-      code: pythonCode(routerCode),
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/inbound_router'),
+        uvBundling({
+          package: 'suppliagent-inbound-router',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/inbound_router/src/inbound_router': 'inbound_router',
+          },
+          // boto3 is bundled on purpose: the runtime's may predate the `socialmessaging` client.
+          omit: ['aws-lambda-powertools'],
+        }),
+      ),
       handler: 'inbound_router.handler.handler',
       timeout: Duration.seconds(60),
       environment: {

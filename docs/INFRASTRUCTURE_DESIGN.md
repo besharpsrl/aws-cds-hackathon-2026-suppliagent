@@ -59,8 +59,8 @@ Disponibilità servizi verificata il 09–12/10/2026:
 | 2 | `DataStack` | Tabelle DynamoDB (§5.7) con Streams e PITR, custom resource di seed (rinviata a T-04) | Foundation |
 | 3 | `CatalogStack` | S3 Vectors bucket + indice `products`, Lambda di indicizzazione catalogo, **Bedrock Knowledge Base** (schede tecniche, vector store S3 Vectors) + data source S3 | Foundation, Data |
 | 4 | `ChannelsStack` | SES (identity dominio, configuration set, receipt rule set → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out list), EUM Social (event destination SNS), topic SNS inbound | Foundation |
-| 5 | `AgentStack` | ECR image, AgentCore Runtime + Endpoint, AgentCore Memory, AgentCore Gateway + target Lambda, Bedrock Guardrail, ruoli IAM | Data, Catalog |
-| 6 | `MessagingStack` | SQS `inbound` + DLQ, SQS `turn-flush` + DLQ, Lambda Inbound Router (con il download dei media), Turn Dispatcher, Notifier, Order PDF Generator, ERP Adapter, EventBridge Scheduler | Channels, Agent, Data |
+| 5 | `AgentStack` | AgentCore Runtime (zip, code deploy), AgentCore Gateway + target Lambda dei tool, ruoli IAM; con T-54: AgentCore Memory, Bedrock Guardrail | Foundation, Data, Catalog |
+| 6 | `MessagingStack` | SQS `inbound` + DLQ, SQS `turn-flush` + DLQ, Lambda Inbound Router (con il download dei media), Turn Dispatcher, Notifier, Order PDF Generator, ERP Adapter, EventBridge Scheduler | Foundation, Channels, Agent, Data |
 | 7 | `ProactiveStack` | EventBridge Scheduler giornaliero, Lambda **Insights & Reorder Analyzer**, Lambda **Proactive Trigger** | Data, Messaging |
 | 8 | `ConsoleStack` | Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API Gateway REST + WebSocket, Lambda API/broadcaster/rep-chat, S3 + CloudFront (OAC) + WAF | Data, Messaging, Agent |
 | 9 | `AnalyticsStack` | Firehose (eventi CDS + applicativi) → S3 Parquet, Glue Catalog, Athena workgroup e viste KPI, CloudWatch Dashboard + allarmi | Channels, Foundation |
@@ -159,15 +159,15 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 
 | Componente | Configurazione |
 |---|---|
-| **Runtime** | Container ARM64 (Python 3.12, Strands) da ECR; `runtimeSessionId = conversationId`; env: `MEMORY_ID`, `GATEWAY_URL`, `GUARDRAIL_ID`, `MODEL_ID` |
+| **Runtime** | **Code deploy** (zip ARM64, Python 3.12, Strands), niente container né ECR: dipendenze dal `uv.lock` installate per `aarch64` al `cdk synth` (`infra/lib/constructs/uv-bundling.ts`, serve `uv`); `runtimeSessionId` derivato da `conversationId` (02 §6.2); env: `GATEWAY_URL`, `MODEL_ID` (+ `MEMORY_ID`, `GUARDRAIL_ID` con T-54); ARN pubblicato su SSM `/suppliagent/<env>/agentRuntimeArn` |
 | **Modello** | **Nova Pro** (`eu.amazon.nova-pro-v1:0`) per ragionamento e **lettura dei bigliettini** (vision); **Nova Lite** (`eu.amazon.nova-lite-v1:0`) per classificazioni veloci. Claude è il target futuro se abilitato (vedi §2) |
 | **Ruoli** | Il Dispatcher passa `role`; il Runtime carica istruzioni e **sottoinsieme di tool** per ruolo (§5.3.1) |
-| **Memory** | `actorId = contactId`; strategie *semantic* (preferenze, prodotti abituali, note), *summary*, *user preference* (canale, lingua, orari) |
-| **Gateway** | Endpoint MCP con target Lambda; autenticazione OAuth (Cognito client credentials); **autorizzazione per ruolo** sui tool |
-| **Identity** | Workload identity del Runtime; credenziali outbound verso il Gateway |
-| **Observability** | Tracce OTel → CloudWatch GenAI Observability: latenza per turno, token, tool, errori |
+| **Memory** | **T-54**. `actorId = contactId`; strategie *semantic* (preferenze, prodotti abituali, note), *summary*, *user preference* (canale, lingua, orari). Fino ad allora lo storico della conversazione resta nella memoria della sessione del Runtime |
+| **Gateway** | Endpoint MCP con target Lambda; autenticazione in ingresso **AWS IAM (SigV4)** (deciso il 26/10: solo il ruolo del Runtime ha `bedrock-agentcore:InvokeGateway`, niente Cognito né Identity); nessuna ricerca semantica (sarebbe un tool in più per il modello); **autorizzazione per ruolo** sui tool |
+| **Identity** | Workload identity del Runtime (default); nessun provider di credenziali: il Gateway usa IAM |
+| **Observability** | **T-54** (ADOT). Tracce OTel → CloudWatch GenAI Observability: latenza per turno, token, tool, errori; con T-54 anche retention e CMK del log group del Runtime (oggi creato dal servizio) |
 | **Evaluations** | AgentCore Evaluations (GA, disponibile in eu-west-1): valutazioni on-demand sul dataset di progetto (lettura bigliettini, matching, intento, uso dei tool) ed evaluator built-in di qualità/sicurezza; usabile anche in CI |
-| **Guardrails** | PII, topic negati (prezzi di altri clienti, sconti non autorizzati, consigli sanitari), filtri contenuti |
+| **Guardrails** | **T-54**. PII, topic negati (prezzi di altri clienti, sconti non autorizzati, consigli sanitari), filtri contenuti |
 | **AI services** | **Transcribe** per i vocali; **Nova Pro vision** per bigliettini e foto; **Textract** come fallback per documenti stampati (DDT, PDF) |
 
 #### 5.3.1 Tool esposti dal Gateway
@@ -199,7 +199,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 - Il tool si fida solo di **chi** è il chiamante (`role` + `contactId`); **cosa** può vedere lo ricava sempre da DynamoDB (`suppliagent_shared.auth.caller_scope`): `Contacts.customerIds` per un contatto, `Customers.repId` (GSI `by-repId`) per un agente; mai da `customerIds` passati nella chiamata. Campi in più in `caller` → `INVALID_INPUT`.
 - **Fail-closed**: `Scope.customer_ids` contiene solo i locali di un contatto `VERIFIED` (o il portafoglio dell'agente); i locali di un contatto `PENDING_VERIFICATION` stanno in `Scope.pending_customer_ids`, che un tool usa **solo se lo dichiara** (oggi: profilo base del locale; in T-46 le bozze d'ordine, F-02.C2). Prezzi, ordini e storico: solo `customer_ids`. Qualsiasi altro stato del contatto → nessun accesso.
 - Identificazione (`identify_contact`, chiamante `UNKNOWN`): servono codice cliente o P.IVA **e** nome del locale; massimo **3 tentativi per conversazione** (contatore `Conversations.identifyAttempts`), poi `IDENTIFICATION_FAILED` → handoff (F-02.C4). Un indirizzo già registrato non viene mai riassegnato. Limite residuo: chi usa indirizzi email sempre nuovi ottiene conversazioni nuove (aggiungere un limite per dominio o globale se serve).
-- Confine di fiducia: solo il Runtime ha le credenziali OAuth del Gateway; le Lambda dei tool sono invocabili solo dal Gateway.
+- Confine di fiducia: solo il ruolo del Runtime può invocare il Gateway (IAM); le Lambda dei tool sono invocabili solo dal ruolo del Gateway. Limite: un principal dell'account con `bedrock-agentcore:*` su `*` può invocare Runtime o Gateway con un `caller` arbitrario; con T-22 limitare `InvokeAgentRuntime` al ruolo del Dispatcher (resource policy, se disponibile). Lo storico in sessione è legato a `conversationId` **e** `channelAddress`; il Dispatcher deriva `runtimeSessionId` solo da `conversationId` (02 §6.2).
 - Errori verso l'agente solo come codice (`{"error": "ACCESS_DENIED" | "NOT_FOUND" | "INVALID_INPUT" | "UNKNOWN_TOOL" | "INTERNAL_ERROR"}`), mai stack trace; nei log ID e codici, mai contenuti o indirizzi.
 - Eventi applicativi con `Source = suppliagent.<componente>` (es. `suppliagent.tool-customers`).
 
@@ -392,7 +392,7 @@ sequenceDiagram
 ```
 SuppliAgent/
 ├── infra/                     # CDK app (TypeScript): 9 stack
-├── agent/                     # Strands agent (Python) + Dockerfile, prompt per ruolo, eval
+├── agent/                     # Strands agent (Python), prompt per ruolo in src/suppliagent_agent/prompts/, eval
 ├── services/                  # Lambda: router (con media), dispatcher, notifier, pdf, erp-adapter,
 │                              #         tools/*, insights, proactive, console-api, rep-chat, broadcaster
 ├── console/                   # React (Vite): back office + chat agenti
@@ -441,3 +441,11 @@ Prerequisiti non automatizzabili:
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
 - [ ] ERP del cliente (per documentare l'adapter futuro)
 - [ ] Soglie di matching tarate sui bigliettini reali
+- [ ] Hardening dell'agente dai rilievi di revisione di T-40/T-41 (PR #15), non bloccanti; da fare con T-54 o in P4:
+  - IAM Runtime: statement separato per i `foundation-model` con condizione `bedrock:InferenceProfileArn` (oggi Nova Pro è invocabile anche senza il profilo `eu.`, sempre in UE)
+  - IAM tool: togliere `kms:Encrypt` e aggiungere `kms:ViaService` (`dynamodb.<region>.amazonaws.com`, `events.<region>.amazonaws.com`)
+  - Il ruolo del Runtime legge l'intero bucket degli asset CDK (grant dell'L2 `fromCodeAsset`): restringere alla chiave dell'asset o accettare (oggi accettato e motivato in cdk-nag); test che gli unici statement `Resource: "*"` del Runtime siano X-Ray e metriche
+  - Prompt: racchiudere i messaggi utente tra delimitatori (`<user_message>`) e dire che il contesto vale solo nel system prompt
+  - `TurnRequest`: `max_length` su `messages`, `attachments`, `customerIds`; `Literal` per `channel` e tipo di allegato
+  - `scripts/invoke_agent.py`: limitare a `dev` o chiedere conferma esplicita per `demo` (scrive `Contacts`/`ChannelIdentities`, AGENTS §11)
+  - Limite ai cicli dell'agente per turno (E-12)

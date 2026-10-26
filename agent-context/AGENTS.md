@@ -37,8 +37,9 @@ Leggi **prima di implementare** la parte che ti riguarda:
 | `docs/02_TECHNICAL_FLOWS.md` | **Come** si comporta: stati, flussi `F-xx`, casi `F-xx.Cn`, errori `E-xx`, contratti JSON, parametri |
 | `docs/INFRASTRUCTURE_DESIGN.md` | Stack CDK, tabelle, code, IAM, sicurezza |
 | `docs/architecture.drawio` | Diagramma |
-| `docs/04_BACKLOG.md` | Task `T-xx` **ancora da fare**: ordine, dipendenze, stato |
-| `docs/DONE.md` | Lavoro completato: a task chiuso si **rimuove** la riga dal backlog (o da `TODO_DOCS.md`, §12 di INFRASTRUCTURE_DESIGN) e si aggiunge qui con data, commit e verifica |
+| `docs/04_BACKLOG.md` | Task `T-xx` **ancora da fare**: descrizione completa, FN, dipendenze (anche dei task non ancora assegnati) |
+| `START_HERE.md` §3bis | **Assegnazione dei task alle sessioni** (fonte unica): ordine, dipendenze tra sessioni (bloccanti o di integrazione), stato |
+| `docs/DONE.md` | Lavoro completato: a task chiuso, nella stessa PR, si **rimuove** la riga dal backlog (o da `TODO_DOCS.md`, §12 di INFRASTRUCTURE_DESIGN), si segna ✅ in START_HERE §3bis e si aggiunge qui con data, commit e verifica |
 | `docs/HANDOFF_CLAUDE_CODE.md` | Setup, prompt di avvio e prompt per stream |
 | `docs/TODO_DOCS.md` | Documenti ancora mancanti (es. agent spec, contratti) |
 
@@ -79,10 +80,10 @@ SuppliAgent/
 │   ├── lib/constructs/          # construct riutilizzabili (es. LambdaFunction con defaults)
 │   └── config/                  # config per ambiente (dev, demo)
 ├── agent/                       # Strands agent (Python) per AgentCore Runtime
-│   ├── src/suppliagent_agent/   # entrypoint, prompt per ruolo, orchestrazione
-│   ├── prompts/                 # system prompt: customer.md, sales_rep.md, shared.md
-│   ├── evals/                   # dataset (bigliettini, vocali, conversazioni) + runner
-│   └── Dockerfile
+│   ├── main.py                  # entrypoint dello zip (code deploy, niente container)
+│   ├── src/suppliagent_agent/   # app AgentCore, turno, tool per ruolo, SigV4 verso il Gateway
+│   │   └── prompts/             # system prompt: customer.md, sales_rep.md, shared.md
+│   └── evals/                   # dataset (bigliettini, vocali, conversazioni) + runner
 ├── services/                    # Lambda (Python 3.12) – una cartella per funzione
 │   ├── inbound_router/  turn_dispatcher/  notifier/   # media → S3 dentro inbound_router
 │   ├── order_pdf/  erp_adapter/  catalog_indexer/  insights_analyzer/  proactive_trigger/
@@ -118,9 +119,9 @@ npm ci && uv sync
 # Tutti i controlli (gli stessi della CI)
 npm run check          # = lint + typecheck + test + synth
 npm run lint           # eslint + prettier --check + ruff check + ruff format --check
-npm run typecheck      # tsc (workspaces) + mypy services agent tests
+npm run typecheck      # tsc (workspaces) + mypy services agent tests seed scripts
 npm test               # vitest (workspaces) + pytest
-npm run synth          # cdk synth -c env=dev (cdk-nag v3: errori = synth fallita)
+npm run synth          # cdk synth -c env=dev (cdk-nag v3: errori = synth fallita; serve `uv`: impacchetta Lambda e agente)
 npm run format         # prettier --write + ruff format
 
 # Infra
@@ -134,6 +135,9 @@ npm run dev -w console | npm run build -w console | npm test -w console
 # Dati demo
 uv run python seed/seed.py --env dev        # carica dati di prova
 uv run python seed/reset.py --env dev       # ripristina lo scenario demo
+
+# Agente deployato (finché il Dispatcher T-22 non è su main)
+uv run python scripts/invoke_agent.py --env dev --address 'WHATSAPP#+393330000001' --text "ciao"
 ```
 
 ## 7. Convenzioni di codice
