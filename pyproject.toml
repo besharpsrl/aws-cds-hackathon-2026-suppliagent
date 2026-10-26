@@ -9,6 +9,7 @@ dependencies = [
   "suppliagent-console-api",
   "suppliagent-inbound-router",
   "suppliagent-tool-customers",
+  "suppliagent-tool-order-intake",
 ]
 
 [tool.uv]
@@ -20,6 +21,7 @@ suppliagent-agent = { workspace = true }
 suppliagent-console-api = { workspace = true }
 suppliagent-inbound-router = { workspace = true }
 suppliagent-tool-customers = { workspace = true }
+suppliagent-tool-order-intake = { workspace = true }
 
 [tool.uv.workspace]
 members = ["agent", "services/*", "services/tools/*"]
@@ -50,7 +52,7 @@ python_version = "3.12"
 strict = true
 explicit_package_bases = true
 # Package roots, so files under services/ map to their import names (e.g. suppliagent_shared).
-mypy_path = "services/shared/src:services/console_api/src:services/inbound_router/src:services/tools/customers/src:agent/src"
+mypy_path = "services/shared/src:services/console_api/src:services/inbound_router/src:services/tools/customers/src:services/tools/order_intake/src:services/tools/order_intake/tests:agent/src"
 exclude = ["(^|/)(node_modules|cdk\\.out|\\.venv)/"]
 
 [tool.pytest.ini_options]

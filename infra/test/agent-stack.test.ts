@@ -15,20 +15,26 @@ const statementsOf = (roleLogicalIdPrefix: string): Statement[] =>
 const actions = (statements: Statement[]) => statements.flatMap((s) => [s.Action].flat());
 
 describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
-  it('exposes the customers tools on an MCP gateway with IAM auth and no semantic search', () => {
+  it('exposes the tool targets on an MCP gateway with IAM auth and no semantic search', () => {
     template.hasResourceProperties('AWS::BedrockAgentCore::Gateway', {
       AuthorizerType: 'AWS_IAM',
       ProtocolType: 'MCP',
       ProtocolConfiguration: { Mcp: Match.objectEquals({ SupportedVersions: Match.anyValue() }) },
       KmsKeyArn: Match.anyValue(),
     });
-    const [target] = Object.values(template.findResources('AWS::BedrockAgentCore::GatewayTarget'));
-    const tools = target.Properties.TargetConfiguration.Mcp.Lambda.ToolSchema.InlinePayload;
-    expect(tools.map((t: { Name: string }) => t.Name)).toEqual([
+    const targets = Object.values(template.findResources('AWS::BedrockAgentCore::GatewayTarget'));
+    const toolsOf = (name: string) =>
+      targets.find((t) => t.Properties.Name === name)?.Properties.TargetConfiguration.Mcp.Lambda
+        .ToolSchema.InlinePayload;
+    expect(targets).toHaveLength(2);
+    expect(toolsOf('customers').map((t: { Name: string }) => t.Name)).toEqual([
       'identify_contact',
       'get_customer_profile',
     ]);
-    for (const tool of tools) {
+    expect(toolsOf('order-intake').map((t: { Name: string }) => t.Name)).toEqual([
+      'extract_order_lines',
+    ]);
+    for (const tool of [...toolsOf('customers'), ...toolsOf('order-intake')]) {
       expect(tool.InputSchema.Properties.caller.Type).toBe('object'); // forwarded to the Lambda
     }
   });
@@ -102,6 +108,54 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
         Variables: Match.objectLike({
           TABLE_PREFIX: 'suppliagent-dev-',
           IDENTIFICATION_MAX_ATTEMPTS: '3',
+          EVENT_BUS_NAME: Match.anyValue(),
+        }),
+      },
+    });
+  });
+
+  it('gives the order intake tool media read, Transcribe and the Nova profile, nothing wider (T-43)', () => {
+    const statements = statementsOf('OrderIntakeToolRole');
+    expect(new Set(actions(statements))).toEqual(
+      new Set([
+        'logs:CreateLogStream',
+        'logs:PutLogEvents',
+        'xray:PutTraceSegments',
+        'xray:PutTelemetryRecords',
+        's3:GetObject',
+        's3:PutObject',
+        'transcribe:StartTranscriptionJob',
+        'transcribe:GetTranscriptionJob',
+        'bedrock:InvokeModel',
+        'kms:Decrypt',
+        'kms:Encrypt',
+        'kms:GenerateDataKey',
+        'events:PutEvents',
+      ]),
+    );
+    const find = (action: string) => statements.find((s) => [s.Action].flat().includes(action));
+    const reads = JSON.stringify(find('s3:GetObject')?.Resource);
+    expect(reads).toContain('/media/*');
+    expect(reads).toContain('/transcripts/*');
+    expect(JSON.stringify(find('s3:PutObject')?.Resource)).not.toContain('/media/*');
+    expect(JSON.stringify(find('transcribe:StartTranscriptionJob')?.Resource)).toContain(
+      'transcription-job/ordint-*',
+    );
+    const model = JSON.stringify(find('bedrock:InvokeModel')?.Resource);
+    expect(model).toContain('inference-profile/eu.amazon.nova-pro-v1:0');
+    expect(model).not.toMatch(/foundation-model\/\*|"\*"/);
+  });
+
+  it('configures the order intake tool from the environment config', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'suppliagent-dev-tool-order-intake',
+      Handler: 'suppliagent_tool_order_intake.handler.lambda_handler',
+      Timeout: 120,
+      Environment: {
+        Variables: Match.objectLike({
+          MODEL_ID: 'eu.amazon.nova-pro-v1:0',
+          MEDIA_BUCKET: Match.anyValue(),
+          KMS_KEY_ARN: Match.anyValue(),
           EVENT_BUS_NAME: Match.anyValue(),
         }),
       },

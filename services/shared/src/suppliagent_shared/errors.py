@@ -15,3 +15,11 @@ class NotFoundError(SuppliAgentError):
 
 class AccessDeniedError(SuppliAgentError):
     code = "ACCESS_DENIED"
+
+
+class UnsupportedMediaError(SuppliAgentError):
+    code = "UNSUPPORTED_MEDIA"
+
+
+class ExtractionFailedError(SuppliAgentError):
+    code = "EXTRACTION_FAILED"

@@ -53,3 +53,27 @@ export const CUSTOMERS_TOOLS: agentcore.ToolDefinition[] = [
     },
   },
 ];
+
+/** Mirrors the pydantic input in services/tools/order_intake (T-43). */
+export const ORDER_INTAKE_TOOLS: agentcore.ToolDefinition[] = [
+  {
+    name: 'extract_order_lines',
+    description:
+      'Reads an order and returns its raw lines (text as written, quantity, unit, how sure the reading is). Pass the s3Uri of a photo or voice message of the conversation, or the text of the order. Statuses: OK, NOT_AN_ORDER, UNREADABLE_MEDIA (ask for a new photo, or for the order in writing). Does not match products.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        s3Uri: {
+          type: STRING,
+          description: 'Exactly as given for the attachment (photo or voice message).',
+        },
+        text: {
+          type: STRING,
+          description: 'Order written in the chat or email, if no attachment.',
+        },
+        caller: CALLER,
+      },
+      required: ['caller'],
+    },
+  },
+];

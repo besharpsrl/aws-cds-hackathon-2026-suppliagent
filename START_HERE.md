@@ -158,7 +158,7 @@ Claude Code usa da solo i **subagent** del progetto quando servono:
 | `aws-docs-researcher` | Verifica API AWS recenti (AgentCore, Strands, S3 Vectors, canali) sulla documentazione ufficiale |
 | `test-runner` | Lint, type check, test, `cdk synth`; riassume solo gli errori |
 | `code-reviewer` | Revisione rispetto a criteri di accettazione, Definition of Done e regole di gara |
-| `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi |
+| `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi. **Solo su richiesta esplicita** (deciso il 26/10: troppi token) |
 
 I **team di agenti** non servono finché ogni stream ha una persona (guida §11).
 
@@ -211,7 +211,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Branch / PR | Attende | Priorità | Stato |
 |---|---|---|---|---|---|
 | 1 | T-40 + T-41 (versione ridotta) | `feat/FN-03-agent-runtime` | – | Must | ✅ PR #15 |
-| 2 | T-43 `order_intake` (lettura bigliettini) | | ↺ T-23 (Piattaforma): fino ad allora immagini caricate a mano su S3 | Must | ☐ |
+| 2 | T-43 `order_intake` (lettura bigliettini) | `feat/FN-05-order-intake` | – | Must | ✅ PR #21 |
 | 3 | T-06 (**solo** indice prodotti S3 Vectors, niente Knowledge Base) | | – | Must | ☐ |
 | 4 | T-44 `catalog` (matching) | | – | Must | ☐ |
 | 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 (Piattaforma), ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 (Piattaforma: senza, `invoke_agent.py`) | Must | ☐ |

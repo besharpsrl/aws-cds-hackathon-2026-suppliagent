@@ -1,32 +1,34 @@
 import * as path from 'node:path';
-import { CfnOutput, CfnResource, Stack, Validations, type StackProps } from 'aws-cdk-lib';
+import { CfnOutput, CfnResource, Duration, Stack, Validations, type StackProps } from 'aws-cdk-lib';
 import * as agentcore from 'aws-cdk-lib/aws-bedrockagentcore';
 import type * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import type * as events from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import type * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import type { EnvConfig } from '../../config/environments.js';
 import { PythonLambda } from '../constructs/python-lambda.js';
 import { REPO_ROOT, uvBundling } from '../constructs/uv-bundling.js';
 import type { TableName } from './data-stack.js';
-import { CUSTOMERS_TOOLS } from './tool-schemas.js';
+import { CUSTOMERS_TOOLS, ORDER_INTAKE_TOOLS } from './tool-schemas.js';
 
 export interface AgentStackProps extends StackProps {
   readonly config: EnvConfig;
   readonly key: IKey;
   readonly tables: Readonly<Record<TableName, dynamodb.TableV2>>;
   readonly eventBus: events.IEventBus;
+  readonly mediaBucket: s3.IBucket;
 }
 
 // Provided by the Lambda runtime and the Powertools layer: not bundled.
 const LAMBDA_PLATFORM_PACKAGES = ['boto3', 'botocore', 's3transfer', 'aws-lambda-powertools'];
 
 /**
- * Agent runtime (T-40, reduced): Gateway (MCP, IAM inbound auth) with the `customers` tool target
- * and an AgentCore Runtime running the Strands agent from a zip (no container). Memory, Guardrail,
+ * Agent runtime (T-40, reduced): Gateway (MCP, IAM inbound auth) with the `customers` and
+ * `order_intake` tool targets and an AgentCore Runtime running the Strands agent from a zip (no container). Memory, Guardrail,
  * the other tool targets and observability extras: T-54.
  */
 export class AgentStack extends Stack {
@@ -34,8 +36,16 @@ export class AgentStack extends Stack {
 
   constructor(scope: Construct, id: string, props: AgentStackProps) {
     super(scope, id, props);
-    const { config, key, tables, eventBus } = props;
+    const { config, key, tables, eventBus, mediaBucket } = props;
     const prefix = `suppliagent-${config.envName}`;
+
+    const foundationModel = config.model.profileId.replace(/^eu\./, '');
+    const modelResources = [
+      `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${config.model.profileId}`,
+      ...config.model.destinationRegions.map(
+        (region) => `arn:aws:bedrock:${region}::foundation-model/${foundationModel}`,
+      ),
+    ];
 
     const customersTool = new PythonLambda(this, 'CustomersTool', {
       config,
@@ -80,6 +90,60 @@ export class AgentStack extends Stack {
     key.grant(customersTool, 'kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey');
     eventBus.grantPutEventsTo(customersTool);
 
+    const orderIntake = new PythonLambda(this, 'OrderIntakeTool', {
+      config,
+      key,
+      name: 'tool-order-intake',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/tools/order_intake'),
+        uvBundling({
+          package: 'suppliagent-tool-order-intake',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/tools/order_intake/src/suppliagent_tool_order_intake':
+              'suppliagent_tool_order_intake',
+          },
+          omit: LAMBDA_PLATFORM_PACKAGES,
+        }),
+      ),
+      handler: 'suppliagent_tool_order_intake.handler.lambda_handler',
+      // Voice notes wait for Transcribe (up to 60 s in the tool) before the model call.
+      timeout: Duration.seconds(120),
+      environment: {
+        MEDIA_BUCKET: mediaBucket.bucketName,
+        MODEL_ID: config.model.profileId,
+        KMS_KEY_ARN: key.keyArn,
+        EVENT_BUS_NAME: eventBus.eventBusName,
+      },
+    });
+    const orderIntakeTool = orderIntake.function;
+    // Least privilege: media read, transcripts written by Transcribe with the tool's credentials.
+    const allowIntake = (actions: string[], ...resources: string[]) =>
+      orderIntakeTool.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+    allowIntake(
+      ['s3:GetObject'],
+      mediaBucket.arnForObjects('media/*'),
+      mediaBucket.arnForObjects('transcripts/*'),
+    );
+    allowIntake(['s3:PutObject'], mediaBucket.arnForObjects('transcripts/*'));
+    allowIntake(
+      ['transcribe:StartTranscriptionJob', 'transcribe:GetTranscriptionJob'],
+      `arn:aws:transcribe:${this.region}:${this.account}:transcription-job/ordint-*`,
+    );
+    allowIntake(['bedrock:InvokeModel'], ...modelResources);
+    key.grant(orderIntakeTool, 'kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey');
+    eventBus.grantPutEventsTo(orderIntakeTool);
+
+    // the role policy lives under the construct, not under the function
+    acknowledgeWildcards(orderIntake, {
+      [`Resource::${prefix}-foundation:ExportsOutputFnGetAttMediaBucketBCBB02BAArnB94B784B/media/*`]:
+        'One object per inbound media under media/<owner>/<messageId>/; read-only.',
+      [`Resource::${prefix}-foundation:ExportsOutputFnGetAttMediaBucketBCBB02BAArnB94B784B/transcripts/*`]:
+        'One transcript per voice note under transcripts/<job>.json, written by Transcribe with the tool credentials and read back.',
+      [`Resource::arn:aws:transcribe:${this.region}:<AWS::AccountId>:transcription-job/ordint-*`]:
+        'Job names are derived from the media key (ordint-<hash>), unknown at deploy time; this account and region only.',
+    });
+
     const gateway = new agentcore.Gateway(this, 'Gateway', {
       gatewayName: `${prefix}-gateway`,
       description: 'SuppliAgent tools (MCP); invoked only by the agent runtime (SigV4).',
@@ -98,6 +162,13 @@ export class AgentStack extends Stack {
       description: 'Contact identification and customer profile (T-42).',
       lambdaFunction: customersTool,
       toolSchema: agentcore.ToolSchema.fromInline(CUSTOMERS_TOOLS),
+    });
+    gateway.addLambdaTarget('OrderIntakeTarget', {
+      // Target names take no underscore: the tool the model sees is `order-intake___extract_order_lines`.
+      gatewayTargetName: 'order-intake',
+      description: 'Order lines from photos, voice notes and text (T-43).',
+      lambdaFunction: orderIntakeTool,
+      toolSchema: agentcore.ToolSchema.fromInline(ORDER_INTAKE_TOOLS),
     });
     const gatewayUrl = gateway.gatewayUrl;
     if (!gatewayUrl) throw new Error('Gateway L2 returned no gatewayUrl');
@@ -124,16 +195,10 @@ export class AgentStack extends Stack {
       },
     });
     gateway.grantInvoke(this.runtime);
-    const foundationModel = config.model.profileId.replace(/^eu\./, '');
     this.runtime.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-        resources: [
-          `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${config.model.profileId}`,
-          ...config.model.destinationRegions.map(
-            (region) => `arn:aws:bedrock:${region}::foundation-model/${foundationModel}`,
-          ),
-        ],
+        resources: modelResources,
       }),
     );
     // The L2s create the resource without waiting for the role's DefaultPolicy, and the service
@@ -162,6 +227,8 @@ export class AgentStack extends Stack {
       'Action::kms:GenerateDataKey*': 'Gateway L2 grantEncryptDecrypt on the project CMK.',
       'Action::kms:ReEncrypt*': 'Gateway L2 grantEncryptDecrypt on the project CMK.',
       'Resource::<CustomersToolFunction4E53AA48.Arn>:*':
+        'lambda.grantInvoke covers the versions/aliases of the single tool function.',
+      'Resource::<OrderIntakeToolFunctionCF96ADCC.Arn>:*':
         'lambda.grantInvoke covers the versions/aliases of the single tool function.',
     });
     acknowledgeWildcards(this.runtime, {

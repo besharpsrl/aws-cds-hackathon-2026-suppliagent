@@ -23,10 +23,11 @@ CALLER = "caller"
 # Gateway tool names are `<target>___<tool>`; the role decides which tools the model gets.
 IDENTIFY = "customers___identify_contact"
 PROFILE = "customers___get_customer_profile"
+EXTRACT = "order-intake___extract_order_lines"
 ROLE_TOOLS: dict[Role, frozenset[str]] = {
     "UNKNOWN": frozenset({IDENTIFY}),
-    "CUSTOMER_CONTACT": frozenset({IDENTIFY, PROFILE}),
-    "SALES_REP": frozenset({IDENTIFY, PROFILE}),
+    "CUSTOMER_CONTACT": frozenset({IDENTIFY, PROFILE, EXTRACT}),
+    "SALES_REP": frozenset({IDENTIFY, PROFILE, EXTRACT}),
 }
 ROLE_PROMPTS: dict[Role, str] = {
     "UNKNOWN": "customer.md",
@@ -124,8 +125,11 @@ def user_prompt(turn: TurnRequest) -> str:
     """All messages of the burst (debounced by the dispatcher) as one user turn."""
     lines = []
     for message in turn.messages:
+        # The URI (set by the system, never by the sender) is what `extract_order_lines` takes.
         lines += [
-            f"[{ATTACHMENT_LABELS.get(a.type, a.type)} attached]" for a in message.attachments
+            f"[{ATTACHMENT_LABELS.get(a.type, a.type)} attached: "
+            f"{f's3Uri={a.s3Uri}' if a.s3Uri else 'not available'}]"
+            for a in message.attachments
         ]
         if message.text:
             lines.append(message.text)

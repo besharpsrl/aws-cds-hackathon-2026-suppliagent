@@ -120,7 +120,7 @@ Claude li usa da solo quando servono (la descrizione dice "usalo proattivamente"
 | `aws-docs-researcher` | Prima di scrivere codice su AgentCore, Strands, S3 Vectors, EUM, SES, CDK | Verifica API, parametri, supporto CDK e region su documentazione ufficiale, con link | No |
 | `test-runner` | Dopo modifiche al codice | Esegue lint, type check, test, `cdk synth` e riassume solo gli errori | No |
 | `code-reviewer` | A fine task / prima della PR | Controlla criteri di accettazione, Definition of Done, regole di dominio e di gara | No |
-| `security-reviewer` | Su tool, prompt, IAM, Notifier, console | Autorizzazione per ruolo, prompt injection, PII nei log, segreti, permessi | No |
+| `security-reviewer` | **Solo su richiesta esplicita** (costoso; deciso il 26/10) | Autorizzazione per ruolo, prompt injection, PII nei log, segreti, permessi | No |
 
 Sono definiti in `agent-context/claude/agents/` (collegati in `.claude/agents/` da `install.sh`): si modificano lì.
 
@@ -213,7 +213,7 @@ Vincoli chiave: modello solo via inference profile eu.; il contesto (contactId, 
 con test negativi; i tool restituiscono dati, non testo per l'utente; max 1 suggerimento per ordine;
 nessun ordine confermato senza conferma esplicita. Per gli eval (T-53) usa AgentCore Evaluations
 (on-demand) oltre al nostro dataset. Prima di scrivere codice AgentCore/Strands verifica le API con
-aws-docs-researcher e con il plugin strands. Fai revisionare ogni tool da security-reviewer.
+aws-docs-researcher e con il plugin strands. Non lanciare security-reviewer (solo su richiesta esplicita): l'autorizzazione resta nel tool, con test negativi.
 ```
 
 ### Stream CO – Console & Analytics
@@ -227,7 +227,7 @@ di docs/02_TECHNICAL_FLOWS.md §6 (Orders con righe e candidati). Brand: assets/
 (blu #1F2A44, arancio #E3812B, verde acqua #19C29A). La vista più importante per la demo è il dettaglio
 ordine con l'immagine del bigliettino affiancata alle righe e le righe incerte evidenziate.
 Ruoli Cognito: backoffice, sales_rep, judge (sola lettura). Nessun dato sensibile in localStorage.
-Autorizzazione per gruppo anche lato API; fai revisionare da security-reviewer.
+Autorizzazione per gruppo anche lato API; non lanciare security-reviewer (solo su richiesta esplicita).
 ```
 
 ### Stream IN – Infra, Dati & Materiali
