@@ -46,7 +46,7 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 | Ondata | Quando | IN | CH | AG | CO |
 |---|---|---|---|---|---|
 | 1 | 23/10 mattina | – | – | – | – |
-| 2 | 23/10 pomeriggio | T-04 (avvio) | T-20 | T-42 (su dati seed) | – |
+| 2 | 23/10 pomeriggio | T-04 (avvio) | T-20 | – | – |
 | 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | T-60 |
 | 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | T-61 |
 | 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
@@ -91,7 +91,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-42 | Tool `customers`: `identify_contact`, `get_customer_profile` + autorizzazione per ruolo + test negativi | FN-03, 32 | P0–P1 | T-04 (seed) | MG | ☐ |
 | 2 | T-40 | `AgentStack`: ECR, AgentCore Runtime/Endpoint, Memory, Gateway (auth OAuth), Identity, Guardrail | FN-32 | P1 | T-03 | MG | ☐ |
 | 3 | T-41 | Agente Strands: entrypoint, contesto iniettato non modificabile (`contactId`, `role`, `customerIds`), prompt per ruolo (`customer`, `sales_rep`, `shared`), set di tool per ruolo, multilingua | FN-03, 04, 27 | P1 | T-40, T-22 | MG | ☐ |
 | 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Nova Pro vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | MG | ☐ |
@@ -124,7 +123,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 |---|---|---|
 | IN | 1 | T-01 → T-03 → T-04 (con il cliente) → T-06; T-11 in parallelo appena possibile |
 | CH | 1 | T-20 → T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
-| AG | 1–2 | T-42 (su dati seed) → T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
+| AG | 1–2 | T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
 | CO | 1 | T-60 → T-61 con dati mock, poi T-62 |
 
 Ogni stream lavora in un **git worktree** separato (`claude -w <nome>`) con una propria sessione di Claude Code (vedi [HANDOFF_CLAUDE_CODE.md](./HANDOFF_CLAUDE_CODE.md)).

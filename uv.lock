@@ -8,6 +8,7 @@ members = [
     "suppliagent-agent",
     "suppliagent-notifier",
     "suppliagent-shared",
+    "suppliagent-tool-customers",
 ]
 
 [[package]]
@@ -1072,6 +1073,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "suppliagent-agent" },
     { name = "suppliagent-shared" },
+    { name = "suppliagent-tool-customers" },
 ]
 
 [package.dev-dependencies]
@@ -1087,6 +1089,7 @@ dev = [
 requires-dist = [
     { name = "suppliagent-agent", editable = "agent" },
     { name = "suppliagent-shared", editable = "services/shared" },
+    { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
 ]
 
 [package.metadata.requires-dev]
@@ -1134,6 +1137,17 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.43.118" },
     { name = "pydantic", specifier = ">=2.14.1" },
 ]
+
+[[package]]
+name = "suppliagent-tool-customers"
+version = "0.1.0"
+source = { editable = "services/tools/customers" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
 name = "truststore"

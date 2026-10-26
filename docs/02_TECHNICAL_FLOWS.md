@@ -406,6 +406,7 @@ Vedi [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md).
   "conversationId": "conv_456",
   "contactId": "con_123",
   "role": "CUSTOMER_CONTACT",
+  "channelAddress": "WHATSAPP#+393330000001",
   "customerIds": ["cus_45"],
   "activeCustomerId": "cus_45",
   "channel": "WHATSAPP",
@@ -468,8 +469,8 @@ Vedi [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md).
 
 | Tool | Input | Output |
 |---|---|---|
-| `identify_contact` | address \| customerCode \| vatNumber, venueName | contact, role, customers[] \| `NOT_FOUND` |
-| `get_customer_profile` | customerId | dati locale, listino, zona, ultimi ordini, insight |
+| `identify_contact` | (indirizzo dal `caller`, INFRASTRUCTURE_DESIGN §5.3.2) \| customerCode \| vatNumber, venueName | `status` (`KNOWN` \| `MATCHED` \| `NOT_FOUND` \| `IDENTIFICATION_FAILED`), contact, role, customers[] (customerId, venueName) |
+| `get_customer_profile` | customerId | dati del locale; ultimi 5 ordini (contatto verificato o agente); ragione sociale, zona, listino e insight (solo agente) |
 | `extract_order_lines` | s3Uri \| text | lines[] (rawText, qty, unit, readConfidence, imageRegion) |
 | `match_products` | lines[], customerId | per riga: candidates[] con confidence |
 | `search_catalog` | query, filters | products[] |
