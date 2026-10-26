@@ -68,7 +68,7 @@ gh pr create --fill                    # la CI parte sulla PR: deve essere verde
 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
 - [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova
-- [ ] **Template WhatsApp** inviati a Meta (testi da Claude Code, task T-28): `order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`
+- [ ] **Template WhatsApp** inviati a Meta: testi pronti (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`); appena la WABA è collegata a EUM Social si inviano con il comando di 09 §1
 - [ ] **SES**: dominio verificato (DNS), **richiesta di uscita dalla sandbox oggi**, record MX per la ricezione
 - [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
 
@@ -110,7 +110,7 @@ Tutto il codice, i test, l'infrastruttura CDK, i dati di prova sintetici, i test
 
 | Fase | Quando | Cosa produce | Task principali |
 |---|---|---|---|
-| **P0 – Fondamenta** | 23/10 | Monorepo, CI, app CDK con Foundation e Data stack, template WhatsApp | ✅ T-01, T-03, T-02 · ⬜ T-28 |
+| **P0 – Fondamenta** | 23/10 | Monorepo, CI, app CDK con Foundation e Data stack, template WhatsApp | ✅ T-01, T-03, T-02, T-13 · ◐ T-28 (testi pronti, invio a Meta da fare) |
 | **P1 – Walking skeleton** | 23–24/10 | Messaggio WhatsApp → pipeline → agente → risposta | T-04, T-20, T-21, T-22, T-23, T-24, T-40, T-41, T-42, T-60, T-61 |
 | **P2 – Ordine da foto** | 24–25/10 | Scenario S1 completo: lettura bigliettino, matching, chiarimenti, conferma, ERP mock, email PDF, SMS/RCS | T-06, T-07, T-25…T-27, T-43…T-49, T-62 |
 | **P3 – Copilota, proattività, console** | 25–26/10 | Copilota agenti, riordino proattivo, consegne, console, KPI | T-08, T-09, T-50…T-52, T-63…T-65 |

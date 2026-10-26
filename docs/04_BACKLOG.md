@@ -67,7 +67,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-28 | **Testi template WhatsApp** e invio a Meta per approvazione (`order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`) | FN-12, 19 | **P0 – subito** | – | MG | ☐ |
+| 1 | T-28 | **Testi template WhatsApp** (`order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`) ✅ scritti (`services/notifier/whatsapp_templates/`, doc 09) · **resta l'invio a Meta** (manuale, dopo T-20: comando in 09 §1) | FN-12, 19 | **P0 – subito** | – | MG | ◐ |
 | 2 | T-20 | `ChannelsStack`: SES (identity, configuration set, receipt rule → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out), EUM Social (event destination SNS), topic SNS | FN-01 | P0–P1 | T-03 | MG | ☐ |
 | 3 | T-21 | `MessagingStack` + `inbound_router`: SQS FIFO + DLQ, normalizzazione WhatsApp/email/SMS/web, identità e ruolo, idempotenza, read receipt, check handoff | FN-01, 03, 26 | P1 | T-20, T-03 | MG | ☐ |
 | 4 | T-23 | `media_fetcher` (WhatsApp media → S3) ed estrazione allegati email | FN-05, 06 | P1 | T-21 | MG | ☐ |

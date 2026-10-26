@@ -6,7 +6,7 @@
 | # | Documento | File proposto | Priorità | Entro | Owner | Stato |
 |---|---|---|---|---|---|---|
 | 1 | Richiesta dati e autorizzazioni al cliente | `00_CLIENT_DATA_REQUEST.md` | **Urgentissima** | 13/10 | | ☐ |
-| 3 | Testi e template | `09_CONTENT_AND_TEMPLATES.md` | Alta (template Meta) | 14/10 | | ☐ |
+| 3 | Testi e template | `09_CONTENT_AND_TEMPLATES.md` | Alta | 14/10 | | ◐ (template WhatsApp fatti, resto da scrivere) |
 | 4 | Specifica dell'agente | `05_AGENT_SPEC.md` | Alta | 15/10 | | ☐ |
 | 5 | Contratti e modello dati | `06_DATA_AND_CONTRACTS.md` | Alta | 15/10 | | ☐ |
 | 6 | Specifica dei dati di prova | `08_MOCK_DATA.md` | Alta | 16/10 | | ☐ |
@@ -34,7 +34,6 @@
 
 ## 3. Testi e template
 - Informativa e richiesta di consenso proattivo (IT/EN)
-- Template WhatsApp da sottomettere a Meta: `order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`
 - Email HTML di conferma e layout del PDF ordine; messaggi RCS/SMS (conferma, consegna)
 - Messaggi di sistema (handoff, errori di cortesia, ordine scaduto)
 
