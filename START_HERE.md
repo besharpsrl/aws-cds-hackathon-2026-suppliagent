@@ -194,7 +194,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Branch / PR | Attende | Priorità | Stato |
 |---|---|---|---|---|---|
 | 1 | T-21 + T-23 | `feat/FN-01-inbound-pipeline` | – | Must | ✅ PR #16 |
-| 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ✅ PR da aprire |
+| 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ✅ PR #22 |
 | 3 | T-14 simulatore canali + test end-to-end | | ↺ T-41 (Agente) per la risposta reale | Must | ☐ |
 | 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | | – | Must | ☐ |
 | 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
