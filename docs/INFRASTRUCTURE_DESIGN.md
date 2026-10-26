@@ -431,6 +431,12 @@ Prerequisiti non automatizzabili:
 > Solo i punti ancora aperti; quelli chiusi sono in [DONE.md](./DONE.md).
 
 - [ ] Claude non invocabile sull'account `471112860008` (`Access to this model is not available for channel program accounts`, 25/10): per ora si usa **Amazon Nova** (§2). Se viene abilitato tramite il distributore/AWS, pianificare il passaggio (task dedicato con eval di confronto Nova vs Claude sui bigliettini)
+- [ ] **Rischi di sicurezza accettati** (revisione T-21/T-23, decisione del 26/10: si lasciano così fino alla demo):
+  - i topic `wa-events` e `mail-inbound` accettano pubblicazioni da qualunque regola SES o WABA dell'account (condizione solo `aws:SourceAccount`, senza `aws:SourceArn`); il Router sceglie il parser dal contenuto, non dal `TopicArn`;
+  - le grant KMS del Router (`kms:Decrypt`, `kms:GenerateDataKey` sulla CMK unica) non hanno la condizione `kms:ViaService`;
+  - `social-messaging:GetWhatsAppMessageMedia` è concesso su `phone-number-id/*` dell'account, non sul solo numero della demo;
+  - il `conversationId` dei mittenti sconosciuti è uno SHA-256 troncato dell'indirizzo (invertibile per forza bruta sui numeri di telefono) e compare nei log come correlation id; la correzione sarebbe un HMAC con segreto (Secrets Manager, costo fisso);
+  - testo nascosto via CSS (`display:none`) nelle email HTML non rimosso.
 
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
 - [ ] ERP del cliente (per documentare l'adapter futuro)
