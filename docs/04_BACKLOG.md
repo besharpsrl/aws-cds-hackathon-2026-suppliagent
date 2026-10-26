@@ -47,7 +47,7 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 |---|---|---|---|---|---|
 | 1 | 23/10 mattina | – | – | – | – |
 | 2 | 23/10 pomeriggio | T-04 (avvio) | – | T-42 (su dati seed) | – |
-| 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | T-60 |
+| 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | – |
 | 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | T-61 |
 | 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
 | 6 | 25/10 | T-09 | T-26, T-27 | T-46, T-47, T-48, T-49, T-53 (avvio) | T-63 |
@@ -109,9 +109,8 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-60 | `ConsoleStack`: Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API REST + WebSocket, S3 + CloudFront (OAC) + WAF | FN-28, 32 | P1 | T-03 | MG | ☐ |
-| 2 | T-61 | Scaffold console React + Vite + TS: auth, layout, brand (`assets/brand/`) | FN-28 | P1 | T-60 | MG | ☐ |
-| 3 | T-62 | Inbox ordini + dettaglio con **immagine del bigliettino affiancata alle righe** e correzione righe (parte con dati mock, poi API reali) | FN-28 | P2 | T-46 | MG | ☐ |
+| 1 | T-61 | Scaffold console React + Vite + TS: auth, layout, brand (`assets/brand/`) | FN-28 | P1 | T-60 | MG | ☐ |
+| 2 | T-62 | Inbox ordini + dettaglio con **immagine del bigliettino affiancata alle righe** e correzione righe (parte con dati mock, poi API reali) | FN-28 | P2 | T-46 | MG | ☐ |
 | 4 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
 | 5 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
 | 6 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
@@ -124,6 +123,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | IN | 1 | T-01 → T-03 → T-04 (con il cliente) → T-06; T-11 in parallelo appena possibile |
 | CH | 1 | T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
 | AG | 1–2 | T-42 (su dati seed) → T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
-| CO | 1 | T-60 → T-61 con dati mock, poi T-62 |
+| CO | 1 | T-61 con dati mock, poi T-62 |
 
 Ogni stream lavora in un **git worktree** separato (`claude -w <nome>`) con una propria sessione di Claude Code (vedi [HANDOFF_CLAUDE_CODE.md](./HANDOFF_CLAUDE_CODE.md)).

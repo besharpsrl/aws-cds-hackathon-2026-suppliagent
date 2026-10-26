@@ -289,6 +289,8 @@ Convenzioni implementate (T-03): attributi chiave tutti stringa; GSI chiamati `b
 - **Real-time**: Streams di `Messages`/`Orders` → Broadcaster → WebSocket.
 - **Handoff**: `mode = HUMAN`, risposta del back office via Notifier, *Release* all'agente.
 
+Stato (T-60, 26/10): implementati Cognito (utenti creati dall'admin; per un `sales_rep` impostare l'attributo `custom:repId`), S3 + CloudFront (OAC) e API REST `/v1/orders` in sola lettura (`services/console_api`, ruolo dai claim del token). **Non ancora**: WAF (costo fisso, da decidere prima della demo), WebSocket/broadcaster (T-63), `rep-chat` (T-64). L'ordine espone la foto del bigliettino come `imageS3Uri`.
+
 ### 5.9 Analytics & Observability
 
 - Eventi CDS (SES, EUM SMS/RCS, EUM Social) + eventi applicativi ([02 §6.4](./02_TECHNICAL_FLOWS.md)) → Firehose → S3 Parquet → Glue → Athena.
