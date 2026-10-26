@@ -56,7 +56,7 @@ class Customer(Item):
 
 class Contact(Item):
     contactId: ContactId
-    name: str
+    name: str | None = None  # unknown for contacts self-identified via identify_contact
     customerId: CustomerId  # primary venue (GSI `by-customerId`)
     customerIds: list[CustomerId]  # every venue the contact orders for
     language: Language
