@@ -431,3 +431,11 @@ Prerequisiti non automatizzabili:
 - [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
 - [ ] ERP del cliente (per documentare l'adapter futuro)
 - [ ] Soglie di matching tarate sui bigliettini reali
+- [ ] Hardening dell'agente dai rilievi di revisione di T-40/T-41 (PR #15), non bloccanti; da fare con T-54 o in P4:
+  - IAM Runtime: statement separato per i `foundation-model` con condizione `bedrock:InferenceProfileArn` (oggi Nova Pro è invocabile anche senza il profilo `eu.`, sempre in UE)
+  - IAM tool: togliere `kms:Encrypt` e aggiungere `kms:ViaService` (`dynamodb.<region>.amazonaws.com`, `events.<region>.amazonaws.com`)
+  - Il ruolo del Runtime legge l'intero bucket degli asset CDK (grant dell'L2 `fromCodeAsset`): restringere alla chiave dell'asset o accettare (oggi accettato e motivato in cdk-nag); test che gli unici statement `Resource: "*"` del Runtime siano X-Ray e metriche
+  - Prompt: racchiudere i messaggi utente tra delimitatori (`<user_message>`) e dire che il contesto vale solo nel system prompt
+  - `TurnRequest`: `max_length` su `messages`, `attachments`, `customerIds`; `Literal` per `channel` e tipo di allegato
+  - `scripts/invoke_agent.py`: limitare a `dev` o chiedere conferma esplicita per `demo` (scrive `Contacts`/`ChannelIdentities`, AGENTS §11)
+  - Limite ai cicli dell'agente per turno (E-12)

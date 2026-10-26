@@ -167,16 +167,74 @@ I **team di agenti** non servono finché ogni stream ha una persona (guida §11)
 
 **Principio**: nel weekend S1 end-to-end testato **con il simulatore** (T-14), senza dipendere da Meta; lunedì si collega WhatsApp reale e si rifinisce; martedì alle 18:00 code freeze. Perimetro Must/Should/Could in `docs/04_BACKLOG.md` §1bis.
 
-**Sessioni di Claude Code** (massimo 3 in parallelo: il limite è la tua attenzione su piani e PR)
+**Sessioni di Claude Code** (massimo 3 in parallelo: il limite è la tua attenzione su piani e PR): **Integrazione** (`claude` nella checkout principale: merge, stack condivisi Foundation/Data, `demo`), **Piattaforma** (`claude -w piattaforma`, stream IN + CH), **Agente** (`claude -w agente`, AG), **Console** (`claude -w console`, CO). Ogni sessione fa deploy solo dei propri stack (`npx cdk deploy <stack> --exclusively -c env=dev`). Si avvia con `/sa-next-task`.
 
-| Sessione | Comando | Task, in ordine | Deploy |
-|---|---|---|---|
-| **Integrazione** | `claude` nella checkout principale | T-13 → T-28 (solo testi) → T-29 (invio template, quando c'è la WABA) → merge PR → poi resta per merge e stack condivisi | Foundation/Data e stack condivisi, sempre da `main` aggiornato |
-| **Piattaforma** (IN + CH) | `claude -w piattaforma` | T-20 (solo SES + EUM Social) → T-21 → T-23 → T-22 → T-24 base → **T-14** → T-07 → T-26 (solo email conferma con PDF) | Solo i propri stack (`cdk deploy <stack> --exclusively -c env=dev`) |
-| **Agente** (AG) | `claude -w agente` | T-04 (anagrafiche e storico; il resto con T-06/T-45) → T-42 → T-40 → T-41 → T-43 → T-06 → T-44 → T-45 → T-46 → T-47 | Solo i propri stack |
-| **Console** (CO), da domenica pomeriggio | `claude -w console` | T-60 → T-61 → T-62 (dati mock, poi API reali) | Solo i propri stack |
+### Assegnazione dei task (fonte unica, deciso il 26/10)
+
+Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le dipendenze verso altre sessioni o verso di te. `docs/04_BACKLOG.md` resta la descrizione completa di ogni task (anche di quelli non ancora assegnati), `docs/DONE.md` il registro del fatto.
+
+**Colonna "Attende"** (solo dipendenze esterne alla sessione; quelle interne sono date dall'ordine):
+- **T-xx (sessione)** = **bloccante**: finché T-xx non è ✅ qui e su `main`, il task non si inizia.
+- ↺ T-xx (sessione) = **di integrazione**: si procede con mock/stub dichiarati nella PR; il collegamento si fa quando T-xx è su `main`.
+
+**Stato**: ☐ da fare · ◐ in corso (branch) · ⏸ in attesa di … · ✅ fatto (PR). Priorità come in `docs/04_BACKLOG.md` §1bis.
+
+**Integrazione** (con te)
+
+| # | Task | Attende | Priorità | Stato |
+|---|---|---|---|---|
+| 1 | Merge delle PR, deploy degli stack condivisi da `main` | – | – | continuo |
+| 2 | T-05 dataset eval (≥ 15 bigliettini, vocali, email, conversazioni attese) | foto e vocali (tu, §1.3) | Should | ☐ |
+| 3 | T-11 ACE, PNG del diagramma, testi submission (EN) | – (avviabile subito) | Should | ☐ |
+| 4 | T-10 ambiente `demo`, reset, README giudici | code freeze (tutti i Must) | Should | ☐ |
+| 5 | T-12 copione e video | T-10 · registrazione (tu) | Should | ☐ |
+
+**Piattaforma** (IN + CH)
+
+| # | Task | Branch / PR | Attende | Priorità | Stato |
+|---|---|---|---|---|---|
+| 1 | T-21 + T-23 | `feat/FN-01-inbound-pipeline` | – | Must | ☐ |
+| 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ☐ |
+| 3 | T-14 simulatore canali + test end-to-end | | ↺ T-41 (Agente) per la risposta reale | Must | ☐ |
+| 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | | – | Must | ☐ |
+| 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
+| 6 | T-26 (solo email di conferma con PDF) | | ↺ T-46 (Agente) per i dati d'ordine reali | Must | ☐ |
+| 7 | T-29 invio template a Meta (ID EUM Social sempre da SSM) | | WABA collegata (tu) | Should | ☐ |
+| 8 | T-08 `ProactiveStack` | | – | Could | ☐ |
+| 9 | T-24 completo, T-27 RCS | | – | Could | ☐ |
+
+**Agente** (AG)
+
+| # | Task | Branch / PR | Attende | Priorità | Stato |
+|---|---|---|---|---|---|
+| 1 | T-40 + T-41 (versione ridotta) | `feat/FN-03-agent-runtime` | – | Must | ✅ PR #15 |
+| 2 | T-43 `order_intake` (lettura bigliettini) | | ↺ T-23 (Piattaforma): fino ad allora immagini caricate a mano su S3 | Must | ☐ |
+| 3 | T-06 (**solo** indice prodotti S3 Vectors, niente Knowledge Base) | | – | Must | ☐ |
+| 4 | T-44 `catalog` (matching) | | – | Must | ☐ |
+| 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 (Piattaforma), ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 (Piattaforma: senza, `invoke_agent.py`) | Must | ☐ |
+| 6 | T-49 `handoff_to_human` | | ↺ T-21 (Piattaforma: controllo `mode = HUMAN` nel router) | Should | ☐ |
+| 7 | T-54 (prima Guardrail e Memory) | | – | Should | ☐ |
+| 8 | T-53 eval leggera | | ↺ T-05 (Integrazione): si parte dai 3 bigliettini in `agent/evals/` | Should | ☐ |
+| 9 | T-48 primo contatto e consenso | | – | Should | ☐ |
+| 10 | T-50 `reco` | | **T-08 (Piattaforma)** | Could | ☐ |
+| 11 | T-51 `sales` | | – (dopo T-50) | Could | ☐ |
+| 12 | T-52 turno proattivo di riordino | | **T-08 (Piattaforma)**, **T-24 (Piattaforma)** | Could | ☐ |
+
+**Console** (CO)
+
+| # | Task | Branch / PR | Attende | Priorità | Stato |
+|---|---|---|---|---|---|
+| 1 | T-66 ruolo `judge` in sola lettura, rifiniture demo | | – | Could | ☐ |
+| 2 | T-62 parte API (inbox e dettaglio su dati reali, correzione riga; vista chiave della demo: bigliettino accanto alle righe) | | **T-46 (Agente)** | Must | ☐ |
+| 3 | T-63 conversazioni live + take over / release | | **T-49 (Agente)** | Should | ☐ |
+| 4 | T-64 chat web agenti di commercio | | **T-41 (Agente)** | Could | ☐ |
+| 5 | T-09 `AnalyticsStack` | | – | Could | ☐ |
+| 6 | T-65 dashboard KPI | | – (dopo T-09) | Could | ☐ |
 
 **Regole**
+- **Scelta del task**: la sessione prende il primo task della propria tabella non ✅ con le dipendenze **bloccanti** soddisfatte. Se il task successivo è bloccato, lo segna ⏸ "in attesa di T-xx (sessione)", lo **segnala** e passa al successivo sbloccato; se non ce ne sono, si ferma e lo dice.
+- **Fine task (nella stessa PR)**: qui lo stato diventa ✅ con il numero di PR; in `docs/04_BACKLOG.md` la riga si rimuove; in `docs/DONE.md` si aggiunge la voce. Se il lavoro crea, divide o rinvia task, si aggiornano **entrambi** i file (descrizione nel backlog, assegnazione qui).
+- **Task nuovi o liste esaurite**: un task del backlog non presente qui non è assegnato; prima di iniziarlo lo si aggiunge alla tabella della propria sessione (stessa PR del task).
 - Ogni sessione fa `git pull --rebase origin main` prima di iniziare un task e prima di ogni deploy.
 - Nessuna sessione fa deploy di uno stack di un'altra; gli stack condivisi solo dalla sessione Integrazione.
 - Un task = una PR piccola, **tranne i task accoppiati sullo stesso stack**, che vanno in una sola PR con un commit per task (gruppi in `docs/04_BACKLOG.md` §1bis). Claude Code apre la PR, tu revisioni e fai merge appena la CI è verde, così le altre sessioni ripartono da `main` aggiornato.
