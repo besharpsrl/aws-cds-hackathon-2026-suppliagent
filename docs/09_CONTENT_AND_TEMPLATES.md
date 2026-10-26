@@ -21,7 +21,7 @@ Scelte di contenuto:
 - `reorder_suggestion` è MARKETING: *Stop proposte* revoca il consenso proattivo (FN-19, F-13). Meta può comunque riclassificare la categoria.
 - Nessun prezzo, sconto o promessa commerciale nei testi.
 
-### Invio a Meta (azione manuale, una volta per WABA)
+### Invio a Meta (task T-29, una volta per WABA)
 
 Prerequisito: WABA collegata ad AWS End User Messaging Social in `eu-west-1` (T-20). Con l'ID della WABA (`aws socialmessaging list-linked-whatsapp-business-accounts`):
 

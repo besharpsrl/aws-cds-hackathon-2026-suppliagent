@@ -26,8 +26,8 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 
 | Priorità | Quando | Task |
 |---|---|---|
-| **Must** – S1 end-to-end | Sab–Dom | T-28 (testi), T-04 (dati sintetici), T-20 (solo SES + EUM Social), T-21, T-23, T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
-| **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati, T-25, T-49, T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
+| **Must** – S1 end-to-end | Sab–Dom | T-04 (dati sintetici), T-20 (solo SES + EUM Social), T-21, T-23, T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
+| **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati (**T-29**), T-25, T-49, T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
 | **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65, T-66 |
 
 ## 2. Sequenza consigliata (ondate parallele)
@@ -36,7 +36,7 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 
 | Ondata | Quando | IN | CH | AG | CO |
 |---|---|---|---|---|---|
-| 1 | 23/10 mattina | – | **T-28** | – | – |
+| 1 | 23/10 mattina | – | – | – | – |
 | 2 | 23/10 pomeriggio | T-04 (avvio) | T-20 | T-42 (su dati seed) | – |
 | 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | T-60 |
 | 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | T-61 |
@@ -67,8 +67,8 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-28 | **Testi template WhatsApp** (`order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`) ✅ scritti (`services/notifier/whatsapp_templates/`, doc 09) · **resta l'invio a Meta** (manuale, dopo T-20: comando in 09 §1) | FN-12, 19 | **P0 – subito** | – | MG | ◐ |
-| 2 | T-20 | `ChannelsStack`: SES (identity, configuration set, receipt rule → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out), EUM Social (event destination SNS), topic SNS | FN-01 | P0–P1 | T-03 | MG | ☐ |
+| 1 | T-20 | `ChannelsStack`: SES (identity, configuration set, receipt rule → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out), EUM Social (event destination SNS), topic SNS | FN-01 | P0–P1 | T-03 | MG | ☐ |
+| 2 | T-29 | **Invio dei template WhatsApp a Meta** e approvazione: dopo il collegamento della WABA a EUM Social, invio degli 8 JSON di `services/notifier/whatsapp_templates/` con `aws socialmessaging create-whatsapp-message-template` (comando in [09 §1](./09_CONTENT_AND_TEMPLATES.md)); verifica stato `APPROVED`; se Meta rifiuta o cambia categoria, correzione dei JSON (test verde) e reinvio; aggiornare 09 con l'esito | FN-12, 19 | P1 (appena c'è la WABA) | T-28, WABA collegata (T-20 / azione manuale) | MG | ☐ |
 | 3 | T-21 | `MessagingStack` + `inbound_router`: SQS FIFO + DLQ, normalizzazione WhatsApp/email/SMS/web, identità e ruolo, idempotenza, read receipt, check handoff | FN-01, 03, 26 | P1 | T-20, T-03 | MG | ☐ |
 | 4 | T-23 | `media_fetcher` (WhatsApp media → S3) ed estrazione allegati email | FN-05, 06 | P1 | T-21 | MG | ☐ |
 | 5 | T-22 | `TurnBuffer` + coda `turn-flush` + `turn_dispatcher` (debounce, lock, drain, re-flush) | FN-26 | P1 | T-21 | MG | ☐ |
@@ -114,7 +114,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | Stream | Persone | Primi task |
 |---|---|---|
 | IN | 1 | T-01 → T-03 → T-04 (con il cliente) → T-06; T-11 in parallelo appena possibile |
-| CH | 1 | T-28 subito, poi T-20 → T-21 → T-23 → T-22 → T-24 |
+| CH | 1 | T-20 → T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
 | AG | 1–2 | T-42 (su dati seed) → T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
 | CO | 1 | T-60 → T-61 con dati mock, poi T-62 |
 

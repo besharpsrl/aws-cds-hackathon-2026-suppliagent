@@ -187,7 +187,7 @@ Nota: il file `.env` non viene copiato nei worktree in automatico; se serve, cre
 ### Stream CH – Canali CDS
 
 ```text
-Lavori sullo stream CH (Canali CDS) di SuppliAgent. Leggi CLAUDE.md, docs/04_BACKLOG.md (task T-28, T-20..T-27),
+Lavori sullo stream CH (Canali CDS) di SuppliAgent. Leggi CLAUDE.md, docs/04_BACKLOG.md (task T-20..T-29),
 docs/02_TECHNICAL_FLOWS.md §3 e F-11, docs/INFRASTRUCTURE_DESIGN.md §5.1, §5.2, §5.5 (Notifier).
 
 Procedi nell'ordine del backlog (T-20, T-21, T-23, T-22, T-24, poi T-25..T-27), un task alla volta con /implement-fn.

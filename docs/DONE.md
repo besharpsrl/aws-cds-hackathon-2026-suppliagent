@@ -6,6 +6,17 @@
 
 ---
 
+## 26/10/2026
+
+### T-28 – Testi dei template WhatsApp · FN-12, FN-19
+- **Cosa**: 8 template (IT/EN) in formato `template-definition` di Meta in `services/notifier/whatsapp_templates/`: `order_confirmation`, `order_pending_reminder`, `delivery_update` (UTILITY) e `reorder_suggestion` (MARKETING); revisione e regole di contenuto in [09_CONTENT_AND_TEMPLATES](./09_CONTENT_AND_TEMPLATES.md).
+- **Scelte**: nessun pulsante conferma un ordine senza riepilogo; footer "Assistente virtuale ordini"; nessun nome del distributore; *Stop proposte* revoca il consenso proattivo.
+- **Test**: `tests/test_whatsapp_templates.py` (regole di Meta, stessa forma IT/EN).
+- **Seguito**: l'invio a Meta e l'approvazione sono il task **T-29** (serve la WABA collegata a EUM Social).
+- **Commit**: `1bbb767`, `5c00610` (PR `feat/FN-12-whatsapp-templates`).
+
+---
+
 ## 25/10/2026
 
 ### Primo deploy `dev` · FN-32
