@@ -162,8 +162,8 @@ Se un requisito è ambiguo, chiedi invece di inventare.
 5. A fine lavoro pubblica e apri la PR:
 
 ```bash
-git push -u origin chore/p0-foundations
-gh pr create --fill
+git push -u origin <branch>
+gh pr create --fill          # di norma la apre Claude Code
 ```
 
 Dopo la CI verde e la revisione, fai il merge su `main`. Il deploy **non** passa dalla CI: si fa sempre da locale con `cd infra && npx cdk deploy --all -c env=dev`.

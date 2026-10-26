@@ -14,8 +14,8 @@
 | Architettura AWS e diagramma | ✅ pronti |
 | Backlog: 39 task da fare in `docs/04_BACKLOG.md`; il completato è in `docs/DONE.md` | ✅ pronto |
 | Contesto per Claude Code (istruzioni, comandi, subagent, hook, MCP) | ✅ attivo |
-| Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato e configurato · branch `chore/p0-foundations` **ancora da pushare + PR** (§1.1) |
-| Codice | ◐ **P0 fatta** (T-01, T-03, T-02): monorepo, CI, app CDK con Foundation e Data stack, `npm run check` verde · nessun deploy ancora |
+| Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato, pubblico, CI verde su `main` · flusso PR in §1.1 (serve `gh` per far aprire le PR a Claude Code) |
+| Codice | ◐ **P0 + T-13 fatti e su `main`**: monorepo, CI, app CDK con Foundation e Data stack, tag obbligatori · primi 3 bigliettini di eval con soluzione attesa (`agent/evals/data/bigliettini/`) · deploy `dev` fatto |
 | Account AWS | ◐ account `471112860008` (condiviso con altri progetti beSharp), bootstrap già presente, **primo deploy `dev` fatto il 25/10** (Foundation + Data) · modello **Amazon Nova** (Claude non abilitato sull'account, §1.2) · tag obbligatori: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it` |
 | Devpost | ◐ iscritti e team creato |
 | Team | Una sola persona (MG): tutti gli stream sono suoi, lavoro con sessioni Claude Code parallele (§3) |
@@ -38,14 +38,15 @@ Calendario sintetico (dettaglio in §5):
 
 Le cose che Claude Code non può fare: account, accessi, contatti con cliente e Meta, decisioni, approvazioni, video, submission.
 
-### 1.1 Subito – pubblicare la P0 (10 minuti)
+### 1.1 Flusso Git di ogni task (deciso il 26/10)
 
-```bash
-git push -u origin chore/p0-foundations
-gh pr create --fill                    # la CI parte sulla PR: deve essere verde prima del merge
-```
+1. **Claude Code** lavora su un branch `feat/FN-xx-…` (un task, o un gruppo di task accoppiati: vedi `docs/04_BACKLOG.md` §1bis), fa push e **apre la PR**.
+2. **Tu** revisioni la PR e fai il **merge su `main`** quando la CI è verde (niente push diretti su `main`, anche da admin).
+3. **Deploy** da locale, da `main` aggiornato: `git switch main && git pull && cd infra && npx cdk deploy <stack> -c env=dev` (lo può lanciare Claude Code su tua richiesta).
+4. I branch già confluiti restano su GitHub (storia tracciata).
 
-- [ ] Push su GitHub e **PR per ogni merge su `main`** (regola mantenuta; la CI gira sulla PR). Il **deploy si fa sempre da locale** (`cdk deploy`) e non dipende dalla CI
+- [x] P0 e T-13 su `main` (25/10), CI verde sui push
+- [ ] Installare la GitHub CLI perché Claude Code possa aprire le PR: `brew install gh && gh auth login`
 - [x] GitHub → *Settings → Branches*: regola su `main` (PR obbligatoria, CI verde, niente force push)
 - [x] GitHub → *About*: descrizione e topic (vedi §4.6)
 - [x] Membri del team aggiunti al repo
@@ -178,7 +179,7 @@ I **team di agenti** non servono finché ogni stream ha una persona (guida §11)
 **Regole**
 - Ogni sessione fa `git pull --rebase origin main` prima di iniziare un task e prima di ogni deploy.
 - Nessuna sessione fa deploy di uno stack di un'altra; gli stack condivisi solo dalla sessione Integrazione.
-- Un task = una PR piccola; merge appena la CI è verde, così le altre sessioni ripartono da `main` aggiornato.
+- Un task = una PR piccola, **tranne i task accoppiati sullo stesso stack**, che vanno in una sola PR con un commit per task (gruppi in `docs/04_BACKLOG.md` §1bis). Claude Code apre la PR, tu revisioni e fai merge appena la CI è verde, così le altre sessioni ripartono da `main` aggiornato.
 - Checkpoint: **Dom h13** "ciao" via simulatore → risposta dell'agente; **Dom h20** foto via simulatore → righe, matching, conferma, ERP mock, email PDF; **Lun h18** stesso flusso su WhatsApp reale.
 - Se un checkpoint salta di più di 3 ore: si taglia dal Should, non si sposta il freeze.
 
