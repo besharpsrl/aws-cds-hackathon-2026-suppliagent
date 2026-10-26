@@ -32,6 +32,9 @@ class InteractiveReply(BaseModel):
 
     id: str
     title: str
+    # Provider id of the message the button belonged to: a reply id alone can be forged, so
+    # actions such as confirm_order must check this against what was actually sent.
+    contextId: str | None = None
 
 
 class NormalizedMessage(BaseModel):
@@ -47,6 +50,8 @@ class NormalizedMessage(BaseModel):
     conversationId: str
     orderId: str | None = None
     from_: str = Field(alias="from")  # E.164 number or lowercase email address
+    # False for an email without DMARC PASS: never bind it to a contact, never reply to it.
+    senderVerified: bool = True
     text: str | None = None
     attachments: list[Attachment] = Field(default_factory=list)
     interactiveReply: InteractiveReply | None = None

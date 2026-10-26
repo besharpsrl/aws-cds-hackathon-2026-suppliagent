@@ -23,6 +23,7 @@ TABLES = {
     "sales-reps": (("repId",), ()),
     "conversations": (("conversationId",), ("contactId",)),
     "messages": (("conversationId", "tsMessageId"), ("providerMessageId",)),
+    "turn-buffer": (("conversationId",), ()),
 }
 BUCKET = "suppliagent-test-inbound-mail"
 MEDIA_BUCKET = "suppliagent-test-media"
@@ -69,6 +70,7 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     monkeypatch.setenv("INBOUND_MAIL_BUCKET", BUCKET)
     monkeypatch.setenv("MEDIA_BUCKET", MEDIA_BUCKET)
     monkeypatch.setenv("WA_PHONE_NUMBER_ID_PARAM", PHONE_PARAM)
+    monkeypatch.setenv("ORDER_DOMAIN", "ordini.example.com")
     with mock_aws():
         _clear_caches()
         resource: Any = boto3.resource("dynamodb")
@@ -96,6 +98,7 @@ class FakeSocial:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
         self.fail = False
+        self.file_size_kb = 1
 
     def get_whatsapp_message_media(self, **request: Any) -> dict[str, Any]:
         self.calls.append(request)
@@ -105,7 +108,7 @@ class FakeSocial:
         boto3.client("s3").put_object(
             Bucket=target["bucketName"], Key=f"{target['key']}{request['mediaId']}.jpeg", Body=b"x"
         )
-        return {"mimeType": "image/jpeg", "fileSize": 1}
+        return {"mimeType": "image/jpeg", "fileSize": self.file_size_kb}
 
 
 @pytest.fixture(autouse=True)

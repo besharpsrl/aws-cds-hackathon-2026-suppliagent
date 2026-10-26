@@ -96,7 +96,8 @@ export class ChannelsStack extends Stack {
               s3Action: {
                 bucketName: inboundMailBucket.bucketName,
                 objectKeyPrefix: 'mail/',
-                kmsKeyArn: key.keyArn,
+                // No kmsKeyArn: it makes SES encrypt client-side (S3 encryption client), unreadable
+                // with a plain GetObject. The bucket's default SSE-KMS with the CMK applies instead.
                 topicArn: this.mailInboundTopic.topicArn,
               },
             },

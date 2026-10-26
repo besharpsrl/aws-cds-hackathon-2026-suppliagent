@@ -52,6 +52,7 @@ export function buildApp(app: App, config: EnvConfig) {
         customers: data.tables.Customers,
         conversations: data.tables.Conversations,
         messages: data.tables.Messages,
+        turnBuffer: data.tables.TurnBuffer,
       },
     }),
     channels,

@@ -111,35 +111,38 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 
 **Inbound Router** (`services/inbound_router`; stato al 26/10 tra parentesi)
 1. **Normalizza** l'evento nel `NormalizedMessage` (WhatsApp ed email in T-21; SMS/RCS con T-27, chat web con T-64).
-2. **Risolve l'identità e il ruolo**: `ChannelIdentities` → `contactId`, `role` (`CUSTOMER_CONTACT` | `SALES_REP`), `customerIds[]` (un contatto può gestire più locali; un agente ha un portafoglio). Email: solo con DMARC `PASS` (§5.3.2). Una conversazione per contatto su tutti i canali (`conv_<contactId>`, F-15); mittenti sconosciuti: una per indirizzo; evento `conversation.started` alla creazione.
-3. **Idempotenza** su `providerMessageId` (`PutItem` condizionata su `Messages`, `messageId` derivato da `providerMessageId`).
-4. **Media** → S3 `media/<contactId|conversationId>/<messageId>/`, **dentro il Router** (deciso il 26/10, T-23: niente Lambda Media Fetcher separata, così il messaggio entra nel TurnBuffer solo con i media già salvati e senza coordinamento asincrono col debounce): WhatsApp con `GetWhatsAppMessageMedia`, email con gli allegati MIME. Ammessi: immagini (JPEG, PNG, WebP, GIF, HEIC; niente SVG), audio, PDF, Excel, CSV, max 10 MB per allegato email; il resto scartato (E-13), allegati scartati se il virus scan SES fallisce. Video e sticker non scaricati. Download fallito → errore, retry SQS ×3, poi DLQ (E-02); niente scritture prima del download.
+2. **Risolve l'identità e il ruolo**: `ChannelIdentities` → `contactId`, `role` (`CUSTOMER_CONTACT` | `SALES_REP`), `customerIds[]` (un contatto può gestire più locali; un agente ha un portafoglio). Fail-closed come `caller_scope`: un contatto `PENDING_VERIFICATION` ha `customerIds` vuoto, altri stati → `UNKNOWN`. Email: identità solo con DMARC `PASS` e un solo indirizzo `From` uguale a quello valutato da SES (§5.3.2), altrimenti `senderVerified = false`; `orderId` da `ordine+<id>@` solo sul dominio SES e da mittente verificato. Una conversazione per contatto su tutti i canali (`conv_<contactId>`, F-15), oppure quella in cui l'indirizzo è stato identificato (`ChannelIdentities.conversationId`, scritto da `identify_contact`); mittenti sconosciuti: una per indirizzo, separata per le email non verificate; evento `conversation.started` alla creazione.
+3. **Idempotenza** su `providerMessageId` (E-01): `TransactWriteItems` del messaggio e di una guardia `dedup#<messageId>` con TTL nel TurnBuffer.
+4. **Media** → S3 `media/<contactId|conversationId>/<messageId>/`, **dentro il Router** (deciso il 26/10, T-23: niente Lambda Media Fetcher separata, così il messaggio entra nel TurnBuffer solo con i media già salvati e senza coordinamento asincrono col debounce). WhatsApp: `GetWhatsAppMessageMedia` per immagini, audio e documenti ammessi, max 10 MB (`fileSize` della risposta). Email: immagini JPEG/PNG/WebP/GIF/HEIC, PDF, XLSX, CSV, solo se la firma dei primi byte corrisponde al tipo, max 10 MB e 10 allegati, solo con virus scan SES `PASS`; chiave `<indice>.<estensione del tipo>` (mai il nome file), documenti con `Content-Disposition: attachment`. Niente SVG né `.xls`. Un allegato rifiutato resta senza `s3Uri` (E-13). Video e sticker non scaricati. Download fallito → errore, retry SQS ×3, poi DLQ (E-02, allarme `suppliagent-<env>-inbound-dlq`); niente scritture prima del download. Testo email troncato a 4000 caratteri; dall'HTML sono tolti script, stili e commenti.
 5. **Read receipt** WhatsApp immediato (con il Notifier, T-24: è l'unico che chiama le API di invio).
 6. **Handoff check**: `mode = HUMAN` → solo console (T-22; il Router non azzera mai `mode`).
 7. **Accoda nel TurnBuffer** e programma il flush (T-22).
 8. Scrive in `Messages` → Stream → console live.
 
-**NormalizedMessage**
+**NormalizedMessage** (`suppliagent_shared.messages`; campi assenti = `null`)
 
 ```json
 {
-  "messageId": "uuid",
+  "messageId": "msg_<uuid5 di providerMessageId>",
   "providerMessageId": "wamid.HBg...",
   "channel": "WHATSAPP | EMAIL | RCS | SMS | WEB",
   "direction": "INBOUND",
-  "contactId": "con_123",
-  "role": "CUSTOMER_CONTACT | SALES_REP",
+  "contactId": "con_123 | rep_001 | assente se UNKNOWN",
+  "role": "CUSTOMER_CONTACT | SALES_REP | UNKNOWN",
   "customerIds": ["cus_45"],
   "conversationId": "conv_456",
   "orderId": "ord_789 | null",
   "from": "+39333...",
+  "senderVerified": true,
   "text": "aggiungi 2 kg di burro",
-  "attachments": [{ "type": "image | audio | document", "s3Uri": "s3://...", "mimeType": "image/jpeg" }],
-  "interactiveReply": { "id": "line_3_opt_1", "title": "Fior di latte 1 kg" },
-  "receivedAt": "2026-10-20T07:41:00Z",
+  "attachments": [{ "type": "image | audio | document | video | sticker", "s3Uri": "s3://... (assente se non salvato)", "mimeType": "image/jpeg", "mediaId": "id WhatsApp" }],
+  "interactiveReply": { "id": "line_3_opt_1", "title": "Fior di latte 1 kg", "contextId": "wamid del messaggio con il pulsante" },
+  "receivedAt": "2026-10-20T07:41:00.123Z",
   "locale": "it-IT"
 }
 ```
+
+`interactiveReply.id` si può falsificare: le azioni (es. `confirm_order`) devono verificare `contextId` contro il messaggio inviato e l'ordine contro lo scope del contatto.
 
 #### 5.2.1 Parallelismo e ordinamento
 - **Perché non FIFO** (decisione del 26/10, T-21): SES e EUM Social pubblicano solo su topic SNS **standard** (EUM Social non supporta topic FIFO) e un topic standard non consegna a code FIFO. Un forwarder verso una FIFO aggiungerebbe una Lambda per un ordinamento che il debounce già garantisce.

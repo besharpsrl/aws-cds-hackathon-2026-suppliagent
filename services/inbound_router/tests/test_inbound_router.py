@@ -204,6 +204,61 @@ def test_unknown_event_shape_goes_to_the_dlq(events: list[Any]) -> None:
         router.handler(sqs_event({"hello": "world"}), None)
 
 
+def test_email_object_must_be_the_notified_message(
+    events: list[Any], ses_notification: Builder
+) -> None:
+    notification = ses_notification()
+    notification["receipt"]["action"]["objectKey"] = "mail/another-message"
+
+    with pytest.raises(InvalidInputError):
+        router.handler(sqs_event(notification), None)
+
+
+def test_redelivery_with_a_new_timestamp_is_still_a_duplicate(
+    events: list[Any], wa_text: Builder
+) -> None:
+    router.handler(sqs_event(wa_text("393330000001", at="2026-10-26T10:00:00Z")), None)
+    router.handler(sqs_event(wa_text("393330000001", at="2026-10-26T10:05:00Z")), None)  # E-01
+
+    assert len(stored("conv_con001")) == 1
+
+
+def test_contact_pending_verification_gets_no_venues(events: list[Any], wa_text: Builder) -> None:
+    # Negative authorization: same rule as caller_scope (fail-closed until verified).
+    dynamodb: Any = boto3.resource("dynamodb")
+    dynamodb.Table("suppliagent-test-contacts").put_item(
+        Item={"contactId": "con_new", "customerId": "cus_002", "customerIds": ["cus_002"],
+              "language": "it", "status": "PENDING_VERIFICATION"}
+    )  # fmt: skip
+    dynamodb.Table("suppliagent-test-channel-identities").put_item(
+        Item={"channelAddress": "WHATSAPP#+393338888888", "channel": "WHATSAPP",
+              "contactId": "con_new", "role": "CUSTOMER_CONTACT", "verified": False,
+              "conversationId": "conv_uabc"}
+    )  # fmt: skip
+
+    router.handler(sqs_event(wa_text("393338888888")), None)
+
+    # Stays in the conversation it was identified in (session, handoff and buffer survive).
+    [item] = stored("conv_uabc")
+    assert (item["role"], item["contactId"], item["customerIds"]) == (
+        "CUSTOMER_CONTACT",
+        "con_new",
+        [],
+    )
+
+
+def test_unverified_email_never_lands_in_the_address_owners_conversation(
+    events: list[Any], mail: Builder, raw_mail: Builder
+) -> None:
+    router.handler(sqs_event(mail(raw_mail("a", "nuovo@example.org"))), None)
+    router.handler(
+        sqs_event(mail(raw_mail("b", "nuovo@example.org"), dmarc="GRAY")), None
+    )  # same address, forged or not, kept apart
+
+    conversations: Any = boto3.resource("dynamodb").Table("suppliagent-test-conversations")
+    assert len(conversations.scan()["Items"]) == 2
+
+
 def test_whatsapp_delivery_status_is_ignored(events: list[Any], wa_event: Builder) -> None:
     router.handler(sqs_event(wa_event(None, statuses=[{"id": "wamid.1", "status": "read"}])), None)
 

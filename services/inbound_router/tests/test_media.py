@@ -143,37 +143,67 @@ def test_unknown_sender_media_goes_under_its_conversation(wa_media: Builder) -> 
     assert key.startswith("media/conv_u")
 
 
-def test_email_attachments_are_uploaded_and_unsafe_ones_dropped(mail: Builder) -> None:
+JPEG, PDF_BYTES, XLSX_BYTES = b"\xff\xd8\xff\xe0jpg", b"%PDF-1.7", b"PK\x03\x04xlsx"
+
+
+def test_email_attachments_are_uploaded_and_unsafe_ones_kept_without_file(mail: Builder) -> None:
     notification = mail(
-        ("bigliettino.JPG", "image/jpeg", b"jpg"),
-        ("ordine.pdf", PDF, b"%PDF"),
-        ("ordine.xlsx", XLSX, b"xlsx"),
+        ("bigliettino.JPG", "image/jpeg", JPEG),
+        ("ordine.pdf", PDF, PDF_BYTES),
+        ("ordine.xlsx", XLSX, XLSX_BYTES),
         ("setup.exe", "application/x-msdownload", b"MZ"),
-        ("big.pdf", PDF, b"0" * (10 * 1024 * 1024 + 1)),
+        ("big.pdf", PDF, PDF_BYTES + b"0" * (10 * 1024 * 1024)),
+        ("fake.pdf", PDF, b"MZ\x90\x00"),  # an executable declared as PDF
+        ("old.xls", "application/vnd.ms-excel", b"\xd0\xcf\x11\xe0"),  # legacy, macros
     )
 
     router.handler(sqs_event(notification), None)
 
     [item] = stored("conv_con001")
     prefix = f"media/con_001/{item['messageId']}/"
-    assert [(a["type"], a["s3Uri"]) for a in item["attachments"]] == [
+    assert [(a["type"], a.get("s3Uri")) for a in item["attachments"]] == [
         ("image", f"s3://{MEDIA}/{prefix}0.jpg"),
         ("document", f"s3://{MEDIA}/{prefix}1.pdf"),
         ("document", f"s3://{MEDIA}/{prefix}2.xlsx"),
+        ("document", None),  # rejected but visible to the agent (E-13)
+        ("document", None),
+        ("document", None),
+        ("document", None),
     ]
     assert media_keys() == [f"{prefix}0.jpg", f"{prefix}1.pdf", f"{prefix}2.xlsx"]
+    head = boto3.client("s3").head_object(Bucket=MEDIA, Key=f"{prefix}1.pdf")
+    assert head["ContentDisposition"] == "attachment"  # never rendered by the browser
 
 
-def test_attachment_filename_never_escapes_the_message_prefix(mail: Builder) -> None:
-    router.handler(sqs_event(mail(("../../con_002/x/evil.pdf", PDF, b"%PDF"))), None)
+def test_attachment_key_comes_from_the_type_not_the_file_name(mail: Builder) -> None:
+    router.handler(sqs_event(mail(("../../con_002/x/evil.html", PDF, PDF_BYTES))), None)
 
     [key] = media_keys()
     item = stored("conv_con001")[0]
     assert key == f"media/con_001/{item['messageId']}/0.pdf"
 
 
-def test_attachments_of_an_infected_mail_are_dropped(mail: Builder) -> None:
-    router.handler(sqs_event(mail(("ordine.pdf", PDF, b"%PDF"), virus="FAIL")), None)  # E-13
+@pytest.mark.parametrize("virus", ["FAIL", "GRAY", "PROCESSING_FAILED"])
+def test_attachments_without_a_clean_virus_scan_are_not_stored(mail: Builder, virus: str) -> None:
+    router.handler(sqs_event(mail(("ordine.pdf", PDF, PDF_BYTES), virus=virus)), None)  # E-13
 
-    assert stored("conv_con001")[0]["attachments"] == []
+    [attachment] = stored("conv_con001")[0]["attachments"]
+    assert "s3Uri" not in attachment
     assert media_keys() == []
+
+
+def test_at_most_ten_attachments_per_mail_are_stored(mail: Builder) -> None:
+    router.handler(sqs_event(mail(*[(f"{i}.pdf", PDF, PDF_BYTES) for i in range(12)])), None)
+
+    assert len(stored("conv_con001")[0]["attachments"]) == 12
+    assert len(media_keys()) == 10
+
+
+def test_oversized_whatsapp_media_is_not_handed_to_the_agent(
+    wa_media: Builder, social: Any
+) -> None:
+    social.file_size_kb = 20 * 1024  # e.g. a 20 MB document
+
+    router.handler(sqs_event(wa_media("image", "image/jpeg")), None)
+
+    assert "s3Uri" not in stored("conv_con001")[0]["attachments"][0]

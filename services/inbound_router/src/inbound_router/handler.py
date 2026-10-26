@@ -4,12 +4,14 @@ SQS `inbound` (SNS envelope, batch of 1) -> normalize -> identity and role -> me
 -> conversation -> `Messages`. Appending to the TurnBuffer and the handoff check (`mode = HUMAN`)
 arrive with T-22, the read receipt with the Notifier (T-24: the only sender, AGENTS §8.7).
 
-Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `INBOUND_MAIL_BUCKET`, plus those of `media`.
+Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `INBOUND_MAIL_BUCKET`, `ORDER_DOMAIN` (SES domain,
+empty = no order correlation), plus those of `media`.
 """
 
 import hashlib
 import json
 import os
+import time
 from datetime import UTC, datetime
 from functools import cache
 from typing import Any
@@ -34,6 +36,7 @@ from inbound_router.normalize import (
 
 SOURCE = "suppliagent.inbound-router"
 LOCALES = {"it": "it-IT", "en": "en-GB"}
+DEDUP_TTL_SECONDS = 7 * 24 * 3600
 logger = Logger(service="inbound-router")
 
 
@@ -53,13 +56,18 @@ def _raw_messages(event: dict[str, Any]) -> list[RawMessage]:
     if is_whatsapp(event):
         return whatsapp_messages(event)
     if is_email(event):
-        return [email_message(event, _read_mail(event))]
+        order_domain = os.environ.get("ORDER_DOMAIN", "").lower()
+        return [email_message(event, _read_mail(event), order_domain)]
     raise InvalidInputError  # retried, then in the DLQ
 
 
 def _read_mail(notification: dict[str, Any]) -> bytes:
     action = notification["receipt"]["action"]
-    if action["bucketName"] != os.environ["INBOUND_MAIL_BUCKET"]:
+    expected_key = f"mail/{notification['mail']['messageId']}"  # receipt rule prefix + SES id
+    if (
+        action["bucketName"] != os.environ["INBOUND_MAIL_BUCKET"]
+        or action["objectKey"] != expected_key
+    ):
         raise InvalidInputError
     body: bytes = (
         _s3().get_object(Bucket=action["bucketName"], Key=action["objectKey"])["Body"].read()
@@ -92,6 +100,7 @@ def _store(raw: RawMessage) -> None:
             "conversationId": conversation_id,
             "orderId": raw.order_id,
             "from": raw.sender,
+            "senderVerified": raw.sender_verified,
             "text": raw.text,
             "attachments": list(attachments),
             "interactiveReply": raw.interactive_reply,
@@ -108,11 +117,15 @@ def _store(raw: RawMessage) -> None:
 
 
 def _conversation_id(identity: Identity, raw: RawMessage) -> str:
-    """One conversation per contact across channels (F-15); unknown senders get one per address.
-    Deterministic, so concurrent first messages cannot create two."""
+    """One conversation per contact across channels (F-15), or the one the address was identified
+    in; unknown senders get one per address, and an unverified email sender one apart from the
+    address owner's. Deterministic, so concurrent first messages cannot create two."""
+    if identity.conversation_id:
+        return identity.conversation_id
     if identity.contact_id:
         return "conv_" + identity.contact_id.replace("_", "")
-    digest = hashlib.sha256(f"{raw.channel}#{raw.sender}".encode()).hexdigest()
+    unverified = "" if raw.sender_verified else "#unverified"
+    digest = hashlib.sha256(f"{raw.channel}#{raw.sender}{unverified}".encode()).hexdigest()
     return f"conv_u{digest[:16]}"
 
 
@@ -139,15 +152,39 @@ def _touch_conversation(conversation_id: str, identity: Identity) -> bool:
 
 
 def _put_message(message: NormalizedMessage) -> bool:
-    """False if already stored (id and sort key come from the event: a redelivery repeats them)."""
+    """False if this provider message was already stored. The guard item keyed by `messageId`
+    (derived from `providerMessageId`) catches a redelivery even with a new timestamp or in
+    another conversation (E-01); it expires through the TurnBuffer TTL."""
     item = message.model_dump(by_alias=True, exclude_none=True, mode="json")
     item["tsMessageId"] = f"{message.receivedAt}#{message.messageId}"
+    guard = {
+        "conversationId": f"dedup#{message.messageId}",
+        "expiresAt": int(time.time()) + DEDUP_TTL_SECONDS,
+    }
+    messages = table("messages")
     try:
-        table("messages").put_item(
-            Item=item, ConditionExpression="attribute_not_exists(tsMessageId)"
+        # The resource's client takes plain Python values, like the Table API.
+        messages.meta.client.transact_write_items(
+            TransactItems=[
+                {
+                    "Put": {
+                        "TableName": messages.name,
+                        "Item": item,
+                        "ConditionExpression": "attribute_not_exists(tsMessageId)",
+                    }
+                },
+                {
+                    "Put": {
+                        "TableName": table("turn-buffer").name,
+                        "Item": guard,
+                        "ConditionExpression": "attribute_not_exists(conversationId)",
+                    }
+                },
+            ]
         )
     except ClientError as e:
-        if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
-            raise
-        return False
+        reasons = e.response.get("CancellationReasons", [])
+        if any(r.get("Code") == "ConditionalCheckFailed" for r in reasons):
+            return False
+        raise  # e.g. a conflicting concurrent duplicate: retried, then a duplicate
     return True

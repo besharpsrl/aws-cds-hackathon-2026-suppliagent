@@ -38,8 +38,15 @@ describe('MessagingStack – ingestion (T-21, FN-01)', () => {
     }
   });
 
-  it('feeds the router one message at a time', () => {
-    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', { BatchSize: 1 });
+  it('feeds the router one message at a time, with capped concurrency and a DLQ alarm', () => {
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      BatchSize: 1,
+      ScalingConfig: { MaximumConcurrency: 10 },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'suppliagent-dev-inbound-dlq',
+      MetricName: 'ApproximateNumberOfMessagesVisible',
+    });
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'suppliagent-dev-inbound-router',
       Handler: 'inbound_router.handler.handler',

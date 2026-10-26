@@ -86,9 +86,10 @@ sequenceDiagram
     participant FQ as SQS turn-flush
     participant D as Turn Dispatcher
     participant A as AgentCore Runtime
-    CH->>Q: evento (group = chat, dedup = providerMessageId)
-    Q->>R: consegna in ordine per chat
-    R->>R: normalizza · identità e ruolo · idempotenza · media · read receipt
+    CH->>Q: evento (SNS standard, almeno una consegna)
+    Q->>R: consegna (chat diverse in parallelo)
+    R->>R: normalizza · identità e ruolo · media · idempotenza su providerMessageId
+    R-->>R: read receipt via Notifier (T-24)
     alt mode = HUMAN
         R-->>R: solo console
     else mode = AGENT
@@ -147,7 +148,7 @@ sequenceDiagram
 | PDF / Excel | → S3 | ordine strutturato del cliente (estrazione righe) o documento generico |
 | Video, sticker | non elaborati | richiesta cortese di foto o testo |
 
-I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`attachments[].s3Uri`); tipi ammessi e limiti in [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md). Allegati non ammessi o oltre 10 MB vengono scartati (E-13).
+I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`attachments[].s3Uri`); tipi ammessi e limiti in [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md). Un allegato rifiutato resta in `attachments` **senza `s3Uri`**: l'agente sa che c'era e chiede un altro formato (E-13).
 
 ## 4. Flussi
 
@@ -382,7 +383,7 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 
 | ID | Errore | Gestione |
 |---|---|---|
-| E-01 | Evento duplicato | Idempotenza su `providerMessageId` (scrittura condizionata in `Messages`; la coda standard consegna almeno una volta) |
+| E-01 | Evento duplicato | Idempotenza su `providerMessageId`: scrittura in transazione del messaggio e di una guardia `dedup#<messageId>` (TTL 7 giorni nel TurnBuffer), quindi anche con timestamp diverso; la coda standard consegna almeno una volta |
 | E-02 | Download media fallito | Retry ×3 (riconsegna SQS), poi DLQ; richiesta di reinvio al cliente quando c'è il Notifier (T-24) |
 | E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
 | E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |
@@ -394,7 +395,7 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 | E-10 | Messaggio in DLQ | Allarme; redrive; blocca solo quella chat |
 | E-11 | Lock orfano | Scadenza `turnLockTtlMs` |
 | E-12 | Turno oltre il tempo massimo | Cortesia, retry una volta, poi handoff `LOW_CONFIDENCE` |
-| E-13 | Allegato non consentito/malevolo | Scartato, cliente informato |
+| E-13 | Allegato non consentito/malevolo | Non salvato (tipo fuori whitelist, firma dei byte diversa dal tipo dichiarato, oltre 10 MB, virus scan SES diverso da `PASS`): resta nel messaggio senza `s3Uri` e il cliente viene informato. I media WhatsApp non passano da un antivirus |
 
 ## 6. Contratti
 

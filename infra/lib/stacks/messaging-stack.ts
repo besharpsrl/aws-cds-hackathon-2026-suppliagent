@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { Duration, Stack, Validations, type StackProps } from 'aws-cdk-lib';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import type { ITableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import type { IEventBus } from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -28,6 +29,7 @@ export interface MessagingStackProps extends StackProps {
     readonly customers: ITableV2;
     readonly conversations: ITableV2;
     readonly messages: ITableV2;
+    readonly turnBuffer: ITableV2;
   };
 }
 
@@ -78,6 +80,8 @@ export class MessagingStack extends Stack {
         INBOUND_MAIL_BUCKET: props.inboundMailBucket.bucketName,
         MEDIA_BUCKET: props.mediaBucket.bucketName,
         WA_PHONE_NUMBER_ID_PARAM: phoneNumberParam,
+        // `ordine+<orderId>@` is trusted only on our own domain (same context as ChannelsStack).
+        ORDER_DOMAIN: (this.node.tryGetContext('sesDomain') as string | undefined) ?? '',
       },
     });
     this.inboundQueue = queue('Inbound', {
@@ -87,7 +91,18 @@ export class MessagingStack extends Stack {
     for (const topic of props.inboundTopics) {
       topic.addSubscription(new SqsSubscription(this.inboundQueue)); // SNS envelope kept
     }
-    router.function.addEventSource(new SqsEventSource(this.inboundQueue, { batchSize: 1 }));
+    // Capped: the public number and mailbox must not let spam take the account's concurrency.
+    router.function.addEventSource(
+      new SqsEventSource(this.inboundQueue, { batchSize: 1, maxConcurrency: 10 }),
+    );
+    // E-10: visible in CloudWatch; notification target arrives with the dashboards (T-09).
+    inboundDlq.metricApproximateNumberOfMessagesVisible().createAlarm(this, 'InboundDlqAlarm', {
+      alarmName: `${prefix}-inbound-dlq`,
+      threshold: 0,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
 
     // Explicit statements: only the calls the router makes.
     const allow = (actions: string[], resources: string[]) =>
@@ -98,7 +113,8 @@ export class MessagingStack extends Stack {
     );
     allow(['dynamodb:Query'], [`${tables.customers.tableArn}/index/by-repId`]);
     allow(['dynamodb:UpdateItem'], [tables.conversations.tableArn]);
-    allow(['dynamodb:PutItem'], [tables.messages.tableArn]);
+    // Messages + a TTL'd `dedup#<messageId>` guard in TurnBuffer, in one transaction (E-01).
+    allow(['dynamodb:PutItem'], [tables.messages.tableArn, tables.turnBuffer.tableArn]);
     allow(['events:PutEvents'], [props.eventBus.eventBusArn]);
     allow(['s3:GetObject'], [props.inboundMailBucket.arnForObjects('mail/*')]);
     allow(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
