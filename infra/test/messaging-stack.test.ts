@@ -65,3 +65,32 @@ describe('MessagingStack – ingestion (T-21, FN-01)', () => {
     expect(JSON.stringify(foundation)).not.toMatch(/channels/i);
   });
 });
+
+describe('MessagingStack – media (T-23, FN-05, FN-06)', () => {
+  it('lets the router download WhatsApp media and write it under media/ only', () => {
+    const json = JSON.stringify(statements());
+    expect(json).toContain('social-messaging:GetWhatsAppMessageMedia');
+    expect(json).toContain('/media/*');
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 's3:ListBucket',
+            Condition: { StringLike: { 's3:prefix': 'media/*' } },
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('reads the phone number id from SSM at runtime, never from code', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          WA_PHONE_NUMBER_ID_PARAM: '/suppliagent/dev/waPhoneNumberId',
+        }),
+      },
+    });
+    expect(JSON.stringify(statements())).toContain('parameter/suppliagent/dev/waPhoneNumberId');
+  });
+});

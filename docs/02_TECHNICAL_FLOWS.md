@@ -147,6 +147,8 @@ sequenceDiagram
 | PDF / Excel | → S3 | ordine strutturato del cliente (estrazione righe) o documento generico |
 | Video, sticker | non elaborati | richiesta cortese di foto o testo |
 
+I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`attachments[].s3Uri`); tipi ammessi e limiti in [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md). Allegati non ammessi o oltre 10 MB vengono scartati (E-13).
+
 ## 4. Flussi
 
 ### F-01 – Primo contatto e informativa (FN-02)
@@ -381,7 +383,7 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 | ID | Errore | Gestione |
 |---|---|---|
 | E-01 | Evento duplicato | Idempotenza su `providerMessageId` (scrittura condizionata in `Messages`; la coda standard consegna almeno una volta) |
-| E-02 | Download media fallito | Retry ×3; poi richiesta di reinvio |
+| E-02 | Download media fallito | Retry ×3 (riconsegna SQS), poi DLQ; richiesta di reinvio al cliente quando c'è il Notifier (T-24) |
 | E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
 | E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |
 | E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato |

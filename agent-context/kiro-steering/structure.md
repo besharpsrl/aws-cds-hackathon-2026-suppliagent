@@ -13,7 +13,7 @@ SuppliAgent/
 ├── infra/                   # CDK TS: bin/, lib/stacks/ (1 file per stack), lib/constructs/, config/
 ├── agent/                   # Strands agent: src/suppliagent_agent/, prompts/ (customer, sales_rep, shared), evals/, Dockerfile
 ├── services/                # Lambda Python, 1 cartella per funzione
-│   ├── inbound_router/ turn_dispatcher/ media_fetcher/ notifier/ order_pdf/ erp_adapter/
+│   ├── inbound_router/ (anche media → S3) turn_dispatcher/ notifier/ order_pdf/ erp_adapter/
 │   ├── catalog_indexer/ insights_analyzer/ proactive_trigger/ console_api/ rep_chat/ broadcaster/
 │   ├── tools/               # target Gateway: customers, order_intake, catalog, inventory_pricing, orders, reco, sales
 │   └── shared/              # modelli pydantic, client CDS, auth per ruolo, logging, errori

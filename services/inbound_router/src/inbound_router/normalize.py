@@ -22,6 +22,15 @@ QUOTE_START = re.compile(
 
 
 @dataclass(frozen=True)
+class EmailFile:
+    """An email attachment, before upload (T-23). `filename` is untrusted: never used as a key."""
+
+    filename: str
+    mime_type: str
+    content: bytes
+
+
+@dataclass(frozen=True)
 class RawMessage:
     """A message before identity resolution."""
 
@@ -31,6 +40,7 @@ class RawMessage:
     received_at: str
     text: str | None = None
     attachments: tuple[Attachment, ...] = ()
+    files: tuple[EmailFile, ...] = ()
     interactive_reply: InteractiveReply | None = None
     order_id: str | None = None
     # False when the channel cannot vouch for `sender`: the router then treats it as UNKNOWN.
@@ -101,22 +111,34 @@ def _whatsapp_content(
 
 def email_message(notification: dict[str, Any], raw: bytes) -> RawMessage:
     """A mail received by SES: `notification` is the receipt rule's SNS message, `raw` the S3
-    object. Attachments (photos, PDF, Excel) arrive with T-23."""
+    object. Attachments are dropped when the SES virus scan fails (E-13)."""
     mail = notification["mail"]
+    receipt = notification.get("receipt", {})
     msg = message_from_bytes(raw, policy=policy.default)
     subject = str(msg.get("Subject", "")).strip()
     body = _clean_body(msg)
     text = "\n".join(part for part in (subject, body) if part) or None
     order_ids = (m.group(1) for d in mail.get("destination", []) if (m := ORDER_ADDRESS.match(d)))
+    infected = receipt.get("virusVerdict", {}).get("status") == "FAIL"
     return RawMessage(
         channel=Channel.EMAIL,
         provider_message_id=mail["messageId"],
         sender=parseaddr(str(msg.get("From", "")))[1].lower(),
         received_at=_iso(datetime.fromisoformat(mail["timestamp"])),
         text=text,
+        files=() if infected else _files(msg),
         order_id=next(order_ids, None),
-        sender_verified=_from_verified(notification.get("receipt", {})),
+        sender_verified=_from_verified(receipt),
     )
+
+
+def _files(msg: EmailMessage) -> tuple[EmailFile, ...]:
+    files: list[EmailFile] = []
+    for part in msg.iter_attachments():
+        content = part.get_payload(decode=True)
+        if isinstance(content, bytes):  # not a nested message/rfc822
+            files.append(EmailFile(part.get_filename() or "", part.get_content_type(), content))
+    return tuple(files)
 
 
 def _from_verified(receipt: dict[str, Any]) -> bool:

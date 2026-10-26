@@ -43,6 +43,7 @@ export function buildApp(app: App, config: EnvConfig) {
       key: foundation.key,
       eventBus: foundation.eventBus,
       inboundMailBucket: foundation.inboundMailBucket,
+      mediaBucket: foundation.mediaBucket,
       inboundTopics: [channels.waEventsTopic, channels.mailInboundTopic],
       tables: {
         channelIdentities: data.tables.ChannelIdentities,

@@ -1,4 +1,5 @@
-"""Moto tables loaded with the committed seed data (seed/data), plus the inbound-mail bucket."""
+"""Moto tables loaded with the committed seed data (seed/data), the inbound-mail and media buckets,
+the WhatsApp phone number parameter and a fake EUM Social client."""
 
 import json
 from collections.abc import Callable, Iterator
@@ -9,6 +10,7 @@ from typing import Any
 
 import boto3
 import pytest
+from inbound_router import handler, media
 from moto import mock_aws
 from suppliagent_shared.aws import reset_clients
 
@@ -23,6 +25,15 @@ TABLES = {
     "messages": (("conversationId", "tsMessageId"), ("providerMessageId",)),
 }
 BUCKET = "suppliagent-test-inbound-mail"
+MEDIA_BUCKET = "suppliagent-test-media"
+PHONE_PARAM = "/suppliagent/test/waPhoneNumberId"
+PHONE_NUMBER_ID = "phone-number-id-0123456789abcdef"
+
+
+def _clear_caches() -> None:
+    reset_clients()
+    for client in (handler._s3, media._s3, media._ssm):  # `_social` is always faked
+        client.cache_clear()
 
 
 def _create(resource: Any, name: str, key: tuple[str, ...], gsis: tuple[str, ...]) -> Any:
@@ -56,8 +67,10 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     monkeypatch.setenv("TABLE_PREFIX", "suppliagent-test-")
     monkeypatch.setenv("EVENT_BUS_NAME", "suppliagent-test-events")
     monkeypatch.setenv("INBOUND_MAIL_BUCKET", BUCKET)
+    monkeypatch.setenv("MEDIA_BUCKET", MEDIA_BUCKET)
+    monkeypatch.setenv("WA_PHONE_NUMBER_ID_PARAM", PHONE_PARAM)
     with mock_aws():
-        reset_clients()
+        _clear_caches()
         resource: Any = boto3.resource("dynamodb")
         for name, (key, gsis) in TABLES.items():
             table = _create(resource, name, key, gsis)
@@ -67,11 +80,39 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
                 for item in items:
                     batch.put_item(Item=item)
         boto3.client("events").create_event_bus(Name="suppliagent-test-events")
-        boto3.client("s3").create_bucket(
-            Bucket=BUCKET, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"}
-        )
+        for bucket in (BUCKET, MEDIA_BUCKET):
+            boto3.client("s3").create_bucket(
+                Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"}
+            )
+        boto3.client("ssm").put_parameter(Name=PHONE_PARAM, Value=PHONE_NUMBER_ID, Type="String")
         yield resource
-        reset_clients()
+        _clear_caches()
+
+
+class FakeSocial:
+    """EUM Social `GetWhatsAppMessageMedia`: writes `<key prefix><mediaId>.<ext>` (moto has no
+    `socialmessaging`). `fail` simulates an expired or unknown media id."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self.fail = False
+
+    def get_whatsapp_message_media(self, **request: Any) -> dict[str, Any]:
+        self.calls.append(request)
+        if self.fail:
+            raise RuntimeError("ResourceNotFoundException")
+        target = request["destinationS3File"]
+        boto3.client("s3").put_object(
+            Bucket=target["bucketName"], Key=f"{target['key']}{request['mediaId']}.jpeg", Body=b"x"
+        )
+        return {"mimeType": "image/jpeg", "fileSize": 1}
+
+
+@pytest.fixture(autouse=True)
+def social(monkeypatch: pytest.MonkeyPatch) -> FakeSocial:
+    fake = FakeSocial()
+    monkeypatch.setattr(media, "_social", lambda: fake)
+    return fake
 
 
 # Event builders as fixtures: with `--import-mode=importlib` test modules cannot import each other.

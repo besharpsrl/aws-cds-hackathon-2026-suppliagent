@@ -19,6 +19,7 @@ export interface MessagingStackProps extends StackProps {
   readonly key: IKey;
   readonly eventBus: IEventBus;
   readonly inboundMailBucket: IBucket;
+  readonly mediaBucket: IBucket;
   readonly inboundTopics: readonly ITopic[];
   readonly tables: {
     readonly channelIdentities: ITableV2;
@@ -47,6 +48,8 @@ export class MessagingStack extends Stack {
     // Imported: SqsSubscription would otherwise add a topic-scoped statement to the Foundation key
     // policy (a Foundation -> Channels cycle). Foundation already lets SNS use the key.
     const queueKey = kms.Key.fromKeyArn(this, 'QueueKey', key.keyArn);
+    // Published by ChannelsStack; read at runtime so connecting the WABA needs no redeploy here.
+    const phoneNumberParam = `/suppliagent/${config.envName}/waPhoneNumberId`;
 
     const queue = (name: string, extra: Partial<sqs.QueueProps> = {}) =>
       new sqs.Queue(this, name, {
@@ -73,6 +76,8 @@ export class MessagingStack extends Stack {
         TABLE_PREFIX: `${prefix}-`,
         EVENT_BUS_NAME: props.eventBus.eventBusName,
         INBOUND_MAIL_BUCKET: props.inboundMailBucket.bucketName,
+        MEDIA_BUCKET: props.mediaBucket.bucketName,
+        WA_PHONE_NUMBER_ID_PARAM: phoneNumberParam,
       },
     });
     this.inboundQueue = queue('Inbound', {
@@ -97,9 +102,47 @@ export class MessagingStack extends Stack {
     allow(['events:PutEvents'], [props.eventBus.eventBusArn]);
     allow(['s3:GetObject'], [props.inboundMailBucket.arnForObjects('mail/*')]);
     allow(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
+    // Media (T-23): EUM Social writes to S3 with the caller's permissions (forward access sessions).
+    allow(['s3:PutObject'], [props.mediaBucket.arnForObjects('media/*')]);
+    router.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:ListBucket'],
+        resources: [props.mediaBucket.bucketArn],
+        conditions: { StringLike: { 's3:prefix': 'media/*' } },
+      }),
+    );
+    allow(
+      ['ssm:GetParameter'],
+      [
+        this.formatArn({
+          service: 'ssm',
+          resource: 'parameter',
+          resourceName: phoneNumberParam.slice(1),
+        }),
+      ],
+    );
+    allow(
+      ['social-messaging:GetWhatsAppMessageMedia'],
+      [
+        this.formatArn({
+          service: 'social-messaging',
+          resource: 'phone-number-id',
+          resourceName: '*',
+        }),
+      ],
+    );
     Validations.of(router).acknowledge({
       id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttInboundMailBucket420E1CDEArn451947A0/mail/*]`,
       reason: 'SES stores each inbound mail as mail/<messageId>; read-only.',
+    });
+    Validations.of(router).acknowledge({
+      id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttMediaBucketBCBB02BAArnB94B784B/media/*]`,
+      reason: 'One object per inbound media under media/<owner>/<messageId>/; write-only.',
+    });
+    Validations.of(router).acknowledge({
+      id: `AwsSolutions-IAM5[Resource::arn:aws:social-messaging:${config.region}:<AWS::AccountId>:phone-number-id/*]`,
+      reason:
+        'The phone number id is set after deploy (SSM, manual WABA step); media download only, this account.',
     });
   }
 }

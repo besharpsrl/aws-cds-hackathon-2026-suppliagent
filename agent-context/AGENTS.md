@@ -84,7 +84,7 @@ SuppliAgent/
 │   ├── evals/                   # dataset (bigliettini, vocali, conversazioni) + runner
 │   └── Dockerfile
 ├── services/                    # Lambda (Python 3.12) – una cartella per funzione
-│   ├── inbound_router/  turn_dispatcher/  media_fetcher/  notifier/
+│   ├── inbound_router/  turn_dispatcher/  notifier/   # media → S3 dentro inbound_router
 │   ├── order_pdf/  erp_adapter/  catalog_indexer/  insights_analyzer/  proactive_trigger/
 │   ├── console_api/  rep_chat/  broadcaster/
 │   ├── tools/                   # target del Gateway: customers, order_intake, catalog,

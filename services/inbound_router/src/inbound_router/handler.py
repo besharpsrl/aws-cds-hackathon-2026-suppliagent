@@ -1,10 +1,10 @@
 """Inbound Router (T-21, FN-01, FN-03; INFRASTRUCTURE_DESIGN §5.2).
 
-SQS `inbound` (SNS envelope, batch of 1) -> normalize -> identity and role -> conversation ->
-`Messages`. Appending to the TurnBuffer and the handoff check (`mode = HUMAN`) arrive with T-22,
-the read receipt with the Notifier (T-24: every send goes through it, AGENTS §8.7), media with T-23.
+SQS `inbound` (SNS envelope, batch of 1) -> normalize -> identity and role -> media to S3 (T-23)
+-> conversation -> `Messages`. Appending to the TurnBuffer and the handoff check (`mode = HUMAN`)
+arrive with T-22, the read receipt with the Notifier (T-24: the only sender, AGENTS §8.7).
 
-Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `INBOUND_MAIL_BUCKET`.
+Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `INBOUND_MAIL_BUCKET`, plus those of `media`.
 """
 
 import hashlib
@@ -22,6 +22,7 @@ from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.errors import InvalidInputError
 from suppliagent_shared.messages import NormalizedMessage
 
+from inbound_router import media
 from inbound_router.identity import UNKNOWN, Identity, resolve
 from inbound_router.normalize import (
     RawMessage,
@@ -70,6 +71,9 @@ def _store(raw: RawMessage) -> None:
     identity = resolve(raw.channel, raw.sender) if raw.sender_verified else UNKNOWN
     conversation_id = _conversation_id(identity, raw)
     logger.set_correlation_id(conversation_id)
+    message_id = "msg_" + uuid5(NAMESPACE_URL, raw.provider_message_id).hex
+    # Before any write: a failed download is retried with nothing half-stored.
+    attachments = media.store(raw, identity.contact_id or conversation_id, message_id)
     if _touch_conversation(conversation_id, identity):
         put_event(
             SOURCE,
@@ -79,7 +83,7 @@ def _store(raw: RawMessage) -> None:
     # A dict: the wire name `from` is a Python keyword, mypy only knows the alias.
     message = NormalizedMessage.model_validate(
         {
-            "messageId": "msg_" + uuid5(NAMESPACE_URL, raw.provider_message_id).hex,
+            "messageId": message_id,
             "providerMessageId": raw.provider_message_id,
             "channel": raw.channel,
             "contactId": identity.contact_id,
@@ -89,7 +93,7 @@ def _store(raw: RawMessage) -> None:
             "orderId": raw.order_id,
             "from": raw.sender,
             "text": raw.text,
-            "attachments": list(raw.attachments),
+            "attachments": list(attachments),
             "interactiveReply": raw.interactive_reply,
             "receivedAt": raw.received_at,
             "locale": LOCALES[identity.language],

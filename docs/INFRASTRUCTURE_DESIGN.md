@@ -60,7 +60,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 | 3 | `CatalogStack` | S3 Vectors bucket + indice `products`, Lambda di indicizzazione catalogo, **Bedrock Knowledge Base** (schede tecniche, vector store S3 Vectors) + data source S3 | Foundation, Data |
 | 4 | `ChannelsStack` | SES (identity dominio, configuration set, receipt rule set → S3 + SNS), EUM SMS/RCS (configuration set, event destinations, opt-out list), EUM Social (event destination SNS), topic SNS inbound | Foundation |
 | 5 | `AgentStack` | ECR image, AgentCore Runtime + Endpoint, AgentCore Memory, AgentCore Gateway + target Lambda, Bedrock Guardrail, ruoli IAM | Data, Catalog |
-| 6 | `MessagingStack` | SQS `inbound` + DLQ, SQS `turn-flush` + DLQ, Lambda Inbound Router, Turn Dispatcher, Media Fetcher, Notifier, Order PDF Generator, ERP Adapter, EventBridge Scheduler | Channels, Agent, Data |
+| 6 | `MessagingStack` | SQS `inbound` + DLQ, SQS `turn-flush` + DLQ, Lambda Inbound Router (con il download dei media), Turn Dispatcher, Notifier, Order PDF Generator, ERP Adapter, EventBridge Scheduler | Channels, Agent, Data |
 | 7 | `ProactiveStack` | EventBridge Scheduler giornaliero, Lambda **Insights & Reorder Analyzer**, Lambda **Proactive Trigger** | Data, Messaging |
 | 8 | `ConsoleStack` | Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API Gateway REST + WebSocket, Lambda API/broadcaster/rep-chat, S3 + CloudFront (OAC) + WAF | Data, Messaging, Agent |
 | 9 | `AnalyticsStack` | Firehose (eventi CDS + applicativi) → S3 Parquet, Glue Catalog, Athena workgroup e viste KPI, CloudWatch Dashboard + allarmi | Channels, Foundation |
@@ -78,7 +78,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 #### WhatsApp – AWS End User Messaging Social
 - **Prerequisito**: WABA già verificata collegata a EUM Social + numero dedicato.
 - **Inbound**: eventi su SNS `suppliagent-wa-events`.
-- **Media**: `GetWhatsAppMessageMedia` → S3 `media/<contactId>/<messageId>` (foto bigliettini, vocali, PDF).
+- **Media**: `GetWhatsAppMessageMedia` con `destinationS3File` → S3 `media/<contactId|conversationId>/<messageId>/<mediaId>.<ext>` (foto bigliettini, vocali, PDF). Il servizio scrive con i permessi del chiamante (Inbound Router: `s3:PutObject` su `media/*` + CMK); ID del numero letto a runtime da SSM `waPhoneNumberId`.
 - **Outbound**: `SendWhatsAppMessage` (testo, immagini, **interactive buttons/list** per chiarimenti e conferma, documento PDF dell'ordine, template).
 - **Template** (fuori finestra 24h): `order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`.
 - Usato da **due ruoli**: ristoratori (ordini) e agenti di commercio (copilota).
@@ -113,7 +113,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 1. **Normalizza** l'evento nel `NormalizedMessage` (WhatsApp ed email in T-21; SMS/RCS con T-27, chat web con T-64).
 2. **Risolve l'identità e il ruolo**: `ChannelIdentities` → `contactId`, `role` (`CUSTOMER_CONTACT` | `SALES_REP`), `customerIds[]` (un contatto può gestire più locali; un agente ha un portafoglio). Email: solo con DMARC `PASS` (§5.3.2). Una conversazione per contatto su tutti i canali (`conv_<contactId>`, F-15); mittenti sconosciuti: una per indirizzo; evento `conversation.started` alla creazione.
 3. **Idempotenza** su `providerMessageId` (`PutItem` condizionata su `Messages`, `messageId` derivato da `providerMessageId`).
-4. **Media** → Media Fetcher (WhatsApp) o estrazione allegati MIME (email).
+4. **Media** → S3 `media/<contactId|conversationId>/<messageId>/`, **dentro il Router** (deciso il 26/10, T-23: niente Lambda Media Fetcher separata, così il messaggio entra nel TurnBuffer solo con i media già salvati e senza coordinamento asincrono col debounce): WhatsApp con `GetWhatsAppMessageMedia`, email con gli allegati MIME. Ammessi: immagini (JPEG, PNG, WebP, GIF, HEIC; niente SVG), audio, PDF, Excel, CSV, max 10 MB per allegato email; il resto scartato (E-13), allegati scartati se il virus scan SES fallisce. Video e sticker non scaricati. Download fallito → errore, retry SQS ×3, poi DLQ (E-02); niente scritture prima del download.
 5. **Read receipt** WhatsApp immediato (con il Notifier, T-24: è l'unico che chiama le API di invio).
 6. **Handoff check**: `mode = HUMAN` → solo console (T-22; il Router non azzera mai `mode`).
 7. **Accoda nel TurnBuffer** e programma il flush (T-22).
@@ -390,7 +390,7 @@ sequenceDiagram
 SuppliAgent/
 ├── infra/                     # CDK app (TypeScript): 9 stack
 ├── agent/                     # Strands agent (Python) + Dockerfile, prompt per ruolo, eval
-├── services/                  # Lambda: router, dispatcher, media-fetcher, notifier, pdf, erp-adapter,
+├── services/                  # Lambda: router (con media), dispatcher, notifier, pdf, erp-adapter,
 │                              #         tools/*, insights, proactive, console-api, rep-chat, broadcaster
 ├── console/                   # React (Vite): back office + chat agenti
 ├── seed/                      # catalogo anonimizzato, listini, clienti, storico ordini, bigliettini di test

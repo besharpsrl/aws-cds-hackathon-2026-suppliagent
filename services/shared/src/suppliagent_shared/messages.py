@@ -23,7 +23,7 @@ class Attachment(BaseModel):
 
     type: AttachmentType
     mimeType: str | None = None
-    mediaId: str | None = None  # provider media id; the media fetcher (T-23) sets `s3Uri`
+    mediaId: str | None = None  # provider media id; the router's media step (T-23) sets `s3Uri`
     s3Uri: str | None = None
 
 
