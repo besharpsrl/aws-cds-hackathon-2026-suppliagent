@@ -14,6 +14,7 @@
 - **Assunzioni da allineare con T-46**: il riepilogo ordine porta `customerName`, `uncertainLines`, `handoff`; la riga porta il nome prodotto (`name`); `source` sull'ordine; la correzione riga è un'azione lato server (oggi `httpOrdersApi.correctLine` lancia "not available").
 - **Test**: `console/src/orders/*.test.ts(x)` (21: filtri, inbox, dettaglio: immagine e righe affiancate, posizione dei riquadri, selezione sincronizzata, righe corrette, ordine senza immagine, scelta candidato, `judge` read-only, errori di caricamento); `npm run check` verde, `vite build` ok.
 - **Resta** (riga T-62 nel backlog): collegamento alle API reali e correzione lato server, quando T-46 è su `main`.
+- **Commit**: `88e591e` (branch `feat/FN-28-orders-views`).
 
 ### T-61 – Scaffold console React + Vite + TS · FN-28
 - **Cosa**: `console/` con Vite + React 19 + TypeScript, React Router, React Query, Amplify Auth (solo client). Login Cognito (SRP), `AuthProvider`/`useAuth`, route guard `RequireRole`, layout con logo da `assets/brand/`, email/ruoli e badge *Read-only* per il solo `judge`, client `apiFetch` con ID token verso `VITE_API_URL`. Pagina `Orders` vuota (T-62).
