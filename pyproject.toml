@@ -3,7 +3,7 @@ name = "suppliagent"
 version = "0.1.0"
 description = "SuppliAgent monorepo (uv workspace root)"
 requires-python = ">=3.12,<3.13"
-dependencies = ["suppliagent-shared", "suppliagent-agent"]
+dependencies = ["suppliagent-shared", "suppliagent-agent", "suppliagent-console-api"]
 
 [tool.uv]
 package = false
@@ -11,6 +11,7 @@ package = false
 [tool.uv.sources]
 suppliagent-shared = { workspace = true }
 suppliagent-agent = { workspace = true }
+suppliagent-console-api = { workspace = true }
 
 [tool.uv.workspace]
 members = ["agent", "services/*", "services/tools/*"]
@@ -40,6 +41,7 @@ select = ["E", "F", "I", "B", "UP", "S", "N"]
 python_version = "3.12"
 strict = true
 explicit_package_bases = true
+mypy_path = "services/console_api/src"
 exclude = ["(^|/)(node_modules|cdk\\.out|\\.venv)/"]
 
 [tool.pytest.ini_options]
