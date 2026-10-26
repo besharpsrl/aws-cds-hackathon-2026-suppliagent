@@ -95,7 +95,17 @@ def _flush(conversation_id: str) -> None:
         _release(conversation_id, until, 0)
         return
     try:
-        _run_turn(conversation_id, locked, pending)
+        conversation = (
+            table("conversations")
+            .get_item(Key={"conversationId": conversation_id}, ConsistentRead=True)
+            .get("Item", {})
+        )
+        if conversation.get("mode", "AGENT") != "AGENT":
+            # A handoff began after the Router queued these (FN-24): the agent stays silent. They
+            # are dropped from the buffer, the operator reads them in `Messages`.
+            logger.info("conversation in human mode: no turn", messages=len(pending))
+        else:
+            _run_turn(conversation_id, locked, pending, conversation)
     except BaseException:
         try:
             _release(conversation_id, until, 0)  # keep the messages: SQS retries the flush
@@ -199,10 +209,15 @@ def _release_update(
     return attributes
 
 
-def _run_turn(conversation_id: str, item: dict[str, Any], pending: list[dict[str, Any]]) -> None:
+def _run_turn(
+    conversation_id: str,
+    item: dict[str, Any],
+    pending: list[dict[str, Any]],
+    conversation: dict[str, Any],
+) -> None:
     started = time.monotonic()
     messages = sorted(pending, key=lambda m: (m["ts"], m["messageId"]))
-    reply = _invoke_agent(_turn_request(conversation_id, item, messages))
+    reply = _invoke_agent(_turn_request(conversation_id, item, messages, conversation))
     if reply:
         _notify(conversation_id, messages, reply)
     put_event(
@@ -214,14 +229,14 @@ def _run_turn(conversation_id: str, item: dict[str, Any], pending: list[dict[str
 
 
 def _turn_request(
-    conversation_id: str, item: dict[str, Any], messages: list[dict[str, Any]]
+    conversation_id: str,
+    item: dict[str, Any],
+    messages: list[dict[str, Any]],
+    conversation: dict[str, Any],
 ) -> dict[str, Any]:
     """02 §6.2. Identity and role come from the Router (never from the message text)."""
     caller = item["caller"]
     customer_ids = list(caller.get("customerIds", []))
-    conversation = (
-        table("conversations").get_item(Key={"conversationId": conversation_id}).get("Item", {})
-    )
     return {
         "conversationId": conversation_id,
         "contactId": caller.get("contactId"),

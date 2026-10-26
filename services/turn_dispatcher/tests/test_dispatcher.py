@@ -411,3 +411,17 @@ def test_several_venues_leave_the_active_one_to_the_agent(fakes: Fakes) -> None:
 
     assert fakes.turns[0]["activeCustomerId"] is None
     assert fakes.turns[0]["customerIds"] == ["cus_001", "cus_005"]
+
+
+def test_conversation_handed_off_after_the_router_queued_the_messages_gets_no_turn(
+    fakes: Fakes,
+) -> None:  # FN-24: while HUMAN the agent stays silent
+    conversations: Any = boto3.resource("dynamodb").Table("suppliagent-test-conversations")
+    conversations.put_item(Item={"conversationId": CONV, "mode": "HUMAN"})
+    put_buffer([message("msg_1")])
+
+    flush()
+
+    assert fakes.turns == [] and fakes.notifications == []
+    item = buffer()
+    assert item["pending"] == [] and "lockUntil" not in item  # no replay after Release
