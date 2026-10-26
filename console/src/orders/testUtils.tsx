@@ -83,7 +83,8 @@ export function renderOrders(api: OrdersApi, roles: Role[], path: string) {
         value={{
           status: 'signedIn',
           user: { email: 'u@demo.it', roles },
-          signIn: async () => {},
+          signIn: async () => ({ newPasswordRequired: false }),
+          confirmNewPassword: async () => {},
           signOut: async () => {},
         }}
       >

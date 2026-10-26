@@ -9,7 +9,14 @@ const noop = async () => {};
 
 function renderGuard(state: AuthState, roles?: Role[]) {
   return render(
-    <AuthContext.Provider value={{ ...state, signIn: noop, signOut: noop }}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        signIn: async () => ({ newPasswordRequired: false }),
+        confirmNewPassword: noop,
+        signOut: noop,
+      }}
+    >
       <MemoryRouter initialEntries={['/secret']}>
         <Routes>
           <Route path="/login" element={<p>login page</p>} />
