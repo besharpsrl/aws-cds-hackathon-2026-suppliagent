@@ -60,6 +60,19 @@ export class FoundationStack extends Stack {
       }),
     );
 
+    // Channel services publish to CMK-encrypted SNS topics and write encrypted inbound mail (T-20);
+    // SNS also delivers to the CMK-encrypted SQS queues (T-21). Scoped to this account (confused deputy).
+    this.key.addToResourcePolicy(
+      new iam.PolicyStatement({
+        principals: ['ses', 'social-messaging', 'sns'].map(
+          (service) => new iam.ServicePrincipal(`${service}.amazonaws.com`),
+        ),
+        actions: ['kms:GenerateDataKey*', 'kms:Decrypt'],
+        resources: ['*'],
+        conditions: { StringEquals: { 'aws:SourceAccount': this.account } },
+      }),
+    );
+
     // S3 server access logs do not support SSE-KMS on the target bucket: SSE-S3 is the only exception to the CMK.
     const accessLogsBucket = new s3.Bucket(this, 'AccessLogsBucket', {
       bucketName: `${prefix}-access-logs-${this.account}`,
@@ -97,6 +110,16 @@ export class FoundationStack extends Stack {
 
     this.mediaBucket = bucket('MediaBucket', 'media', 90);
     this.inboundMailBucket = bucket('InboundMailBucket', 'inbound-mail', 90);
+    // SES receipt rules (ChannelsStack) store inbound mail here. Account-scoped, not rule-scoped,
+    // so Foundation does not depend on Channels.
+    this.inboundMailBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        principals: [new iam.ServicePrincipal('ses.amazonaws.com')],
+        actions: ['s3:PutObject'],
+        resources: [this.inboundMailBucket.arnForObjects('mail/*')],
+        conditions: { StringEquals: { 'aws:SourceAccount': this.account } },
+      }),
+    );
     this.documentsBucket = bucket('DocumentsBucket', 'documents', 365);
     this.catalogAssetsBucket = bucket('CatalogAssetsBucket', 'catalog-assets');
     this.analyticsBucket = bucket('AnalyticsBucket', 'analytics', 365);
