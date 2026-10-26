@@ -413,6 +413,8 @@ SuppliAgent/
 | `env` / `region` | `demo` / `eu-west-1` |
 | `waPhoneNumberId` | ID numero WhatsApp su EUM Social (context CDK `-c waPhoneNumberId=…` → SSM; `UNSET` finché non c'è) |
 | `sesDomain` | `ordini.example.com` (context CDK `-c sesDomain=…`: crea identity e rule set inbound) |
+
+> **Attenzione**: `waPhoneNumberId` e `sesDomain` sono context CDK, non persistono. Ogni deploy che tocca `ChannelsStack` (anche indiretto, es. `messaging` senza `--exclusively`) deve ripassarli, altrimenti i parametri SSM tornano a `UNSET` e identity e rule set SES vengono rimossi. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
 | `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender |
 | `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |
