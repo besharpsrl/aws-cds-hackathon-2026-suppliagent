@@ -1,0 +1,61 @@
+[
+  {
+    "contactId": "con_001",
+    "name": "Luca Bianchi",
+    "customerId": "cus_001",
+    "customerIds": [
+      "cus_001",
+      "cus_005"
+    ],
+    "language": "it",
+    "status": "VERIFIED",
+    "privacyNoticeSentAt": "2026-09-01T08:00:00Z",
+    "proactiveConsent": true
+  },
+  {
+    "contactId": "con_002",
+    "name": "Anna Russo",
+    "customerId": "cus_002",
+    "customerIds": [
+      "cus_002"
+    ],
+    "language": "it",
+    "status": "VERIFIED",
+    "privacyNoticeSentAt": "2026-09-01T08:00:00Z",
+    "proactiveConsent": false
+  },
+  {
+    "contactId": "con_003",
+    "name": "Paolo Greco",
+    "customerId": "cus_003",
+    "customerIds": [
+      "cus_003"
+    ],
+    "language": "it",
+    "status": "VERIFIED"
+  },
+  {
+    "contactId": "con_004",
+    "name": "Sarah Collins",
+    "customerId": "cus_004",
+    "customerIds": [
+      "cus_004"
+    ],
+    "language": "en",
+    "status": "VERIFIED",
+    "privacyNoticeSentAt": "2026-09-01T08:00:00Z",
+    "proactiveConsent": true
+  },
+  {
+    "contactId": "con_005",
+    "name": "Elena Conti",
+    "customerId": "cus_006",
+    "customerIds": [
+      "cus_006"
+    ],
+    "language": "it",
+    "status": "VERIFIED",
+    "privacyNoticeSentAt": "2026-09-01T08:00:00Z",
+    "proactiveConsent": true
+  }
+]

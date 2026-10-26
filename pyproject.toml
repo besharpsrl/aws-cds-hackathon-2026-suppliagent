@@ -40,6 +40,8 @@ select = ["E", "F", "I", "B", "UP", "S", "N"]
 python_version = "3.12"
 strict = true
 explicit_package_bases = true
+# Package roots, so files under services/ map to their import names (e.g. suppliagent_shared).
+mypy_path = "services/shared/src:agent/src"
 exclude = ["(^|/)(node_modules|cdk\\.out|\\.venv)/"]
 
 [tool.pytest.ini_options]

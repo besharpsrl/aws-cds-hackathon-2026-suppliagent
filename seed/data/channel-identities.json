@@ -1,0 +1,72 @@
+[
+  {
+    "channelAddress": "WHATSAPP#+393330000001",
+    "channel": "WHATSAPP",
+    "contactId": "con_001",
+    "role": "CUSTOMER_CONTACT",
+    "verified": true
+  },
+  {
+    "channelAddress": "WHATSAPP#+393330000002",
+    "channel": "WHATSAPP",
+    "contactId": "con_002",
+    "role": "CUSTOMER_CONTACT",
+    "verified": true
+  },
+  {
+    "channelAddress": "WHATSAPP#+393330000003",
+    "channel": "WHATSAPP",
+    "contactId": "con_003",
+    "role": "CUSTOMER_CONTACT",
+    "verified": true
+  },
+  {
+    "channelAddress": "WHATSAPP#+447700900004",
+    "channel": "WHATSAPP",
+    "contactId": "con_004",
+    "role": "CUSTOMER_CONTACT",
+    "verified": true
+  },
+  {
+    "channelAddress": "WHATSAPP#+393330000005",
+    "channel": "WHATSAPP",
+    "contactId": "con_005",
+    "role": "CUSTOMER_CONTACT",
+    "verified": true
+  },
+  {
+    "channelAddress": "EMAIL#ordini.fornoantico@example.com",
+    "channel": "EMAIL",
+    "contactId": "con_001",
+    "role": "CUSTOMER_CONTACT",
+    "verified": true
+  },
+  {
+    "channelAddress": "EMAIL#trattoria.danino@example.com",
+    "channel": "EMAIL",
+    "contactId": "con_002",
+    "role": "CUSTOMER_CONTACT",
+    "verified": true
+  },
+  {
+    "channelAddress": "WHATSAPP#+393330000101",
+    "channel": "WHATSAPP",
+    "contactId": "rep_001",
+    "role": "SALES_REP",
+    "verified": true
+  },
+  {
+    "channelAddress": "WHATSAPP#+393330000102",
+    "channel": "WHATSAPP",
+    "contactId": "rep_002",
+    "role": "SALES_REP",
+    "verified": true
+  },
+  {
+    "channelAddress": "EMAIL#marco.rinaldi@example.com",
+    "channel": "EMAIL",
+    "contactId": "rep_001",
+    "role": "SALES_REP",
+    "verified": true
+  }
+]
