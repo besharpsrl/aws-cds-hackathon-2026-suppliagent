@@ -14,6 +14,7 @@
 - **Dipendenze aggiunte** (AGENTS §6, ok dell'utente): react, react-dom, react-router-dom, @tanstack/react-query, aws-amplify; dev: vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/{react,jest-dom,user-event}, @types/react{,-dom}.
 - **Test**: `console/src/**/*.test.ts(x)` (15: ruoli, guard con loading/signed-out/ruolo mancante/gruppo assente, login, client API); `npm run check` verde, `vite build` ok.
 - **Non incluso**: deploy della SPA sul bucket (comandi in `console/README.md`); config via `.env.local` da `.env.example`.
+- **Commit**: `94d26a8` (branch `feat/FN-28-console-scaffold`).
 
 ### T-60 – `ConsoleStack` (versione ridotta) · FN-28, FN-32
 - **Cosa**: Cognito (gruppi `backoffice`, `sales_rep`, `judge`; self sign-up off, attributo custom `repId`, client SPA senza secret, SRP); bucket S3 + CloudFront con OAC per la SPA (log su bucket dedicato); API REST `/v1` con authorizer Cognito (`GET /orders`, `GET /orders/{orderId}`) e Lambda `console_api` (`services/console_api/`) **in sola lettura** su `Orders` (+ URL presigned a 5 min per l'immagine del bigliettino). Output: `UserPoolId`, `UserPoolClientId`, `ApiUrl`, `ConsoleUrl`, `SiteBucketName`.
