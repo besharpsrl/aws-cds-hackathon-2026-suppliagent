@@ -1,7 +1,7 @@
 # SuppliAgent – Backlog e piano di lavoro
 
 > Stato: **v0.2** · Aggiornato il 23/10/2026 (ri-ordinato sul calendario reale, perimetro invariato)
-> Contiene **solo il lavoro da fare**: a task completato la riga si rimuove e il task va in [DONE.md](./DONE.md) (`/implement-fn` lo fa in automatico). Una dipendenza `T-xx` che non compare più qui è completata.
+> Contiene **solo il lavoro da fare**, con la descrizione completa di ogni task (anche di quelli non ancora assegnati). **Assegnazione alle sessioni, ordine e dipendenze tra sessioni: [START_HERE §3bis](../START_HERE.md)** (fonte unica). A task completato, nella stessa PR: la riga si rimuove da qui, il task va in [DONE.md](./DONE.md) e diventa ✅ in START_HERE §3bis. Una dipendenza `T-xx` che non compare più qui è completata.
 > Riferimenti: [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md) · [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) · [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md)
 
 ---
@@ -39,20 +39,9 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 | `feat/FN-03-agent-runtime` | T-40 + T-41 | il runtime senza agente non è testabile |
 | `feat/FN-12-order-flow` | T-45 + T-46 + T-47 | stato ordine e conversazione d'ordine si testano solo insieme |
 
-## 2. Sequenza consigliata (ondate parallele)
+## 2. Sequenza e assegnazione
 
-Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di stream diversi vanno in parallelo.
-
-| Ondata | Quando | IN | CH | AG | CO |
-|---|---|---|---|---|---|
-| 1 | 23/10 mattina | – | – | – | – |
-| 2 | 23/10 pomeriggio | T-04 (avvio) | – | – | – |
-| 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | – | – |
-| 4 | 24/10 | T-06 | T-22, T-24 (base) | – | – |
-| 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
-| 6 | 25/10 | T-09 | T-26, T-27 | T-46, T-47, T-48, T-49, T-53 (avvio) | T-63 |
-| 7 | 25–26/10 | T-08 | – | T-50, T-51, T-52 | T-64, T-65 |
-| 8 | 27–28/10 | T-10, T-11, T-12 | bugfix | T-53 (report eval), bugfix | T-66, bugfix |
+Ordine dei task per sessione e dipendenze tra sessioni: [START_HERE §3bis](../START_HERE.md). Le colonne "Dipende da" qui sotto restano la descrizione completa delle dipendenze di ogni task.
 
 ## 3. Task (in ordine di esecuzione per stream)
 
@@ -113,13 +102,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 4 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
 | 5 | T-66 | Ruolo `judge` in sola lettura, rifiniture demo | FN-31 | P4 | T-62 | MG | ☐ |
 
-## 4. Suggerimento di assegnazione
+## 4. Assegnazione
 
-| Stream | Persone | Primi task |
-|---|---|---|
-| IN | 1 | T-01 → T-03 → T-04 (con il cliente) → T-06; T-11 in parallelo appena possibile |
-| CH | 1 | T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
-| AG | 1–2 | T-43 → T-06 → T-44 |
-| CO | 1 | T-62 con dati mock, poi con le API reali |
-
-Ogni stream lavora in un **git worktree** separato (`claude -w <nome>`) con una propria sessione di Claude Code (vedi [HANDOFF_CLAUDE_CODE.md](./HANDOFF_CLAUDE_CODE.md)).
+Vedi [START_HERE §3bis](../START_HERE.md): ogni sessione Claude Code lavora in un **git worktree** separato (`claude -w <nome>`). Lo stream nelle tabelle sopra (IN, CH, AG, CO) indica l'area, non la sessione.

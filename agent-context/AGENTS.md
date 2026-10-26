@@ -37,8 +37,9 @@ Leggi **prima di implementare** la parte che ti riguarda:
 | `docs/02_TECHNICAL_FLOWS.md` | **Come** si comporta: stati, flussi `F-xx`, casi `F-xx.Cn`, errori `E-xx`, contratti JSON, parametri |
 | `docs/INFRASTRUCTURE_DESIGN.md` | Stack CDK, tabelle, code, IAM, sicurezza |
 | `docs/architecture.drawio` | Diagramma |
-| `docs/04_BACKLOG.md` | Task `T-xx` **ancora da fare**: ordine, dipendenze, stato |
-| `docs/DONE.md` | Lavoro completato: a task chiuso si **rimuove** la riga dal backlog (o da `TODO_DOCS.md`, §12 di INFRASTRUCTURE_DESIGN) e si aggiunge qui con data, commit e verifica |
+| `docs/04_BACKLOG.md` | Task `T-xx` **ancora da fare**: descrizione completa, FN, dipendenze (anche dei task non ancora assegnati) |
+| `START_HERE.md` §3bis | **Assegnazione dei task alle sessioni** (fonte unica): ordine, dipendenze tra sessioni (bloccanti o di integrazione), stato |
+| `docs/DONE.md` | Lavoro completato: a task chiuso, nella stessa PR, si **rimuove** la riga dal backlog (o da `TODO_DOCS.md`, §12 di INFRASTRUCTURE_DESIGN), si segna ✅ in START_HERE §3bis e si aggiunge qui con data, commit e verifica |
 | `docs/HANDOFF_CLAUDE_CODE.md` | Setup, prompt di avvio e prompt per stream |
 | `docs/TODO_DOCS.md` | Documenti ancora mancanti (es. agent spec, contratti) |
 
