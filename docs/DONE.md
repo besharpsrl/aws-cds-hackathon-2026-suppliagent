@@ -8,6 +8,14 @@
 
 ## 26/10/2026
 
+### T-61 – Scaffold console React + Vite + TS · FN-28
+- **Cosa**: `console/` con Vite + React 19 + TypeScript, React Router, React Query, Amplify Auth (solo client). Login Cognito (SRP), `AuthProvider`/`useAuth`, route guard `RequireRole`, layout con logo da `assets/brand/`, email/ruoli e badge *Read-only* per il solo `judge`, client `apiFetch` con ID token verso `VITE_API_URL`. Pagina `Orders` vuota (T-62).
+- **Scelte**: token Cognito in `sessionStorage` (non `localStorage`, AGENTS §7); ruoli letti da `cognito:groups`, il guard è solo UI (l'API applica gli stessi ruoli); nessuna UI per il cambio password (l'admin imposta password permanente, `ponytail` in `AuthContext`); niente librerie UI/CSS, solo `styles.css`.
+- **Dipendenze aggiunte** (AGENTS §6, ok dell'utente): react, react-dom, react-router-dom, @tanstack/react-query, aws-amplify; dev: vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/{react,jest-dom,user-event}, @types/react{,-dom}.
+- **Test**: `console/src/**/*.test.ts(x)` (15: ruoli, guard con loading/signed-out/ruolo mancante/gruppo assente, login, client API); `npm run check` verde, `vite build` ok.
+- **Non incluso**: deploy della SPA sul bucket (comandi in `console/README.md`); config via `.env.local` da `.env.example`.
+- **Commit**: `94d26a8` (branch `feat/FN-28-console-scaffold`).
+
 ### T-20 – ChannelsStack: SES + EUM Social · FN-01
 - **Cosa**: `ChannelsStack` con 3 topic SNS cifrati con la CMK (`wa-events` per l'event destination della WABA, `mail-inbound`, `email-events`; publish solo dai service principal `social-messaging`/`ses` con `aws:SourceAccount`), configuration set SES `suppliagent-<env>-cs` (TLS obbligatorio, reputation metrics, event destination SNS su send/delivery/bounce/complaint/open/click). Con `-c sesDomain=<dominio>`: identity SES (Easy DKIM), receipt rule set `suppliagent-<env>-inbound` (S3 `inbound-mail/mail/` cifrato KMS + notifica su `mail-inbound`) e sua attivazione. `FoundationStack`: key policy della CMK per `ses`, `social-messaging`, `sns` e bucket policy `inbound-mail` per SES (entrambe con `aws:SourceAccount`).
 - **Scelte**: parametri legati a passi manuali da context CDK e pubblicati su SSM (`waPhoneNumberId`, `sesDomain`, `sesFromAddress`, default `UNSET`) più `waEventsTopicArn` e `sesConfigurationSet`: collegare il numero WhatsApp = `-c waPhoneNumberId=<id>`, senza modificare il codice. Senza `sesDomain` nessuna identity né rule set (account senza rule set attivo il 26/10, SES in sandbox). Receipt rule in L1 per non far dipendere Foundation da Channels. **Fuori scope** (spostato in T-27): EUM SMS/RCS v2.

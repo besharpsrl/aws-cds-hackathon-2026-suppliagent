@@ -1,0 +1,59 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #1f2933;
+}
+body {
+  margin: 0;
+}
+.logo {
+  height: 32px;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #d9dee3;
+}
+.topbar nav {
+  flex: 1;
+}
+.topbar nav a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+}
+.topbar nav a.active {
+  text-decoration: underline;
+}
+.badge {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fde68a;
+}
+.content {
+  padding: 1.5rem;
+}
+.login {
+  max-width: 22rem;
+  margin: 4rem auto;
+  display: grid;
+  gap: 1.5rem;
+  justify-items: center;
+}
+.login form {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+.login label {
+  display: grid;
+  gap: 0.25rem;
+}
+[role='alert'] {
+  color: #b42318;
+}
+.status {
+  padding: 1.5rem;
+}
