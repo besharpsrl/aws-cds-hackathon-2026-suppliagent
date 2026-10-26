@@ -173,7 +173,7 @@ I **team di agenti** non servono finché ogni stream ha una persona (guida §11)
 |---|---|---|---|
 | **Integrazione** | `claude` nella checkout principale | T-13 → T-28 (solo testi) → T-29 (invio template, quando c'è la WABA) → merge PR → poi resta per merge e stack condivisi | Foundation/Data e stack condivisi, sempre da `main` aggiornato |
 | **Piattaforma** (IN + CH) | `claude -w piattaforma` | T-20 (solo SES + EUM Social) → T-21 → T-23 → T-22 → T-24 base → **T-14** → T-07 → T-26 (solo email conferma con PDF) | Solo i propri stack (`cdk deploy <stack> --exclusively -c env=dev`) |
-| **Agente** (AG) | `claude -w agente` | T-04 (anagrafiche e storico; il resto con T-06/T-45) → T-42 → T-40 → T-41 → T-43 → T-06 → T-44 → T-45 → T-46 → T-47 | Solo i propri stack |
+| **Agente** (AG) | `claude -w agente` | T-04 (anagrafiche e storico; il resto con T-06/T-45) → T-42 → T-40 → T-41 → T-43 → T-06 → T-44 → T-45 → T-46 → T-47 → T-54 (prima Guardrail e Memory) → T-53 (eval leggera, con il dataset di T-05) | Solo i propri stack |
 | **Console** (CO), da domenica pomeriggio | `claude -w console` | T-60 → T-61 → T-62 (dati mock, poi API reali) | Solo i propri stack |
 
 **Regole**
