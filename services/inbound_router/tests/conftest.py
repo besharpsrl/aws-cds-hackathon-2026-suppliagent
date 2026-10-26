@@ -71,6 +71,10 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     monkeypatch.setenv("MEDIA_BUCKET", MEDIA_BUCKET)
     monkeypatch.setenv("WA_PHONE_NUMBER_ID_PARAM", PHONE_PARAM)
     monkeypatch.setenv("ORDER_DOMAIN", "ordini.example.com")
+    monkeypatch.setenv("TURN_FLUSH_QUEUE_URL", "https://sqs.test/turn-flush")
+    monkeypatch.setenv("NOTIFIER_FUNCTION_NAME", "suppliagent-test-notifier")
+    monkeypatch.setenv("DEBOUNCE_TEXT_MS", "3000")
+    monkeypatch.setenv("DEBOUNCE_MEDIA_MS", "6000")
     with mock_aws():
         _clear_caches()
         resource: Any = boto3.resource("dynamodb")
@@ -115,6 +119,31 @@ class FakeSocial:
 def social(monkeypatch: pytest.MonkeyPatch) -> FakeSocial:
     fake = FakeSocial()
     monkeypatch.setattr(media, "_social", lambda: fake)
+    return fake
+
+
+class Recorder:
+    """Stands in for the SQS and Lambda clients: records the calls the router makes."""
+
+    def __init__(self) -> None:
+        self.sent: list[dict[str, Any]] = []  # SQS send_message
+        self.invoked: list[dict[str, Any]] = []  # Lambda invoke
+        self.invoke_fails = False
+
+    def send_message(self, **request: Any) -> None:
+        self.sent.append(request)
+
+    def invoke(self, **request: Any) -> None:
+        if self.invoke_fails:
+            raise RuntimeError("ServiceException")
+        self.invoked.append(request)
+
+
+@pytest.fixture(autouse=True)
+def recorder(monkeypatch: pytest.MonkeyPatch) -> Recorder:
+    fake = Recorder()
+    monkeypatch.setattr(handler, "_sqs", lambda: fake)
+    monkeypatch.setattr(handler, "_lambda", lambda: fake)
     return fake
 
 

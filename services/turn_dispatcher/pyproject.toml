@@ -1,0 +1,13 @@
+[project]
+name = "suppliagent-turn-dispatcher"
+version = "0.1.0"
+description = "Turn Dispatcher (T-22): debounce and per-conversation lock, one agent turn per burst of messages"
+requires-python = ">=3.12,<3.13"
+dependencies = ["suppliagent-shared"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "turn_dispatcher"

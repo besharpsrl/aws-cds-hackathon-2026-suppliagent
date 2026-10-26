@@ -52,6 +52,8 @@ const runtimeParameters: Record<string, string> = {
   quietHours: '21:00-07:00',
   deliveryAutoConfirm: 'true',
   identificationMaxAttempts: '3',
+  // The Notifier records outgoing messages instead of sending them (T-24, T-14); read at runtime.
+  notifierSandbox: 'true',
 };
 
 const environments: Record<EnvName, EnvConfig> = {
@@ -68,7 +70,8 @@ const environments: Record<EnvName, EnvConfig> = {
     region: 'eu-west-1',
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.ONE_MONTH,
-    parameters: runtimeParameters,
+    // Real sending on demo (WhatsApp number and SES identity are shared resources, AGENTS §11).
+    parameters: { ...runtimeParameters, notifierSandbox: 'false' },
     model: novaPro,
   },
 };

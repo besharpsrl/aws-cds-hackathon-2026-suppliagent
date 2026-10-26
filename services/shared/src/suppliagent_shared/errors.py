@@ -23,3 +23,9 @@ class UnsupportedMediaError(SuppliAgentError):
 
 class ExtractionFailedError(SuppliAgentError):
     code = "EXTRACTION_FAILED"
+
+
+class ChannelUnavailableError(SuppliAgentError):
+    """The message cannot go out on this channel now (e.g. WhatsApp window closed, E-09)."""
+
+    code = "CHANNEL_UNAVAILABLE"

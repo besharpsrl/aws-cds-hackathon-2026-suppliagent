@@ -136,7 +136,7 @@ npm run dev -w console | npm run build -w console | npm test -w console
 uv run python seed/seed.py --env dev        # carica dati di prova
 uv run python seed/reset.py --env dev       # ripristina lo scenario demo
 
-# Agente deployato (finché il Dispatcher T-22 non è su main)
+# Agente deployato, saltando la pipeline di ingresso (il Dispatcher T-22 fa lo stesso dai canali)
 uv run python scripts/invoke_agent.py --env dev --address 'WHATSAPP#+393330000001' --text "ciao"
 ```
 

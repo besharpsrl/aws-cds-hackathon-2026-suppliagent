@@ -15,6 +15,15 @@ const statements = (): Statement[] =>
     (p) => p.Properties.PolicyDocument.Statement,
   );
 
+const routerStatements = (): Statement[] => {
+  const role = Object.values(template.findResources('AWS::Lambda::Function')).find(
+    (f) => f.Properties.FunctionName === 'suppliagent-dev-inbound-router',
+  )?.Properties.Role['Fn::GetAtt'][0];
+  return Object.values(template.findResources('AWS::IAM::Policy'))
+    .filter((p) => JSON.stringify(p.Properties.Roles).includes(role))
+    .flatMap((p) => p.Properties.PolicyDocument.Statement);
+};
+
 describe('MessagingStack – ingestion (T-21, FN-01)', () => {
   it('creates a KMS-encrypted inbound queue with a DLQ after 3 receives', () => {
     template.hasResourceProperties('AWS::SQS::Queue', {
@@ -58,10 +67,10 @@ describe('MessagingStack – ingestion (T-21, FN-01)', () => {
   });
 
   it('gives the router no wildcard actions and no write access to identity tables', () => {
-    const actions = statements().flatMap((s) => s.Action);
+    const actions = routerStatements().flatMap((s) => s.Action);
     expect(actions.filter((a) => a.includes('*') && !a.startsWith('xray:'))).toEqual([]);
     expect(actions).not.toContain('dynamodb:DeleteItem');
-    const writes = statements().filter((s) =>
+    const writes = routerStatements().filter((s) =>
       [s.Action].flat().some((a) => /^dynamodb:(Put|Update)Item$/.test(a)),
     );
     expect(JSON.stringify(writes)).not.toMatch(/ChannelIdentities|Contacts|SalesReps|Customers/);
@@ -99,5 +108,77 @@ describe('MessagingStack – media (T-23, FN-05, FN-06)', () => {
       },
     });
     expect(JSON.stringify(statements())).toContain('parameter/suppliagent/dev/waPhoneNumberId');
+  });
+});
+
+describe('MessagingStack – debounce and Notifier (T-22, T-24 base, FN-26, FN-01)', () => {
+  const functionProps = (name: string) =>
+    Object.values(template.findResources('AWS::Lambda::Function')).find(
+      (f) => f.Properties.FunctionName === `suppliagent-dev-${name}`,
+    )?.Properties;
+  const rolePolicy = (name: string): string => {
+    const role = functionProps(name)?.Role['Fn::GetAtt'][0];
+    return JSON.stringify(
+      Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
+        JSON.stringify(p.Properties.Roles).includes(role),
+      ),
+    );
+  };
+
+  it('creates a KMS-encrypted turn-flush queue with a DLQ, alarmed, retried after a whole turn', () => {
+    template.hasResourceProperties('AWS::SQS::Queue', {
+      QueueName: 'suppliagent-dev-turn-flush',
+      KmsMasterKeyId: Match.anyValue(),
+      VisibilityTimeout: 120,
+      RedrivePolicy: { deadLetterTargetArn: Match.anyValue(), maxReceiveCount: 3 },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'suppliagent-dev-turn-flush-dlq',
+    });
+  });
+
+  it('feeds the dispatcher one flush at a time and ends a turn before the lock expires', () => {
+    expect(functionProps('turn-dispatcher')?.Timeout).toBeLessThan(120); // turnLockTtlMs
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      BatchSize: 1,
+      ScalingConfig: { MaximumConcurrency: 10 },
+      FunctionName: Match.objectLike({ Ref: Match.stringLikeRegexp('TurnDispatcher') }),
+    });
+    expect(functionProps('turn-dispatcher')?.Environment.Variables).toMatchObject({
+      DEBOUNCE_TEXT_MS: '3000',
+      DEBOUNCE_MEDIA_MS: '6000',
+      DEBOUNCE_MAX_MS: '15000',
+      TURN_LOCK_TTL_MS: '120000',
+    });
+  });
+
+  it('lets the dispatcher invoke only this environment’s agent and the notifier', () => {
+    const policy = rolePolicy('turn-dispatcher');
+    expect(policy).toContain('bedrock-agentcore:InvokeAgentRuntime');
+    expect(policy).toContain('lambda:InvokeFunction');
+    expect(policy).not.toMatch(/social-messaging|ses:SendEmail|sns:Publish/);
+  });
+
+  it('gives only the notifier the CDS send permissions (AGENTS §8.7)', () => {
+    expect(rolePolicy('notifier')).toContain('social-messaging:SendWhatsAppMessage');
+    expect(rolePolicy('notifier')).toContain('ses:SendEmail');
+    for (const other of ['inbound-router', 'turn-dispatcher']) {
+      expect(rolePolicy(other)).not.toMatch(/social-messaging:Send|ses:Send|sms-voice|sns:Publish/);
+    }
+  });
+
+  it('reads the sandbox switch and the sender settings from SSM at runtime', () => {
+    expect(functionProps('notifier')?.Environment.Variables).toMatchObject({
+      SANDBOX_PARAM: '/suppliagent/dev/notifierSandbox',
+      SES_FROM_PARAM: '/suppliagent/dev/sesFromAddress',
+    });
+    expect(rolePolicy('notifier')).toContain('parameter/suppliagent/dev/notifierSandbox');
+  });
+
+  it('lets the router queue a flush and request a read receipt, nothing more', () => {
+    const policy = rolePolicy('inbound-router');
+    expect(policy).toContain('sqs:SendMessage');
+    expect(policy).toContain('lambda:InvokeFunction');
+    expect(policy).toContain('suppliagent-dev-notifier');
   });
 });
