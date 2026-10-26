@@ -37,6 +37,7 @@ describe('app', () => {
       'suppliagent-dev-agent',
       'suppliagent-dev-channels',
       'suppliagent-dev-data',
+      'suppliagent-dev-foundation',
     ]);
     expect(deps(stacks.analytics)).toEqual([
       'suppliagent-dev-channels',

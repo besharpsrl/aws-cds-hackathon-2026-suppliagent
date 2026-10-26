@@ -20,7 +20,7 @@ export function buildApp(app: App, config: EnvConfig) {
   const tags = { ...MANDATORY_TAGS, Env: config.envName };
   const common = { config, env: { region: config.region }, tags };
   const name = (stack: string) => `suppliagent-${config.envName}-${stack}`;
-  const after = (stack: Stack, ...deps: Stack[]) => {
+  const after = <T extends Stack>(stack: T, ...deps: Stack[]): T => {
     deps.forEach((dep) => stack.addStackDependency(dep));
     return stack;
   };
@@ -48,7 +48,23 @@ export function buildApp(app: App, config: EnvConfig) {
     catalog,
   );
   const messaging = after(
-    new MessagingStack(app, name('messaging'), common),
+    new MessagingStack(app, name('messaging'), {
+      ...common,
+      key: foundation.key,
+      eventBus: foundation.eventBus,
+      inboundMailBucket: foundation.inboundMailBucket,
+      mediaBucket: foundation.mediaBucket,
+      inboundTopics: [channels.waEventsTopic, channels.mailInboundTopic],
+      tables: {
+        channelIdentities: data.tables.ChannelIdentities,
+        contacts: data.tables.Contacts,
+        salesReps: data.tables.SalesReps,
+        customers: data.tables.Customers,
+        conversations: data.tables.Conversations,
+        messages: data.tables.Messages,
+        turnBuffer: data.tables.TurnBuffer,
+      },
+    }),
     channels,
     agent,
     data,

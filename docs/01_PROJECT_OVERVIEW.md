@@ -87,7 +87,7 @@ flowchart LR
         EUM[EUM SMS/RCS]
     end
     subgraph Core[SuppliAgent – eu-west-1]
-        ING[Ingestion & Routing<br/>FIFO + debounce]
+        ING[Ingestion & Routing<br/>SQS + debounce]
         AG[Agente<br/>AgentCore + Strands + Amazon Nova eu.]
         TOOLS[Tool di dominio<br/>clienti · catalogo · matching · listini ·<br/>stock · ordini · raccomandazioni]
         CAT[Catalog intelligence<br/>S3 Vectors + Knowledge Base]
@@ -123,7 +123,7 @@ flowchart LR
 | Blocco | Responsabilità | Tecnologie chiave |
 |---|---|---|
 | Canali | Ricevere e inviare messaggi | EUM Social, SES v2, EUM SMS/RCS v2 |
-| Ingestion & Routing | Normalizzare, identificare contatto e **ruolo**, ordinare per chat, raggruppare messaggi ravvicinati | SNS, SQS FIFO, Lambda, DynamoDB |
+| Ingestion & Routing | Normalizzare, identificare contatto e **ruolo**, ordinare per chat, raggruppare messaggi ravvicinati | SNS, SQS, Lambda, DynamoDB |
 | Agente | Ragionare, leggere i bigliettini, usare i tool, ricordare | AgentCore, Strands, Bedrock Amazon Nova `eu.`, Guardrails, Transcribe |
 | Catalog intelligence | Trovare il prodotto giusto da testo impreciso; rispondere sulle schede tecniche | S3 Vectors, Titan Embeddings, Bedrock Knowledge Base |
 | Ordini | Ciclo di vita, validazioni, PDF, invio all'ERP | Lambda, EventBridge, ERP adapter |

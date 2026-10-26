@@ -53,7 +53,7 @@ Regole:
 Region **`eu-west-1`** · modello **Amazon Nova via inference profile `eu.`** (`eu.amazon.nova-pro-v1:0` per ragionamento e vision, `eu.amazon.nova-lite-v1:0` per classificazioni veloci; mai `global.` o `us.`). Decisione del 25/10: Claude non è abilitato sull'account (*channel program*); il passaggio a Claude, se sbloccato, sarà un task pianificato. Il codice legge il modello da configurazione (`MODEL_ID`/`FAST_MODEL_ID`), mai hard-coded · IaC **AWS CDK (TypeScript)** · agente **Strands Agents su Amazon Bedrock AgentCore**.
 
 ```
-Canali CDS (WhatsApp · SES in/out · SMS/RCS) ─► SNS ─► SQS FIFO (group = chat) ─► Inbound Router
+Canali CDS (WhatsApp · SES in/out · SMS/RCS) ─► SNS ─► SQS inbound (standard + DLQ) ─► Inbound Router
    ─► TurnBuffer (DynamoDB) + SQS turn-flush (delay) ─► Turn Dispatcher (debounce + lock)
    ─► AgentCore Runtime (Strands, ruoli) ◄─► Memory · Gateway (tool MCP su Lambda) · Identity · Observability
         tool ─► DynamoDB · S3 Vectors (catalogo) · Bedrock Knowledge Base (schede tecniche) · Transcribe
@@ -85,7 +85,7 @@ SuppliAgent/
 │   │   └── prompts/             # system prompt: customer.md, sales_rep.md, shared.md
 │   └── evals/                   # dataset (bigliettini, vocali, conversazioni) + runner
 ├── services/                    # Lambda (Python 3.12) – una cartella per funzione
-│   ├── inbound_router/  turn_dispatcher/  media_fetcher/  notifier/
+│   ├── inbound_router/  turn_dispatcher/  notifier/   # media → S3 dentro inbound_router
 │   ├── order_pdf/  erp_adapter/  catalog_indexer/  insights_analyzer/  proactive_trigger/
 │   ├── console_api/  rep_chat/  broadcaster/
 │   ├── tools/                   # target del Gateway: customers, order_intake, catalog,
@@ -181,7 +181,7 @@ uv run python scripts/invoke_agent.py --env dev --address 'WHATSAPP#+39333000000
 3. **Massimo 1 suggerimento per ordine**, solo con consenso proattivo – FN-11.
 4. Riordino proattivo: max **1 proposta ogni 7 giorni** per cliente, mai in fascia notturna, mai senza consenso – FN-19.
 5. WhatsApp: fuori dalla finestra di 24h **solo template approvati**; fallback SMS/email – F-11.
-6. SQS FIFO con `MessageGroupId = chat`; tutte le risposte passano dal **debounce** (una risposta per raffica) – FN-26.
+6. Coda `inbound` **standard** (SNS standard non consegna a code FIFO, decisione del 26/10): idempotenza su `providerMessageId`, ordine per chat dal timestamp di ricezione AWS; tutte le risposte passano dal **debounce** (una risposta per raffica, lock per conversazione) – FN-26.
 7. Tutti gli invii passano dal **Notifier**; nessun altro componente chiama le API di invio CDS.
 8. L'agente si dichiara **assistente virtuale**; niente sconti, prezzi o condizioni fuori listino; niente dati di altri clienti.
 9. Lingua: quella del contatto (IT/EN), memorizzata come preferenza.

@@ -188,6 +188,7 @@ def _register(args: IdentifyContactInput, customer: dict[str, Any], method: str)
             "contactId": contact.contactId,
             "role": Role.CUSTOMER_CONTACT,
             "verified": False,
+            "conversationId": caller.conversationId,
         }
     )
     # ponytail: two conditional writes, not a transaction; a crash in between leaves an
