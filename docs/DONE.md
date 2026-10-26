@@ -8,6 +8,12 @@
 
 ## 26/10/2026
 
+### Deploy `dev` allineato a `main` (`a9225ec`: PR #13, #15, #16) · FN-32
+- **Cosa**: da `origin/main`, profilo `default` (account `471112860008`, `eu-west-1`): `cdk deploy suppliagent-dev-messaging` con le dipendenze (Foundation e Data solo nuovi export; **primo deploy di `channels`** (T-20): topic `wa-events`/`mail-inbound`/`email-events`, configuration set SES, parametri SSM `UNSET`; `agent`: codice di `tool-customers`; `messaging`: coda inbound + DLQ, allarme, `inbound-router`); `suppliagent-dev-console` (codice di `console_api`); SPA pubblicata con `scripts/deploy-console.sh dev` (senza `VITE_DEMO_*`).
+- **Verifica**: evento WhatsApp sintetico su `wa-events` → item in `Messages` (`conv_con001`, `CUSTOMER_CONTACT`), ripubblicazione → `duplicate delivery ignored`, DLQ vuota; `invoke_agent.py` risponde; console e `/demo` 200.
+- **Utenti console** creati (invito email di Cognito con password temporanea): un utente per gruppo `backoffice`, `sales_rep`, `judge` sugli alias `+backoffice`, `+salesrep`, `+judge` dell'email dell'owner.
+- **Restano**: WABA e `waPhoneNumberId`, dominio SES (`sesDomain`, DNS, uscita dalla sandbox), contatti della pagina demo (README §Manual steps).
+
 ### T-66 – Ruolo `judge` in sola lettura e rifiniture demo · FN-28, FN-31
 - **Cosa**: (1) `console_api` rifiuta con 403 `read_only` ogni metodo non-GET del `judge` **prima** del routing, così nessun endpoint di scrittura futuro (correzioni, T-46) può dimenticare il controllo; i gruppi sono additivi (un utente `judge`+`backoffice` non è bloccato). (2) Nel dettaglio ordine un avviso spiega al `judge` perché le correzioni sono disabilitate. (3) Pagina **Try the demo** (`/demo`, link nel menu) per i giudici: bigliettino di esempio scaricabile, passi per ordinare, numero WhatsApp ed email da `VITE_DEMO_WHATSAPP` / `VITE_DEMO_ORDER_EMAIL` (altrimenti "to be announced"). (4) Pagina "Page not found" con link di ritorno. (5) README: sezione giudici con il ruolo `judge` e la pagina demo.
 - **Test**: `services/console_api/tests` (+6: scrittura negata al `judge` su ogni metodo ed endpoint, gruppi additivi, 405 per gli altri ruoli), `console/src` (+9: avviso read-only, pagina demo con e senza canali configurati, 404, menu); `npm run check` verde.
