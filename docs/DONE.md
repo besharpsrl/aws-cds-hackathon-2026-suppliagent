@@ -8,6 +8,11 @@
 
 ## 26/10/2026
 
+### Console online su `dev` · FN-28
+- **Cosa**: `scripts/deploy-console.sh [dev|demo]` (build con gli id letti dagli output di `suppliagent-<env>-console`, sync del bucket sito con cache lunga sugli asset e `no-cache` su `index.html`, invalidazione CloudFront). Eseguito su `dev` (account `471112860008`, `eu-west-1`): console su `https://d3po2gqnlfcxyr.cloudfront.net`, ordini su dati mock (`VITE_ORDERS_SOURCE=mock`).
+- **Verifica**: home 200, fallback SPA su `/orders/...` 200, CORS dell'API ok dall'origin CloudFront.
+- **Da rifare** per `demo` (deploy manuale, AGENTS §11) e quando T-46 è su `main`, con `VITE_ORDERS_SOURCE=api`.
+
 ### T-42 – Tool `customers`: `identify_contact`, `get_customer_profile` · FN-03, FN-32
 - **Cosa**: package `services/tools/customers` (`suppliagent_tool_customers`): handler Lambda per il target Gateway (nome tool da `client_context.custom.bedrockAgentCoreToolName`, prefisso `<target>___` rimosso), validazione pydantic, errori come codici. In `suppliagent_shared`: `auth` (`CallerContext`, `caller_scope`), `errors`, `aws` (`table()`, `put_event()`).
 - **Comportamento**: chiamante noto → `KNOWN` con i propri locali (o portafoglio); `UNKNOWN` → match per codice cliente o P.IVA **e** nome locale (normalizzato, `difflib` ≥ 0.8 o contenimento ≥ metà lunghezza; stessa risposta `NOT_FOUND` per codice o nome sbagliati), poi `Contact` `PENDING_VERIFICATION` + `ChannelIdentity` non verificata (scrittura condizionata: un indirizzo già registrato non viene mai sovrascritto; un retry restituisce lo stesso contatto) ed evento `contact.identified`; massimo 3 tentativi per conversazione, poi `IDENTIFICATION_FAILED` (F-02.C4). Profilo: contatto → solo propri locali, senza dati interni (ragione sociale, zona, listino, insight: solo agente); agente → solo portafoglio; contatto non verificato → niente storico.
