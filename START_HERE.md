@@ -184,6 +184,8 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Attende | Priorità | Stato |
 |---|---|---|---|---|
 | 1 | Merge delle PR, deploy degli stack condivisi da `main` | – | – | continuo |
+| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ☐ |
+| 1c | **WhatsApp**: WABA collegata ad AWS (`docs/WABA_SETUP.md` parte 1), poi destinazione eventi, `-c waPhoneNumberId`, prova di ricezione | numero di telefono (tu) | Must | ☐ |
 | 2 | T-05 dataset eval (≥ 15 bigliettini, vocali, email, conversazioni attese) | foto e vocali (tu, §1.3) | Should | ☐ |
 | 3 | T-11 ACE, PNG del diagramma, testi submission (EN) | – (avviabile subito) | Should | ☐ |
 | 4 | T-10 ambiente `demo`, reset, README giudici | code freeze (tutti i Must) | Should | ☐ |
@@ -195,6 +197,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 |---|---|---|---|---|---|
 | 1 | T-21 + T-23 | `feat/FN-01-inbound-pipeline` | – | Must | ✅ PR #16 |
 | 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ☐ |
+| 2b | **T-15 valori dei canali nella config per ambiente** (alta priorità: elimina il rischio di cancellare la configurazione SES a ogni deploy) | | **Email SES (Integrazione 1b)**, **WhatsApp (Integrazione 1c)**: servono i valori reali | Must | ☐ |
 | 3 | T-14 simulatore canali + test end-to-end | | ↺ T-41 (Agente) per la risposta reale | Must | ☐ |
 | 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | | – | Must | ☐ |
 | 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
