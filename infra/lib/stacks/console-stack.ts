@@ -100,7 +100,8 @@ export class ConsoleStack extends Stack {
       encryption: s3.BucketEncryption.S3_MANAGED, // server access logs do not support SSE-KMS
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
-      objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
+      // CloudFront standard logging delivers with ACLs: BUCKET_OWNER_ENFORCED makes the distribution fail.
+      objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
       lifecycleRules: [{ expiration: Duration.days(30) }],
       // ponytail: no autoDeleteObjects (its provider log group would be created untagged at runtime).
       removalPolicy: RemovalPolicy.RETAIN,
