@@ -15,6 +15,7 @@
 - **Rinviati**: WebSocket + broadcaster (T-63), `rep_chat` (T-64), **WAF** (costo fisso, AGENTS §11: decidere prima della demo; ack `AwsSolutions-CFR2`/`APIG3` da rimuovere se lo si aggiunge), correzione righe (scrittura, con T-46), paginazione liste (max 100).
 - **Test**: `infra/test/console-stack.test.ts` (gruppi, client, OAC, authorizer su ogni metodo, Orders solo lettura), `services/console_api/tests/test_handler.py` (14, inclusa autorizzazione negativa per ruolo/portafoglio); `npm run check` verde (cdk-nag dev+demo).
 - **Deploy**: non eseguito (`cdk deploy suppliagent-dev-console --exclusively -c env=dev` dopo conferma).
+- **Commit**: `141a6e0` (branch `feat/FN-28-console-stack`).
 
 ### T-28 – Testi dei template WhatsApp · FN-12, FN-19
 - **Cosa**: 8 template (IT/EN) in formato `template-definition` di Meta in `services/notifier/whatsapp_templates/`: `order_confirmation`, `order_pending_reminder`, `delivery_update` (UTILITY) e `reorder_suggestion` (MARKETING); revisione e regole di contenuto in [09_CONTENT_AND_TEMPLATES](./09_CONTENT_AND_TEMPLATES.md).
