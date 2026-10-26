@@ -16,7 +16,7 @@
 - **Fuori**: Lambda e target Gateway in CDK (T-40); conferma dal contatto principale o dal back office (T-62/T-63).
 - **Seguito**: `lastOrders` legge `OrderHistory` (seed); T-46 deve scriverci gli ordini confermati (o il profilo leggere anche `Orders`), altrimenti "come l'ultima volta" ignora gli ordini fatti con l'agente.
 - **Test**: `services/tools/customers/tests` – 32 test: 7 di autorizzazione negativa sul profilo (locale di altro cliente, fuori portafoglio, secondo locale del contatto in portafoglio altrui, `UNKNOWN`, ruolo/ID incoerenti, contatto inesistente, cliente inesistente), stato contatto sconosciuto, indirizzo già registrato mai riassegnato, limite tentativi, campi estranei nel `caller` rifiutati, errori imprevisti nascosti; verificato con mutazione che togliendo il controllo di scope 9 test falliscono.
-- **Commit**: vedi PR `feat/FN-03-customers-tool`.
+- **Commit**: `dc77400` (PR `feat/FN-03-customers-tool`).
 
 ### T-04 (parte) – Dati di prova: anagrafiche, storico, insight · FN-31
 - **Cosa**: dati **sintetici** in `seed/data/` per `Customers` (6 locali), `Contacts` (5), `ChannelIdentities` (10, numeri fittizi), `SalesReps` (2), `OrderHistory` (8 settimane, 99 ordini con pattern di riordino), `CustomerInsights` (riordini attesi, prodotti smessi, ≤ 1 suggerimento); modelli pydantic in `suppliagent_shared.models`; `seed/seed.py --env <env>` valida e scrive (PutItem, idempotente). Dettagli in [seed/README](../seed/README.md).
