@@ -1,0 +1,210 @@
+[
+  {
+    "customerId": "cus_001",
+    "expectedReorders": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "everyDays": 3,
+        "lastOrderedAt": "2026-10-22T09:00:00Z",
+        "dueAt": "2026-10-25T09:00:00Z"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "everyDays": 14,
+        "lastOrderedAt": "2026-09-28T09:00:00Z",
+        "dueAt": "2026-10-12T09:00:00Z"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-19T09:00:00Z",
+        "dueAt": "2026-10-26T09:00:00Z"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "everyDays": 21,
+        "lastOrderedAt": "2026-10-12T09:00:00Z",
+        "dueAt": "2026-11-02T09:00:00Z"
+      },
+      {
+        "sku": "BURRATA-125",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-19T09:00:00Z",
+        "dueAt": "2026-10-26T09:00:00Z"
+      }
+    ],
+    "droppedProducts": [],
+    "suggestions": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "reason": "Ordinata da altre pizzerie della zona"
+      }
+    ],
+    "updatedAt": "2026-10-26T02:00:00Z"
+  },
+  {
+    "customerId": "cus_002",
+    "expectedReorders": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "everyDays": 3,
+        "lastOrderedAt": "2026-10-23T09:00:00Z",
+        "dueAt": "2026-10-26T09:00:00Z"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-20T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "everyDays": 14,
+        "lastOrderedAt": "2026-10-13T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-20T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      }
+    ],
+    "droppedProducts": [
+      "PROSC-COTTO-KG"
+    ],
+    "suggestions": [
+      {
+        "sku": "BURRATA-125",
+        "reason": "Abbinata spesso a mozzarella di bufala da locali simili"
+      }
+    ],
+    "updatedAt": "2026-10-26T02:00:00Z"
+  },
+  {
+    "customerId": "cus_003",
+    "expectedReorders": [
+      {
+        "sku": "LATTE-INT-1L",
+        "everyDays": 2,
+        "lastOrderedAt": "2026-10-23T09:00:00Z",
+        "dueAt": "2026-10-25T09:00:00Z"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "everyDays": 5,
+        "lastOrderedAt": "2026-10-21T09:00:00Z",
+        "dueAt": "2026-10-26T09:00:00Z"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-19T09:00:00Z",
+        "dueAt": "2026-10-26T09:00:00Z"
+      }
+    ],
+    "droppedProducts": [],
+    "suggestions": [],
+    "updatedAt": "2026-10-26T02:00:00Z"
+  },
+  {
+    "customerId": "cus_004",
+    "expectedReorders": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "everyDays": 3,
+        "lastOrderedAt": "2026-10-24T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "everyDays": 3,
+        "lastOrderedAt": "2026-10-24T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-21T09:00:00Z",
+        "dueAt": "2026-10-28T09:00:00Z"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-21T09:00:00Z",
+        "dueAt": "2026-10-28T09:00:00Z"
+      }
+    ],
+    "droppedProducts": [],
+    "suggestions": [
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "reason": "Riordino abituale ogni 2 consegne"
+      }
+    ],
+    "updatedAt": "2026-10-26T02:00:00Z"
+  },
+  {
+    "customerId": "cus_005",
+    "expectedReorders": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "everyDays": 3,
+        "lastOrderedAt": "2026-10-22T09:00:00Z",
+        "dueAt": "2026-10-25T09:00:00Z"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "everyDays": 14,
+        "lastOrderedAt": "2026-10-12T09:00:00Z",
+        "dueAt": "2026-10-26T09:00:00Z"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-19T09:00:00Z",
+        "dueAt": "2026-10-26T09:00:00Z"
+      }
+    ],
+    "droppedProducts": [],
+    "suggestions": [],
+    "updatedAt": "2026-10-26T02:00:00Z"
+  },
+  {
+    "customerId": "cus_006",
+    "expectedReorders": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-20T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "everyDays": 7,
+        "lastOrderedAt": "2026-10-20T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "everyDays": 14,
+        "lastOrderedAt": "2026-10-13T09:00:00Z",
+        "dueAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "everyDays": 10,
+        "lastOrderedAt": "2026-10-23T09:00:00Z",
+        "dueAt": "2026-11-02T09:00:00Z"
+      }
+    ],
+    "droppedProducts": [],
+    "suggestions": [
+      {
+        "sku": "BURRATA-125",
+        "reason": "Ordinata da locali simili"
+      }
+    ],
+    "updatedAt": "2026-10-26T02:00:00Z"
+  }
+]

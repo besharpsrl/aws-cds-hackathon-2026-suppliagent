@@ -26,7 +26,7 @@ Calendario sintetico (dettaglio in §5):
 | Giorno | Tu | Claude Code |
 |---|---|---|
 | **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
-| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · T-04 · T-42 → T-40 |
+| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ⬜ T-42 → T-40 |
 | **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
 | **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
 | **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |
@@ -172,8 +172,8 @@ I **team di agenti** non servono finché ogni stream ha una persona (guida §11)
 | Sessione | Comando | Task, in ordine | Deploy |
 |---|---|---|---|
 | **Integrazione** | `claude` nella checkout principale | T-13 → T-28 (solo testi) → T-29 (invio template, quando c'è la WABA) → merge PR → poi resta per merge e stack condivisi | Foundation/Data e stack condivisi, sempre da `main` aggiornato |
-| **Piattaforma** (IN + CH) | `claude -w piattaforma` | T-04 → T-20 (solo SES + EUM Social) → T-21 → T-23 → T-22 → T-24 base → **T-14** → T-07 → T-26 (solo email conferma con PDF) | Solo i propri stack (`cdk deploy <stack> --exclusively -c env=dev`) |
-| **Agente** (AG) | `claude -w agente` | T-42 → T-40 → T-41 → T-43 → T-06 → T-44 → T-45 → T-46 → T-47 | Solo i propri stack |
+| **Piattaforma** (IN + CH) | `claude -w piattaforma` | T-20 (solo SES + EUM Social) → T-21 → T-23 → T-22 → T-24 base → **T-14** → T-07 → T-26 (solo email conferma con PDF) | Solo i propri stack (`cdk deploy <stack> --exclusively -c env=dev`) |
+| **Agente** (AG) | `claude -w agente` | T-04 (anagrafiche e storico; il resto con T-06/T-45) → T-42 → T-40 → T-41 → T-43 → T-06 → T-44 → T-45 → T-46 → T-47 | Solo i propri stack |
 | **Console** (CO), da domenica pomeriggio | `claude -w console` | T-60 → T-61 → T-62 (dati mock, poi API reali) | Solo i propri stack |
 
 **Regole**
@@ -265,7 +265,7 @@ Topic: `aws`, `amazon-bedrock`, `bedrock-agentcore`, `strands-agents`, `whatsapp
 | Giorno | Tu | Claude Code (backlog) |
 |---|---|---|
 | **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
-| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · T-04 · T-42 → T-40 |
+| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ⬜ T-42 → T-40 |
 | **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
 | **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
 | **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |

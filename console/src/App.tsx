@@ -1,8 +1,9 @@
 import { Route, Routes } from 'react-router-dom';
 import { RequireRole } from './auth/RequireRole';
 import { Layout } from './layout/Layout';
-import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { InboxPage } from './orders/InboxPage';
+import { OrderDetailPage } from './orders/OrderDetailPage';
 
 export function App() {
   return (
@@ -15,7 +16,8 @@ export function App() {
           </RequireRole>
         }
       >
-        <Route index element={<Home />} />
+        <Route index element={<InboxPage />} />
+        <Route path="orders/:orderId" element={<OrderDetailPage />} />
       </Route>
     </Routes>
   );

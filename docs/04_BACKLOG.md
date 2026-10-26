@@ -46,7 +46,7 @@ Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di s
 | Ondata | Quando | IN | CH | AG | CO |
 |---|---|---|---|---|---|
 | 1 | 23/10 mattina | – | – | – | – |
-| 2 | 23/10 pomeriggio | T-04 (avvio) | – | T-42 (su dati seed) | – |
+| 2 | 23/10 pomeriggio | T-04 (avvio) | – | – | – |
 | 3 | 23–24/10 | T-04 (completamento), T-05 | T-21, T-23 | T-40 | – |
 | 4 | 24/10 | T-06 | T-22, T-24 (base) | T-41 | – |
 | 5 | 24–25/10 | T-07 | T-25, T-24 (completo) | T-43, T-44, T-45 | T-62 (con dati mock) |
@@ -62,7 +62,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-04 | Dati di prova: catalogo anonimizzato/sintetico (sinonimi, unità, multipli), listini, promo, stock con esauriti e sostituti, calendario consegne, clienti/contatti/agenti, storico ordini con pattern di riordino; `seed/seed.py`, `seed/reset.py` | FN-31 | P0–P1 | T-03, dati cliente | MG | ☐ |
+| 1 | T-04 | Dati di prova – **resto** (anagrafiche, storico e insight fatti il 26/10, vedi DONE): catalogo anonimizzato/sintetico (sinonimi, unità, multipli; deve contenere gli SKU dello storico), listini, promo, stock con esauriti e sostituti, calendario consegne; `seed/reset.py`. Sessione Agente, con T-06/T-45 | FN-31 | P0–P1 | T-03, dati cliente | MG | ◐ |
 | 2 | T-05 | Dataset eval: ≥ 15 bigliettini scritti a mano (grafie diverse), vocali, email d'ordine, conversazioni attese | FN-05, 07 | P1 | T-04 | MG | ☐ |
 | 3 | T-06 | `CatalogStack`: S3 Vectors (indice `products`), `catalog_indexer`, Knowledge Base schede tecniche (vector store S3 Vectors) | FN-07, 21 | P1 | T-03, T-04 | MG | ☐ |
 | 4 | T-07 | ERP adapter mock (`submit/update/cancel/getStatus`, simulazione pianificazione e consegna) + `order_pdf` + regola EventBridge `order.confirmed` | FN-13, 14 | P2 | T-03 | MG | ☐ |
@@ -90,7 +90,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-42 | Tool `customers`: `identify_contact`, `get_customer_profile` + autorizzazione per ruolo + test negativi | FN-03, 32 | P0–P1 | T-04 (seed) | MG | ☐ |
 | 2 | T-40 | `AgentStack`: ECR, AgentCore Runtime/Endpoint, Memory, Gateway (auth OAuth), Identity, Guardrail | FN-32 | P1 | T-03 | MG | ☐ |
 | 3 | T-41 | Agente Strands: entrypoint, contesto iniettato non modificabile (`contactId`, `role`, `customerIds`), prompt per ruolo (`customer`, `sales_rep`, `shared`), set di tool per ruolo, multilingua | FN-03, 04, 27 | P1 | T-40, T-22 | MG | ☐ |
 | 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Nova Pro vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | MG | ☐ |
@@ -109,7 +108,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 1 | T-62 | Inbox ordini + dettaglio con **immagine del bigliettino affiancata alle righe** e correzione righe (parte con dati mock, poi API reali) | FN-28 | P2 | T-46 | MG | ☐ |
+| 1 | T-62 | **Collegare a API reali** inbox e dettaglio ordine (UI con mock già fatta, vedi DONE): `VITE_ORDERS_SOURCE=api`, `PATCH` correzione riga in `console_api` (oggi `correctLine` lancia errore), `customerName`/`uncertainLines`/`handoff` nel riepilogo, nome prodotto sulla riga, `imageS3Uri` | FN-28 | P2 | T-46 | MG | ☐ |
 | 2 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
 | 3 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
 | 4 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
@@ -121,7 +120,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 |---|---|---|
 | IN | 1 | T-01 → T-03 → T-04 (con il cliente) → T-06; T-11 in parallelo appena possibile |
 | CH | 1 | T-29 (invio template) → T-21 → T-23 → T-22 → T-24 |
-| AG | 1–2 | T-42 (su dati seed) → T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
+| AG | 1–2 | T-40 → T-41; in parallelo prototipo di T-43 su bigliettini reali |
 | CO | 1 | T-62 con dati mock, poi con le API reali |
 
 Ogni stream lavora in un **git worktree** separato (`claude -w <nome>`) con una propria sessione di Claude Code (vedi [HANDOFF_CLAUDE_CODE.md](./HANDOFF_CLAUDE_CODE.md)).

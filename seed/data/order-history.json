@@ -1,0 +1,2138 @@
+[
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-08-31#ord_h1001",
+    "orderId": "ord_h1001",
+    "date": "2026-08-31",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 25,
+        "unit": "pz"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "description": "Farina tipo 00 sacco 25 kg",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 2,
+        "unit": "pz"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 11,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-03#ord_h1002",
+    "orderId": "ord_h1002",
+    "date": "2026-09-03",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 18,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-07#ord_h1003",
+    "orderId": "ord_h1003",
+    "date": "2026-09-07",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 17,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 15,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-10#ord_h1004",
+    "orderId": "ord_h1004",
+    "date": "2026-09-10",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 23,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-14#ord_h1005",
+    "orderId": "ord_h1005",
+    "date": "2026-09-14",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 16,
+        "unit": "pz"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "description": "Farina tipo 00 sacco 25 kg",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 10,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-17#ord_h1006",
+    "orderId": "ord_h1006",
+    "date": "2026-09-17",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 15,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-21#ord_h1007",
+    "orderId": "ord_h1007",
+    "date": "2026-09-21",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 16,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 2,
+        "unit": "pz"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 14,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-24#ord_h1008",
+    "orderId": "ord_h1008",
+    "date": "2026-09-24",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 24,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-09-28#ord_h1009",
+    "orderId": "ord_h1009",
+    "date": "2026-09-28",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 15,
+        "unit": "pz"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "description": "Farina tipo 00 sacco 25 kg",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 15,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-10-01#ord_h1010",
+    "orderId": "ord_h1010",
+    "date": "2026-10-01",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 25,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-10-05#ord_h1011",
+    "orderId": "ord_h1011",
+    "date": "2026-10-05",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 23,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 11,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-10-08#ord_h1012",
+    "orderId": "ord_h1012",
+    "date": "2026-10-08",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 22,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-10-12#ord_h1013",
+    "orderId": "ord_h1013",
+    "date": "2026-10-12",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 24,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 2,
+        "unit": "pz"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 11,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-10-15#ord_h1014",
+    "orderId": "ord_h1014",
+    "date": "2026-10-15",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 21,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-10-19#ord_h1015",
+    "orderId": "ord_h1015",
+    "date": "2026-10-19",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 20,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 11,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_001",
+    "dateOrderId": "2026-10-22#ord_h1016",
+    "orderId": "ord_h1016",
+    "date": "2026-10-22",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 18,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-01#ord_h1017",
+    "orderId": "ord_h1017",
+    "date": "2026-09-01",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 8,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 3,
+        "unit": "kg"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 2,
+        "unit": "pz"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 2,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-04#ord_h1018",
+    "orderId": "ord_h1018",
+    "date": "2026-09-04",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 8,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-08#ord_h1019",
+    "orderId": "ord_h1019",
+    "date": "2026-09-08",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 8,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 4,
+        "unit": "kg"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 3,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-11#ord_h1020",
+    "orderId": "ord_h1020",
+    "date": "2026-09-11",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 10,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-15#ord_h1021",
+    "orderId": "ord_h1021",
+    "date": "2026-09-15",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 4,
+        "unit": "kg"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 2,
+        "unit": "pz"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 3,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-18#ord_h1022",
+    "orderId": "ord_h1022",
+    "date": "2026-09-18",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 10,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-22#ord_h1023",
+    "orderId": "ord_h1023",
+    "date": "2026-09-22",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 7,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 3,
+        "unit": "kg"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 2,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-25#ord_h1024",
+    "orderId": "ord_h1024",
+    "date": "2026-09-25",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 8,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-09-29#ord_h1025",
+    "orderId": "ord_h1025",
+    "date": "2026-09-29",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 1,
+        "unit": "pz"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 3,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-10-02#ord_h1026",
+    "orderId": "ord_h1026",
+    "date": "2026-10-02",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 8,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-10-06#ord_h1027",
+    "orderId": "ord_h1027",
+    "date": "2026-10-06",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 9,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 2,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-10-09#ord_h1028",
+    "orderId": "ord_h1028",
+    "date": "2026-10-09",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 8,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-10-13#ord_h1029",
+    "orderId": "ord_h1029",
+    "date": "2026-10-13",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 8,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 2,
+        "unit": "pz"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 2,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-10-16#ord_h1030",
+    "orderId": "ord_h1030",
+    "date": "2026-10-16",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 10,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-10-20#ord_h1031",
+    "orderId": "ord_h1031",
+    "date": "2026-10-20",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 7,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 2,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_002",
+    "dateOrderId": "2026-10-23#ord_h1032",
+    "orderId": "ord_h1032",
+    "date": "2026-10-23",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 9,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-08-31#ord_h1033",
+    "orderId": "ord_h1033",
+    "date": "2026-08-31",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-02#ord_h1034",
+    "orderId": "ord_h1034",
+    "date": "2026-09-02",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-04#ord_h1035",
+    "orderId": "ord_h1035",
+    "date": "2026-09-04",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 3,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-07#ord_h1036",
+    "orderId": "ord_h1036",
+    "date": "2026-09-07",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-09#ord_h1037",
+    "orderId": "ord_h1037",
+    "date": "2026-09-09",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 4,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-11#ord_h1038",
+    "orderId": "ord_h1038",
+    "date": "2026-09-11",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 3,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-14#ord_h1039",
+    "orderId": "ord_h1039",
+    "date": "2026-09-14",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 3,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-16#ord_h1040",
+    "orderId": "ord_h1040",
+    "date": "2026-09-16",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-18#ord_h1041",
+    "orderId": "ord_h1041",
+    "date": "2026-09-18",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 4,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-21#ord_h1042",
+    "orderId": "ord_h1042",
+    "date": "2026-09-21",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 3,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-23#ord_h1043",
+    "orderId": "ord_h1043",
+    "date": "2026-09-23",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 4,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-25#ord_h1044",
+    "orderId": "ord_h1044",
+    "date": "2026-09-25",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-28#ord_h1045",
+    "orderId": "ord_h1045",
+    "date": "2026-09-28",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 3,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-09-30#ord_h1046",
+    "orderId": "ord_h1046",
+    "date": "2026-09-30",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-02#ord_h1047",
+    "orderId": "ord_h1047",
+    "date": "2026-10-02",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 4,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-05#ord_h1048",
+    "orderId": "ord_h1048",
+    "date": "2026-10-05",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 3,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-07#ord_h1049",
+    "orderId": "ord_h1049",
+    "date": "2026-10-07",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 3,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 3,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-09#ord_h1050",
+    "orderId": "ord_h1050",
+    "date": "2026-10-09",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-12#ord_h1051",
+    "orderId": "ord_h1051",
+    "date": "2026-10-12",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-14#ord_h1052",
+    "orderId": "ord_h1052",
+    "date": "2026-10-14",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-16#ord_h1053",
+    "orderId": "ord_h1053",
+    "date": "2026-10-16",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 2,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 3,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-19#ord_h1054",
+    "orderId": "ord_h1054",
+    "date": "2026-10-19",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-21#ord_h1055",
+    "orderId": "ord_h1055",
+    "date": "2026-10-21",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      },
+      {
+        "sku": "CAFFE-GRANI-1KG",
+        "description": "Caffe in grani 1 kg",
+        "quantity": 4,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_003",
+    "dateOrderId": "2026-10-23#ord_h1056",
+    "orderId": "ord_h1056",
+    "date": "2026-10-23",
+    "lines": [
+      {
+        "sku": "LATTE-INT-1L",
+        "description": "Latte intero 1 L (cartone da 12)",
+        "quantity": 4,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-02#ord_h1057",
+    "orderId": "ord_h1057",
+    "date": "2026-09-02",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 9,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 2,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-05#ord_h1058",
+    "orderId": "ord_h1058",
+    "date": "2026-09-05",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 8,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-09#ord_h1059",
+    "orderId": "ord_h1059",
+    "date": "2026-09-09",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-12#ord_h1060",
+    "orderId": "ord_h1060",
+    "date": "2026-09-12",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 8,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-16#ord_h1061",
+    "orderId": "ord_h1061",
+    "date": "2026-09-16",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 8,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 2,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 1,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-19#ord_h1062",
+    "orderId": "ord_h1062",
+    "date": "2026-09-19",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 6,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-23#ord_h1063",
+    "orderId": "ord_h1063",
+    "date": "2026-09-23",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 8,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 1,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-26#ord_h1064",
+    "orderId": "ord_h1064",
+    "date": "2026-09-26",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 8,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-09-30#ord_h1065",
+    "orderId": "ord_h1065",
+    "date": "2026-09-30",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 10,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 1,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-10-03#ord_h1066",
+    "orderId": "ord_h1066",
+    "date": "2026-10-03",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 7,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-10-07#ord_h1067",
+    "orderId": "ord_h1067",
+    "date": "2026-10-07",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 10,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-10-10#ord_h1068",
+    "orderId": "ord_h1068",
+    "date": "2026-10-10",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 6,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-10-14#ord_h1069",
+    "orderId": "ord_h1069",
+    "date": "2026-10-14",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 8,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 2,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 1,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-10-17#ord_h1070",
+    "orderId": "ord_h1070",
+    "date": "2026-10-17",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 7,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-10-21#ord_h1071",
+    "orderId": "ord_h1071",
+    "date": "2026-10-21",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "SALAME-PICC-KG",
+        "description": "Salame piccante",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_004",
+    "dateOrderId": "2026-10-24#ord_h1072",
+    "orderId": "ord_h1072",
+    "date": "2026-10-24",
+    "lines": [
+      {
+        "sku": "BIRRA-FUSTO-20L",
+        "description": "Birra chiara fusto 20 L",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "PATATINE-SURG-2500",
+        "description": "Patate fritte surgelate 2,5 kg",
+        "quantity": 10,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-08-31#ord_h1073",
+    "orderId": "ord_h1073",
+    "date": "2026-08-31",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 11,
+        "unit": "pz"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "description": "Farina tipo 00 sacco 25 kg",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-03#ord_h1074",
+    "orderId": "ord_h1074",
+    "date": "2026-09-03",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 14,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-07#ord_h1075",
+    "orderId": "ord_h1075",
+    "date": "2026-09-07",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 11,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-10#ord_h1076",
+    "orderId": "ord_h1076",
+    "date": "2026-09-10",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 14,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-14#ord_h1077",
+    "orderId": "ord_h1077",
+    "date": "2026-09-14",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 14,
+        "unit": "pz"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "description": "Farina tipo 00 sacco 25 kg",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-17#ord_h1078",
+    "orderId": "ord_h1078",
+    "date": "2026-09-17",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 14,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-21#ord_h1079",
+    "orderId": "ord_h1079",
+    "date": "2026-09-21",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 15,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-24#ord_h1080",
+    "orderId": "ord_h1080",
+    "date": "2026-09-24",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 15,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-09-28#ord_h1081",
+    "orderId": "ord_h1081",
+    "date": "2026-09-28",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 12,
+        "unit": "pz"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "description": "Farina tipo 00 sacco 25 kg",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-10-01#ord_h1082",
+    "orderId": "ord_h1082",
+    "date": "2026-10-01",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 13,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-10-05#ord_h1083",
+    "orderId": "ord_h1083",
+    "date": "2026-10-05",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 14,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 2,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-10-08#ord_h1084",
+    "orderId": "ord_h1084",
+    "date": "2026-10-08",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 10,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-10-12#ord_h1085",
+    "orderId": "ord_h1085",
+    "date": "2026-10-12",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 11,
+        "unit": "pz"
+      },
+      {
+        "sku": "FARINA-00-25KG",
+        "description": "Farina tipo 00 sacco 25 kg",
+        "quantity": 3,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-10-15#ord_h1086",
+    "orderId": "ord_h1086",
+    "date": "2026-10-15",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 12,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-10-19#ord_h1087",
+    "orderId": "ord_h1087",
+    "date": "2026-10-19",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 10,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_005",
+    "dateOrderId": "2026-10-22#ord_h1088",
+    "orderId": "ord_h1088",
+    "date": "2026-10-22",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 14,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-09-01#ord_h1089",
+    "orderId": "ord_h1089",
+    "date": "2026-09-01",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 2,
+        "unit": "kg"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 1,
+        "unit": "pz"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-09-08#ord_h1090",
+    "orderId": "ord_h1090",
+    "date": "2026-09-08",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 2,
+        "unit": "kg"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-09-11#ord_h1091",
+    "orderId": "ord_h1091",
+    "date": "2026-09-11",
+    "lines": [
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-09-15#ord_h1092",
+    "orderId": "ord_h1092",
+    "date": "2026-09-15",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 2,
+        "unit": "kg"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-09-22#ord_h1093",
+    "orderId": "ord_h1093",
+    "date": "2026-09-22",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 3,
+        "unit": "kg"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-09-29#ord_h1094",
+    "orderId": "ord_h1094",
+    "date": "2026-09-29",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 2,
+        "unit": "kg"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-10-02#ord_h1095",
+    "orderId": "ord_h1095",
+    "date": "2026-10-02",
+    "lines": [
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-10-06#ord_h1096",
+    "orderId": "ord_h1096",
+    "date": "2026-10-06",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 3,
+        "unit": "kg"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-10-13#ord_h1097",
+    "orderId": "ord_h1097",
+    "date": "2026-10-13",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 4,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 2,
+        "unit": "kg"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 1,
+        "unit": "pz"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 2,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-10-20#ord_h1098",
+    "orderId": "ord_h1098",
+    "date": "2026-10-20",
+    "lines": [
+      {
+        "sku": "MOZZ-BUF-250",
+        "description": "Mozzarella di bufala 250 g",
+        "quantity": 5,
+        "unit": "pz"
+      },
+      {
+        "sku": "PROSC-COTTO-KG",
+        "description": "Prosciutto cotto",
+        "quantity": 3,
+        "unit": "kg"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_006",
+    "dateOrderId": "2026-10-23#ord_h1099",
+    "orderId": "ord_h1099",
+    "date": "2026-10-23",
+    "lines": [
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 2,
+        "unit": "pz"
+      }
+    ]
+  }
+]
