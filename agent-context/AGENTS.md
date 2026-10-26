@@ -17,7 +17,7 @@
 
 | Vincolo | Implicazione per il codice |
 |---|---|
-| Consegna **28/10/2026 21:00 (ora italiana)**; code freeze interno **23/10** | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
+| Consegna **28/10/2026 21:00 (ora italiana)**, submission interna entro le 15:00; code freeze interno **27/10 ore 18:00** (calendario in `START_HERE.md`) | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
 | Il codice deve **importare e chiamare** almeno un client CDS valido | Usare **solo**: `socialmessaging` (`SendWhatsAppMessage`), `pinpoint-sms-voice-v2` (`SendRcsMessage`, `SendTextMessage`), `sesv2` (`SendEmail`). **Vietati**: `pinpoint` (v1), `pinpoint-email`, EUM Push |
 | Lavoro **nuovo** (dal 14/09/2026) | Non copiare codice preesistente senza dichiararlo nel README (sezione "Pre-existing code") |
 | Repo con **licenza open source** visibile | Non rimuovere `LICENSE` |
