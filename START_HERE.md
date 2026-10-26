@@ -158,7 +158,7 @@ Claude Code usa da solo i **subagent** del progetto quando servono:
 | `aws-docs-researcher` | Verifica API AWS recenti (AgentCore, Strands, S3 Vectors, canali) sulla documentazione ufficiale |
 | `test-runner` | Lint, type check, test, `cdk synth`; riassume solo gli errori |
 | `code-reviewer` | Revisione rispetto a criteri di accettazione, Definition of Done e regole di gara |
-| `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi |
+| `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi. **Solo su richiesta esplicita** (deciso il 26/10: troppi token) |
 
 I **team di agenti** non servono finché ogni stream ha una persona (guida §11).
 
