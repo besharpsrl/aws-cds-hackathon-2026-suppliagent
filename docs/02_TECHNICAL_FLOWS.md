@@ -422,6 +422,12 @@ Vedi [Infrastructure Design §5.2](./INFRASTRUCTURE_DESIGN.md).
 }
 ```
 
+Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent.py`):
+- `bedrock-agentcore:InvokeAgentRuntime` sull'ARN letto da SSM `/suppliagent/<env>/agentRuntimeArn` (il Dispatcher ha bisogno di questo solo permesso).
+- `runtimeSessionId = uuid5(NAMESPACE_URL, "suppliagent:" + conversationId)`: stessa conversazione → stessa sessione → stesso storico (fino a T-54 lo storico vive nella sessione del Runtime).
+- `messages[].text` porta il testo del messaggio (assente per i soli allegati); `channelAddress` è il mittente verificato (INFRASTRUCTURE_DESIGN §5.3.2). Campi non previsti vengono ignorati.
+- Risposta: `{"conversationId", "reply"}` con il testo da inviare tramite il Notifier, oppure `{"error": "INVALID_REQUEST"}`. Un errore dell'invocazione (eccezione nel Runtime, throttling Bedrock, Gateway non raggiungibile) arriva come errore di `InvokeAgentRuntime`: il Dispatcher lo tratta come E-05 / E-12.
+
 ### 6.3 Riga d'ordine (estratto di `Orders`)
 
 ```json

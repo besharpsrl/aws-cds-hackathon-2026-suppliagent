@@ -16,7 +16,23 @@ export interface EnvConfig {
   readonly logRetention: RetentionDays;
   /** Runtime parameters published to SSM under /suppliagent/<env>/<name> (02_TECHNICAL_FLOWS §7). */
   readonly parameters: Readonly<Record<string, string>>;
+  /** Bedrock inference profile of the agent (always `eu.`, INFRASTRUCTURE_DESIGN §2). */
+  readonly model: BedrockModelConfig;
 }
+
+export interface BedrockModelConfig {
+  /** Inference profile ID, e.g. `eu.amazon.nova-pro-v1:0`. */
+  readonly profileId: string;
+  /** Regions the `eu.` profile routes to: IAM needs the foundation model in each of them. */
+  readonly destinationRegions: readonly string[];
+}
+
+// Amazon Nova Pro via the EU cross-region profile (decision of 25/10: Claude not enabled on the account).
+// Destination regions from the Nova Pro model card for source region eu-west-1.
+const novaPro: BedrockModelConfig = {
+  profileId: 'eu.amazon.nova-pro-v1:0',
+  destinationRegions: ['eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-3'],
+};
 
 // Defaults from docs/02_TECHNICAL_FLOWS.md §7.
 const runtimeParameters: Record<string, string> = {
@@ -45,6 +61,7 @@ const environments: Record<EnvName, EnvConfig> = {
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.TWO_WEEKS,
     parameters: runtimeParameters,
+    model: novaPro,
   },
   demo: {
     envName: 'demo',
@@ -52,6 +69,7 @@ const environments: Record<EnvName, EnvConfig> = {
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.ONE_MONTH,
     parameters: runtimeParameters,
+    model: novaPro,
   },
 };
 
