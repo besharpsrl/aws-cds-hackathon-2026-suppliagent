@@ -84,7 +84,9 @@ uv run python seed/seed.py --env dev
 
 ## Try it (for judges)
 
-_Coming soon_: WhatsApp number, test customer, sample handwritten order to photograph, email address and read-only console credentials.
+The console has a read-only `judge` role: judges can browse orders and see each handwritten ticket next to the lines the agent read, but cannot change anything (enforced by the API, not only by the UI). After signing in, the **Try the demo** page walks through ordering and offers a sample handwritten order to download.
+
+_Coming soon_: console URL and `judge` credentials, WhatsApp number, test customer and order email address.
 
 ## Pre-existing code
 

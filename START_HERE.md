@@ -224,7 +224,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 
 | # | Task | Branch / PR | Attende | Priorità | Stato |
 |---|---|---|---|---|---|
-| 1 | T-66 ruolo `judge` in sola lettura, rifiniture demo | | – | Could | ☐ |
+| 1 | T-66 ruolo `judge` in sola lettura, rifiniture demo | `feat/FN-31-judge-demo-polish` | – | Could | ✅ PR #13 |
 | 2 | T-62 parte API (inbox e dettaglio su dati reali, correzione riga; vista chiave della demo: bigliettino accanto alle righe) | | **T-46 (Agente)** | Must | ☐ |
 | 3 | T-63 conversazioni live + take over / release | | **T-49 (Agente)** | Should | ☐ |
 | 4 | T-64 chat web agenti di commercio | | **T-41 (Agente)** | Could | ☐ |

@@ -8,6 +8,12 @@
 
 ## 26/10/2026
 
+### T-66 – Ruolo `judge` in sola lettura e rifiniture demo · FN-28, FN-31
+- **Cosa**: (1) `console_api` rifiuta con 403 `read_only` ogni metodo non-GET del `judge` **prima** del routing, così nessun endpoint di scrittura futuro (correzioni, T-46) può dimenticare il controllo; i gruppi sono additivi (un utente `judge`+`backoffice` non è bloccato). (2) Nel dettaglio ordine un avviso spiega al `judge` perché le correzioni sono disabilitate. (3) Pagina **Try the demo** (`/demo`, link nel menu) per i giudici: bigliettino di esempio scaricabile, passi per ordinare, numero WhatsApp ed email da `VITE_DEMO_WHATSAPP` / `VITE_DEMO_ORDER_EMAIL` (altrimenti "to be announced"). (4) Pagina "Page not found" con link di ritorno. (5) README: sezione giudici con il ruolo `judge` e la pagina demo.
+- **Test**: `services/console_api/tests` (+6: scrittura negata al `judge` su ogni metodo ed endpoint, gruppi additivi, 405 per gli altri ruoli), `console/src` (+9: avviso read-only, pagina demo con e senza canali configurati, 404, menu); `npm run check` verde.
+- **Commit**: `2a1aa9f` (branch `feat/FN-31-judge-demo-polish`). Per applicare il controllo dell'API serve rilanciare `cdk deploy suppliagent-dev-console --exclusively -c env=dev` (cambia il codice della Lambda); la SPA con `scripts/deploy-console.sh dev`.
+- **Resta per FN-31** (altri stream/azioni manuali): numero WhatsApp, email ordini, credenziali `judge` e URL nel README, script di reset dei dati demo, ambiente `demo` attivo fino al 12/11.
+
 ### Revisione T-21 + T-23 (code-reviewer, security-reviewer) · FN-01, FN-03, FN-05, FN-06
 - **Corretto**:
   - **Receipt rule SES senza `kmsKeyArn`** (`ChannelsStack`): con quel parametro SES cifra lato client (S3 encryption client) e il Router avrebbe letto testo cifrato; ora vale la SSE-KMS di default del bucket con la CMK (Foundation concede già la chiave a `ses`). Richiede il deploy di `channels` (solo con `-c sesDomain`). **Da verificare** su una mail reale: `head-object` senza metadati `x-amz-key-v2`.
