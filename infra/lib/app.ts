@@ -36,7 +36,17 @@ export function buildApp(app: App, config: EnvConfig) {
     }),
     foundation,
   );
-  const agent = after(new AgentStack(app, name('agent'), common), data, catalog);
+  const agent = after(
+    new AgentStack(app, name('agent'), {
+      ...common,
+      key: foundation.key,
+      tables: data.tables,
+      eventBus: foundation.eventBus,
+    }),
+    foundation,
+    data,
+    catalog,
+  );
   const messaging = after(
     new MessagingStack(app, name('messaging'), common),
     channels,

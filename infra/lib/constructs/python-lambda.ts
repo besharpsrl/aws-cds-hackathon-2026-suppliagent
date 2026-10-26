@@ -12,7 +12,7 @@ export interface PythonLambdaProps {
   readonly key: IKey;
   /** Short component name, e.g. `inbound-router`; the function is named `suppliagent-<env>-<name>`. */
   readonly name: string;
-  // ponytail: plain asset for now; bundling with dependencies and suppliagent_shared is decided with the first real Lambda (T-21).
+  // Python code with dependencies and suppliagent_shared: `uvBundling` (constructs/uv-bundling.ts).
   readonly code: lambda.Code;
   readonly handler: string;
   readonly environment?: Record<string, string>;
