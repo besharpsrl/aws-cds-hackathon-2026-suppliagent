@@ -1,0 +1,46 @@
+{
+  "name": "reorder_suggestion",
+  "language": "en",
+  "category": "MARKETING",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Hi {{1}}, you usually reorder {{2}} by now.\n\nWould you like to repeat your order of {{3}}? The next available delivery is {{4}}: we will show you the summary before you confirm.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "fior di latte and peeled tomatoes",
+            "20 October",
+            "Thursday 29 October"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Virtual ordering assistant · automated message"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Reorder same"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Change"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "No thanks"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Stop suggestions"
+        }
+      ]
+    }
+  ]
+}

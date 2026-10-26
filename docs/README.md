@@ -13,6 +13,7 @@ Concept: [`../SUPPLIAGENT_SOLUTION.md`](../SUPPLIAGENT_SOLUTION.md)
 | 04 | [Backlog e piano di lavoro](./04_BACKLOG.md) | Task T-xx per stream, fasi, dipendenze, owner | v0.1 |
 | – | [Handoff a Claude Code](./HANDOFF_CLAUDE_CODE.md) | Setup, collegamento a GitHub, prompt di avvio e prompt per stream | v0.1 |
 | – | [Checklist submission](./SUBMISSION_CHECKLIST.md) | Passi per iscrizione, crediti, ACE e submission Devpost | in corso |
+| 09 | [Testi e template](./09_CONTENT_AND_TEMPLATES.md) | Template WhatsApp (fonte: JSON nel Notifier) e invio a Meta | v0.1 |
 | – | [Documenti da fare](./TODO_DOCS.md) | Elenco dei documenti ancora da scrivere | promemoria |
 | – | [Lavoro completato](./DONE.md) | Task, documenti e punti aperti chiusi, con data, commit e verifica | vivo |
 

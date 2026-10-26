@@ -1,0 +1,43 @@
+{
+  "name": "delivery_update",
+  "language": "it",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Consegna in arrivo"
+    },
+    {
+      "type": "BODY",
+      "text": "Ciao {{1}}, l'ordine {{2}} viene consegnato oggi tra le {{3}} e le {{4}}.\n\nQuando arriva, facci sapere se è tutto a posto.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "ORD-1042",
+            "9:00",
+            "11:00"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Assistente virtuale ordini · messaggio automatico"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Ricevuto"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Segnala problema"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "order_confirmation",
+  "language": "it",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Ordine confermato"
+    },
+    {
+      "type": "BODY",
+      "text": "Ciao {{1}}, il tuo ordine {{2}} è confermato.\n\nConsegna prevista: {{3}}.\nRighe ordinate: {{4}}.\n\nTi abbiamo inviato il riepilogo in PDF via email. Puoi chiedere modifiche rispondendo a questo messaggio entro {{5}}, poi l'ordine passa in preparazione.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "ORD-1042",
+            "giovedì 29 ottobre",
+            "12",
+            "mercoledì 28 ottobre alle 18:00"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Assistente virtuale ordini · messaggio automatico"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Modifica ordine"
+        }
+      ]
+    }
+  ]
+}

@@ -69,7 +69,7 @@ Le cose che Claude Code non può fare: account, accessi, contatti con cliente e 
 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
 - [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova
-- [ ] **Template WhatsApp** inviati a Meta (testi da Claude Code, task T-28): `order_confirmation`, `reorder_suggestion`, `delivery_update`, `order_pending_reminder`
+- [ ] **Template WhatsApp** inviati a Meta: testi pronti (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`); appena la WABA è collegata a EUM Social si inviano con il task **T-29** (comando in 09 §1)
 - [ ] **SES**: dominio verificato (DNS), **richiesta di uscita dalla sandbox oggi**, record MX per la ricezione
 - [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
 
@@ -111,7 +111,7 @@ Tutto il codice, i test, l'infrastruttura CDK, i dati di prova sintetici, i test
 
 | Fase | Quando | Cosa produce | Task principali |
 |---|---|---|---|
-| **P0 – Fondamenta** | 23/10 | Monorepo, CI, app CDK con Foundation e Data stack, template WhatsApp | ✅ T-01, T-03, T-02 · ⬜ T-28 |
+| **P0 – Fondamenta** | 23/10 | Monorepo, CI, app CDK con Foundation e Data stack, template WhatsApp | ✅ T-01, T-03, T-02, T-13, T-28 (testi) · invio a Meta → T-29 |
 | **P1 – Walking skeleton** | 23–24/10 | Messaggio WhatsApp → pipeline → agente → risposta | T-04, T-20, T-21, T-22, T-23, T-24, T-40, T-41, T-42, T-60, T-61 |
 | **P2 – Ordine da foto** | 24–25/10 | Scenario S1 completo: lettura bigliettino, matching, chiarimenti, conferma, ERP mock, email PDF, SMS/RCS | T-06, T-07, T-25…T-27, T-43…T-49, T-62 |
 | **P3 – Copilota, proattività, console** | 25–26/10 | Copilota agenti, riordino proattivo, consegne, console, KPI | T-08, T-09, T-50…T-52, T-63…T-65 |
@@ -171,7 +171,7 @@ I **team di agenti** non servono finché ogni stream ha una persona (guida §11)
 
 | Sessione | Comando | Task, in ordine | Deploy |
 |---|---|---|---|
-| **Integrazione** | `claude` nella checkout principale | T-13 → T-28 (solo testi) → merge PR → poi resta per merge e stack condivisi | Foundation/Data e stack condivisi, sempre da `main` aggiornato |
+| **Integrazione** | `claude` nella checkout principale | T-13 → T-28 (solo testi) → T-29 (invio template, quando c'è la WABA) → merge PR → poi resta per merge e stack condivisi | Foundation/Data e stack condivisi, sempre da `main` aggiornato |
 | **Piattaforma** (IN + CH) | `claude -w piattaforma` | T-04 → T-20 (solo SES + EUM Social) → T-21 → T-23 → T-22 → T-24 base → **T-14** → T-07 → T-26 (solo email conferma con PDF) | Solo i propri stack (`cdk deploy <stack> --exclusively -c env=dev`) |
 | **Agente** (AG) | `claude -w agente` | T-42 → T-40 → T-41 → T-43 → T-06 → T-44 → T-45 → T-46 → T-47 | Solo i propri stack |
 | **Console** (CO), da domenica pomeriggio | `claude -w console` | T-60 → T-61 → T-62 (dati mock, poi API reali) | Solo i propri stack |

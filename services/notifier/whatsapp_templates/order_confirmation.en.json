@@ -1,0 +1,40 @@
+{
+  "name": "order_confirmation",
+  "language": "en",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Order confirmed"
+    },
+    {
+      "type": "BODY",
+      "text": "Hi {{1}}, your order {{2}} is confirmed.\n\nExpected delivery: {{3}}.\nOrdered lines: {{4}}.\n\nWe emailed you the PDF summary. You can ask for changes by replying to this message until {{5}}, then the order goes into preparation.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "ORD-1042",
+            "Thursday 29 October",
+            "12",
+            "Wednesday 28 October at 6:00 PM"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Virtual ordering assistant · automated message"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Change order"
+        }
+      ]
+    }
+  ]
+}

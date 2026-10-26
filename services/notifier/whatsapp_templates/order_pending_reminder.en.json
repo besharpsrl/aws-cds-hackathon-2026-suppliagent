@@ -1,0 +1,38 @@
+{
+  "name": "order_pending_reminder",
+  "language": "en",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Hi {{1}}, your draft order with {{2}} lines is not confirmed yet.\n\nTo get the delivery on {{3}} please confirm by {{4}}, otherwise the draft expires at the end of the day.",
+      "example": {
+        "body_text": [
+          [
+            "Marco",
+            "12",
+            "Thursday 29 October",
+            "today at 6:00 PM"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Virtual ordering assistant · automated message"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "View summary"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Cancel draft"
+        }
+      ]
+    }
+  ]
+}
