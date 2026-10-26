@@ -30,6 +30,15 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 | **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati, T-25, T-49, T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
 | **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65, T-66 |
 
+**PR accorpate** (deciso il 26/10): i task che toccano lo stesso stack e non sono testabili da soli vanno in **una sola PR**, con un commit per task; tutti gli altri task = una PR ciascuno.
+
+| Branch / PR | Task | Perché insieme |
+|---|---|---|
+| `feat/FN-01-inbound-pipeline` | T-21 + T-23 | stesso `MessagingStack`; il router senza media fetcher non gestisce le foto |
+| `feat/FN-26-debounce-notifier` | T-22 + T-24 (base) | servono entrambi perché una risposta esca |
+| `feat/FN-03-agent-runtime` | T-40 + T-41 | il runtime senza agente non è testabile |
+| `feat/FN-12-order-flow` | T-45 + T-46 + T-47 | stato ordine e conversazione d'ordine si testano solo insieme |
+
 ## 2. Sequenza consigliata (ondate parallele)
 
 Ogni ondata parte quando le dipendenze sono chiuse; dentro un'ondata i task di stream diversi vanno in parallelo.

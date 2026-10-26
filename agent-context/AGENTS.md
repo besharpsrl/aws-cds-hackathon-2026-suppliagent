@@ -199,7 +199,8 @@ Per l'agente: ogni modifica a prompt o tool va verificata con gli **eval** in `a
 
 - Branch: `feat/FN-07-catalog-matching`, `fix/E-08-erp-retry`, `chore/...`, `docs/...`.
 - Commit **Conventional Commits** con riferimento: `feat(catalog): hybrid matching with history boost (FN-07)`.
-- PR piccole, con: FN/flussi coinvolti, come testare, screenshot/log per la console o i canali, assunzioni fatte.
+- PR piccole, con: FN/flussi coinvolti, come testare, screenshot/log per la console o i canali, assunzioni fatte. Un task = una PR, tranne i gruppi di task accoppiati elencati in `docs/04_BACKLOG.md` §1bis (una PR, un commit per task).
+- Flusso: l'agente di sviluppo fa push del branch e **apre la PR**; lo sviluppatore revisiona e fa **merge su `main`** con CI verde, sempre con *merge commit* (niente squash/rebase: gli hash citati in `docs/DONE.md` devono restare validi); il deploy si fa da locale da `main` aggiornato. Mai push diretti su `main`. I branch confluiti non si cancellano.
 - Non fare force-push su `main`. Non committare file generati (`cdk.out/`, `node_modules/`, `.venv/`, build della console).
 
 ## 11. Cosa NON fare senza chiedere
