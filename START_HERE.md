@@ -41,7 +41,7 @@ Le cose che Claude Code non può fare: account, accessi, contatti con cliente e 
 ### 1.1 Flusso Git di ogni task (deciso il 26/10)
 
 1. **Claude Code** lavora su un branch `feat/FN-xx-…` (un task, o un gruppo di task accoppiati: vedi `docs/04_BACKLOG.md` §1bis), fa push e **apre la PR**.
-2. **Tu** revisioni la PR e fai il **merge su `main`** quando la CI è verde (niente push diretti su `main`, anche da admin).
+2. **Tu** revisioni la PR e fai il **merge su `main`** quando la CI è verde, sempre con **"Create a merge commit"** (mantiene gli hash citati in `docs/DONE.md` e un commit per task; niente squash/rebase). Niente push diretti su `main`, anche da admin.
 3. **Deploy** da locale, da `main` aggiornato: `git switch main && git pull && cd infra && npx cdk deploy <stack> -c env=dev` (lo può lanciare Claude Code su tua richiesta).
 4. I branch già confluiti restano su GitHub (storia tracciata).
 
