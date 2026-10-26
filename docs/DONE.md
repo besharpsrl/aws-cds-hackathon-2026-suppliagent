@@ -8,6 +8,12 @@
 
 ## 26/10/2026
 
+### Email SES su `dev`: dominio, DNS, ricezione · FN-01, FN-06
+- **Cosa**: `cdk deploy suppliagent-dev-channels --exclusively -c env=dev -c sesDomain=suppliagent.stonecutters.besharp.net` (identity SES, rule set di ricezione attivato, parametri SSM `sesDomain` e `sesFromAddress` = `ordine@…`). Nella zona Route 53 condivisa `stonecutters.besharp.net` aggiunti **solo** 5 record con `CREATE` (mai sovrascritture; da 20 a 25 record): 3 CNAME DKIM, `MX 10 inbound-smtp.eu-west-1.amazonaws.com` e `_dmarc` TXT `p=none` su `suppliagent.stonecutters.besharp.net`.
+- **Verifica**: DKIM `SUCCESS`, identity verificata; mail di prova da `test@` a `ordini@` del dominio (ammessa in sandbox) → oggetto in `inbound-mail/mail/…`, router `message stored` canale `EMAIL`.
+- **Uscita dalla sandbox SES** richiesta il 26/10 (`put-account-details`, transazionale, contatto `matteo.goretti@besharp.it`): stato `PENDING`; vale per tutto l'account in `eu-west-1`.
+- **Da ricordare**: ogni deploy che tocca `channels` deve ripassare `-c sesDomain=suppliagent.stonecutters.besharp.net` finché T-15 non porta il valore nella config.
+
 ### Deploy `dev` allineato a `main` (`a9225ec`: PR #13, #15, #16) · FN-32
 - **Cosa**: da `origin/main`, profilo `default` (account `471112860008`, `eu-west-1`): `cdk deploy suppliagent-dev-messaging` con le dipendenze (Foundation e Data solo nuovi export; **primo deploy di `channels`** (T-20): topic `wa-events`/`mail-inbound`/`email-events`, configuration set SES, parametri SSM `UNSET`; `agent`: codice di `tool-customers`; `messaging`: coda inbound + DLQ, allarme, `inbound-router`); `suppliagent-dev-console` (codice di `console_api`); SPA pubblicata con `scripts/deploy-console.sh dev` (senza `VITE_DEMO_*`).
 - **Verifica**: evento WhatsApp sintetico su `wa-events` → item in `Messages` (`conv_con001`, `CUSTOMER_CONTACT`), ripubblicazione → `duplicate delivery ignored`, DLQ vuota; `invoke_agent.py` risponde; console e `/demo` 200.

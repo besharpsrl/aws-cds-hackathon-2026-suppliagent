@@ -184,7 +184,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Attende | Priorità | Stato |
 |---|---|---|---|---|
 | 1 | Merge delle PR, deploy degli stack condivisi da `main` | – | – | continuo |
-| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ☐ |
+| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ◐ 26/10: dominio `suppliagent.stonecutters.besharp.net` verificato, ricezione ok; uscita dalla sandbox richiesta (in revisione AWS). **Ogni deploy di `channels` ora deve passare `-c sesDomain=suppliagent.stonecutters.besharp.net`** |
 | 1c | **WhatsApp**: WABA collegata ad AWS (`docs/WABA_SETUP.md` parte 1), poi destinazione eventi, `-c waPhoneNumberId`, prova di ricezione | numero di telefono (tu) | Must | ☐ |
 | 2 | T-05 dataset eval (≥ 15 bigliettini, vocali, email, conversazioni attese) | foto e vocali (tu, §1.3) | Should | ☐ |
 | 3 | T-11 ACE, PNG del diagramma, testi submission (EN) | – (avviabile subito) | Should | ☐ |
