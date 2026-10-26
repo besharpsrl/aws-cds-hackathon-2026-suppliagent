@@ -23,6 +23,12 @@ describe('ConsoleStack (T-60, FN-28, FN-32)', () => {
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', { GenerateSecret: false });
   });
 
+  it('does not let the client write custom:repId (sales_rep authorization claim)', () => {
+    const [client] = Object.values(template.findResources('AWS::Cognito::UserPoolClient'));
+    expect(client.Properties.WriteAttributes).toEqual(['email']);
+    expect(client.Properties.ReadAttributes).toContain('custom:repId');
+  });
+
   it('serves the SPA from a private bucket behind CloudFront with OAC', () => {
     template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
     template.hasResourceProperties('AWS::CloudFront::Distribution', {

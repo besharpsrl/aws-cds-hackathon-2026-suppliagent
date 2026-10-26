@@ -84,6 +84,11 @@ export class ConsoleStack extends Stack {
       userPoolClientName: `${prefix}-console-spa`,
       generateSecret: false, // browser client (Amplify, SRP); no secret can be kept
       authFlows: { userSrp: true },
+      // `custom:repId` drives sales_rep authorization: readable, but only an admin may write it.
+      readAttributes: new cognito.ClientAttributes()
+        .withStandardAttributes({ email: true })
+        .withCustomAttributes('repId'),
+      writeAttributes: new cognito.ClientAttributes().withStandardAttributes({ email: true }),
       preventUserExistenceErrors: true,
       accessTokenValidity: Duration.hours(1),
       idTokenValidity: Duration.hours(1),
