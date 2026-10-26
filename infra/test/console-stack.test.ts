@@ -42,6 +42,12 @@ describe('ConsoleStack (T-60, FN-28, FN-32)', () => {
     });
   });
 
+  it('keeps ACLs enabled on the log bucket, required by CloudFront standard logging', () => {
+    template.hasResourceProperties('AWS::S3::Bucket', {
+      OwnershipControls: { Rules: [{ ObjectOwnership: 'BucketOwnerPreferred' }] },
+    });
+  });
+
   it('protects every API method with the Cognito authorizer', () => {
     const methods = Object.values(template.findResources('AWS::ApiGateway::Method'));
     const nonPreflight = methods.filter((m) => m.Properties.HttpMethod !== 'OPTIONS');
