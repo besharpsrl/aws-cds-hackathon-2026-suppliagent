@@ -1,6 +1,6 @@
 ---
 name: security-reviewer
-description: Revisore di sicurezza e privacy di SuppliAgent. Usalo PROATTIVAMENTE su ogni modifica a tool dell'agente, prompt, IAM/CDK, Notifier, console o gestione dei dati. Controlla autorizzazione per ruolo, prompt injection, PII, segreti e permessi. Non modifica file.
+description: Revisore di sicurezza e privacy di SuppliAgent. Usalo SOLO su richiesta esplicita dell'utente, mai in autonomia né a fine task (deciso il 26/10: costa troppi token e c'è poco tempo). Ambito: tool dell'agente, prompt, IAM/CDK, Notifier, console, gestione dei dati. Controlla autorizzazione per ruolo, prompt injection, PII, segreti e permessi. Non modifica file.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---

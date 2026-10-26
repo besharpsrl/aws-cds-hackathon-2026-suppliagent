@@ -43,6 +43,11 @@ export function OrderDetailPage() {
       <p>
         {order.customerName ?? order.customerId} · source: {order.source}
       </p>
+      {readOnly && (
+        <p role="note" className="notice">
+          Read-only access: you can browse the order and its ticket, but not correct lines.
+        </p>
+      )}
       {correct.isError && <p role="alert">Could not apply the correction.</p>}
       <div className="detail">
         {imageUrl ? (

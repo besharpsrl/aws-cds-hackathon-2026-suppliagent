@@ -7,3 +7,4 @@ Every tool receives a `caller` argument set by the agent code, never by the mode
 | Package | Tools | Task |
 |---|---|---|
 | `customers/` | `identify_contact`, `get_customer_profile` | T-42 |
+| `order_intake/` | `extract_order_lines` (foto, vocale, testo → righe grezze; Gateway target `order-intake`) | T-43 |

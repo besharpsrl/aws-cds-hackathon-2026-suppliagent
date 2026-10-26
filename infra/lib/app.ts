@@ -42,6 +42,7 @@ export function buildApp(app: App, config: EnvConfig) {
       key: foundation.key,
       tables: data.tables,
       eventBus: foundation.eventBus,
+      mediaBucket: foundation.mediaBucket,
     }),
     foundation,
     data,

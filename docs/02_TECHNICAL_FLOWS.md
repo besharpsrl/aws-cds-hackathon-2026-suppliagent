@@ -460,7 +460,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `conversation.started` | contactId, role, channel | KPI |
 | `contact.identified` | contactId, method | audit |
 | `order.draft_created` | orderId, source (photo/voice/text/email/reorder/rep) | KPI |
-| `order.lines_extracted` | orderId, lines, unreadable | qualità lettura |
+| `order.lines_extracted` | conversationId (l'`orderId` non esiste ancora: arriva con T-45), source (photo/voice/text), lines, unreadable | qualità lettura |
 | `order.line_matched` | orderId, lineId, status, confidence | qualità matching |
 | `order.line_corrected` | orderId, lineId, by, fromSku, toSku | accuratezza |
 | `order.suggestion` | orderId, sku, reason, accepted | upsell |
@@ -480,7 +480,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 |---|---|---|
 | `identify_contact` | (indirizzo dal `caller`, INFRASTRUCTURE_DESIGN §5.3.2) \| customerCode \| vatNumber, venueName | `status` (`KNOWN` \| `MATCHED` \| `NOT_FOUND` \| `IDENTIFICATION_FAILED`), contact, role, customers[] (customerId, venueName) |
 | `get_customer_profile` | customerId | dati del locale; ultimi 5 ordini (contatto verificato o agente); ragione sociale, zona, listino e insight (solo agente) |
-| `extract_order_lines` | s3Uri \| text | lines[] (rawText, qty, unit, readConfidence, imageRegion) |
+| `extract_order_lines` | s3Uri (foto o vocale del chiamante) \| text | `status` (`OK` \| `NOT_AN_ORDER` \| `UNREADABLE_MEDIA`), `source` (photo/voice/text), `lines[]` (rawText, rawQuantity, rawUnit, note, readConfidence, status `READ`/`UNREADABLE`, imageRegion solo per le foto), `struckOut[]`, `deliveryNotes`, `ignoredNotes[]`, `transcript` (solo vocali). Errori: `ACCESS_DENIED` (media non del chiamante), `UNSUPPORTED_MEDIA` (es. PDF, HEIC), `EXTRACTION_FAILED` (E-04) |
 | `match_products` | lines[], customerId | per riga: candidates[] con confidence |
 | `search_catalog` | query, filters | products[] |
 | `ask_product_sheets` | question, sku? | answer, citations[] |

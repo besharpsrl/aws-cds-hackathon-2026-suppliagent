@@ -11,6 +11,7 @@ members = [
     "suppliagent-notifier",
     "suppliagent-shared",
     "suppliagent-tool-customers",
+    "suppliagent-tool-order-intake",
     "suppliagent-turn-dispatcher",
 ]
 
@@ -1080,6 +1081,7 @@ dependencies = [
     { name = "suppliagent-notifier" },
     { name = "suppliagent-shared" },
     { name = "suppliagent-tool-customers" },
+    { name = "suppliagent-tool-order-intake" },
     { name = "suppliagent-turn-dispatcher" },
 ]
 
@@ -1100,6 +1102,7 @@ requires-dist = [
     { name = "suppliagent-notifier", editable = "services/notifier" },
     { name = "suppliagent-shared", editable = "services/shared" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
+    { name = "suppliagent-tool-order-intake", editable = "services/tools/order_intake" },
     { name = "suppliagent-turn-dispatcher", editable = "services/turn_dispatcher" },
 ]
 
@@ -1191,6 +1194,17 @@ requires-dist = [
 name = "suppliagent-tool-customers"
 version = "0.1.0"
 source = { editable = "services/tools/customers" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
+name = "suppliagent-tool-order-intake"
+version = "0.1.0"
+source = { editable = "services/tools/order_intake" }
 dependencies = [
     { name = "suppliagent-shared" },
 ]

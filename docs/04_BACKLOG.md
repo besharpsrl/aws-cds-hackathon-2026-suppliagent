@@ -28,7 +28,7 @@ Le fasi P1–P3 sono riordinate per priorità; sessioni e calendario in [START_H
 |---|---|---|
 | **Must** – S1 end-to-end | Sab–Dom | T-04 (dati sintetici), T-22, T-24 (base), **T-14**, T-42, T-40, T-41, T-43, T-06, T-44, T-45, T-46, T-47, T-07, T-26 (solo email conferma con PDF), T-60, T-61, T-62 |
 | **Should** – rifinitura | Lun–Mar | WhatsApp reale e template approvati (**T-29**), T-25, T-49, T-54 (Memory, Guardrail), T-63, T-48, T-05 + T-53 (eval leggera), T-10, T-11, T-12 |
-| **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65, T-66 |
+| **Could** – solo se avanza tempo, altrimenti nel video/slide | – | T-27 (RCS), T-24 completo (fallback RCS→SMS), T-08, T-50, T-51, T-52, T-64, T-09, T-65 |
 
 **PR accorpate** (deciso il 26/10): i task che toccano lo stesso stack e non sono testabili da soli vanno in **una sola PR**, con un commit per task; tutti gli altri task = una PR ciascuno.
 
@@ -58,6 +58,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 7 | T-10 | Ambiente `demo`, script reset, README sezione giudici, cliente/bigliettino di prova | FN-31 | P4 | tutti | MG | ☐ |
 | 8 | T-11 | Opportunità ACE, export PNG del diagramma (aggiornare prima `architecture.drawio`: coda `inbound` standard e niente Lambda Media Fetcher, decisioni T-21/T-23), testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | MG | ☐ |
 | 9 | T-12 | Copione e registrazione video (≤ 3 min) | – | P4 (copione da P2) | T-10 | MG | ☐ |
+| 10 | T-15 | **Valori dei canali nella config per ambiente**: `sesDomain` e `waPhoneNumberId` in `infra/config/environments.ts` per `dev`/`demo` (i `-c` restano solo come override); test CDK che senza `-c` i parametri SSM non tornano `UNSET` e identity, configuration set e rule set SES restano nel template; tolta la regola "ripassare i `-c`" da README (Manual steps §3), INFRASTRUCTURE_DESIGN §11 e `docs/WABA_SETUP.md`. Da fare con i valori reali già configurati (dominio SES verificato, WABA collegata), verificando con `cdk diff` che il deploy non cambi nulla | FN-01, FN-32 | P2 | T-20, dominio SES, WABA collegata | MG | ☐ |
 
 ### CH – Canali CDS
 
@@ -75,14 +76,13 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 4 | T-43 | Tool `order_intake`: `extract_order_lines` (Nova Pro vision, output strutturato, `imageRegion`) + trascrizione vocali — **prototipo di lettura da avviare già in P1** su bigliettini reali | FN-05, 06 | P1–P2 | T-23, T-41 | MG | ☐ |
 | 5 | T-44 | Tool `catalog`: `match_products` (semantico + fuzzy + storico + unità), `search_catalog`, `ask_product_sheets` con citazioni | FN-07, 21 | P2 | T-06 | MG | ☐ |
 | 6 | T-45 | Tool `inventory_pricing`: `check_availability` (sostituti), `get_prices`, `get_delivery_options` (cut-off, giorni serviti) | FN-09, 10 | P2 | T-04 | MG | ☐ |
 | 7 | T-46 | Tool `orders`: draft/update/confirm (idempotente)/cancel/status/issue + macchina a stati ordine e righe; `confirm_order` da pulsante solo se `interactiveReply.contextId` è il messaggio di conferma inviato per quell'ordine (l'id del pulsante si può falsificare) | FN-12, 16, 17, 18 | P2 | T-03, T-07 | MG | ☐ |
 | 8 | T-47 | Logica conversazionale ordine: chiarimenti raggruppati, sostituti, vincoli, riepilogo, conferma, promemoria e scadenza bozza | FN-08, 09, 12 | P2 | T-43…T-46, T-25 | MG | ☐ |
 | 9 | T-48 | Primo contatto: informativa e consenso proattivo | FN-02 | P2 | T-41 | MG | ☐ |
 | 10 | T-49 | `handoff_to_human` e gestione `mode = HUMAN` / release | FN-24 | P2 | T-41, T-22 | MG | ☐ |
-| 11 | T-53 | Eval runner + metriche (lettura righe, matching, intento, n. scambi) con **AgentCore Evaluations** (on-demand + evaluator custom) e dataset di progetto; report — avvio in P2, report finale in P4 | FN-04, 05, 07 | P2–P4 | T-05 | MG | ☐ |
+| 11 | T-53 | Eval runner + metriche (lettura righe, matching, intento, n. scambi) con **AgentCore Evaluations** (on-demand + evaluator custom) e dataset di progetto; report — avvio in P2, report finale in P4; **inoltre**: ≥ 15 bigliettini e miglioramento della lettura del corsivo (T-43: 62% su 3 note con Nova Pro, `agent/evals/README.md`; da provare altri modelli o pre-elaborazione) | FN-04, 05, 07 | P2–P4 | T-05 | MG | ☐ |
 | 11b | T-54 | Completamento dell'agente dopo la versione ridotta di T-40/T-41: AgentCore Memory (`actorId = contactId`, storico e preferenze al posto della memoria di sessione), Bedrock Guardrail (PII, topic negati), prompt e set di tool `sales_rep` completi, Observability/OTel (`aws-opentelemetry-distro`), retention e CMK del log group del Runtime, verifica multilingua con gli eval; testo e allegati dei messaggi passati al modello come **contenuto non fidato** (delimitato), mai come istruzioni (revisione T-21/T-23); se c'è tempo, hardening dai rilievi di T-40/T-41 (INFRASTRUCTURE_DESIGN §12) | FN-03, 04, 25, 27, 32 | P2 | T-40, T-41 | MG | ☐ |
 | 12 | T-50 | Tool `reco` + politica suggerimenti (max 1, consenso, motivazione) | FN-11, 20 | P3 | T-08 | MG | ☐ |
 | 13 | T-51 | Tool `sales`: briefing, agenda, ordine per conto del cliente (solo portafoglio) | FN-20, 22, 23 | P3 | T-42, T-50 | MG | ☐ |
@@ -96,7 +96,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 2 | T-63 | Conversazioni live (`broadcaster`) + azioni *Take over / Reply / Release* (`console_api`) | FN-24, 28 | P2–P3 | T-49 | MG | ☐ |
 | 3 | T-64 | Chat web agenti di commercio (`rep_chat` + UI con streaming; `NormalizedMessage` con `channel = WEB`) | FN-29 | P3 | T-41, T-60 | MG | ☐ |
 | 4 | T-65 | Dashboard KPI (viste Athena) con confronto baseline | FN-30 | P3 | T-09 | MG | ☐ |
-| 5 | T-66 | Ruolo `judge` in sola lettura, rifiniture demo | FN-31 | P4 | T-62 | MG | ☐ |
 
 ## 4. Assegnazione
 

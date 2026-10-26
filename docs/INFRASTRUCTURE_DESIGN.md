@@ -179,7 +179,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 |---|---|---|---|
 | `identify_contact` | `tool-customers` | tutti | Contacts, Customers |
 | `get_customer_profile` | `tool-customers` | tutti (agente: solo portafoglio) | Customers, CustomerInsights |
-| `extract_order_lines` | `tool-order-intake` | tutti | S3 media → Nova Pro vision / testo |
+| `extract_order_lines` | `tool-order-intake` (target Gateway `order-intake`: i nomi dei target non ammettono `_`) | tutti i ruoli noti (non `UNKNOWN`) | S3 `media/<contactId\|conversationId>/…` del solo chiamante → Nova Pro vision / testo; vocali via Transcribe (job `ordint-<hash>`, trascrizione in `transcripts/` dello stesso bucket, stesso ciclo di vita di 90 gg) |
 | `match_products` | `tool-catalog` | tutti | S3 Vectors + Products + storico ordini |
 | `search_catalog` | `tool-catalog` | tutti | S3 Vectors + Products |
 | `ask_product_sheets` | `tool-catalog` | tutti | Bedrock Knowledge Base (schede tecniche) |
@@ -418,6 +418,8 @@ SuppliAgent/
 | `env` / `region` | `demo` / `eu-west-1` |
 | `waPhoneNumberId` | ID numero WhatsApp su EUM Social (context CDK `-c waPhoneNumberId=…` → SSM; `UNSET` finché non c'è) |
 | `sesDomain` | `ordini.example.com` (context CDK `-c sesDomain=…`: crea identity e rule set inbound) |
+
+> **Attenzione**: `waPhoneNumberId` e `sesDomain` sono context CDK, non persistono. Ogni deploy che tocca `ChannelsStack` (anche indiretto, es. `messaging` senza `--exclusively`) deve ripassarli, altrimenti i parametri SSM tornano a `UNSET` e identity e rule set SES vengono rimossi. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
 | `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender |
 | `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |

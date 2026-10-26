@@ -68,7 +68,7 @@ Le cose che Claude Code non può fare: account, accessi, contatti con cliente e 
 - [ ] Crediti: quelli AWS ($50) probabilmente non arrivano in tempo (3–5 giorni, scadono il 31/10) → confermare un budget interno beSharp
 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
-- [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova
+- [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova → procedura passo passo in `docs/WABA_SETUP.md`
 - [ ] **Template WhatsApp** inviati a Meta: testi pronti (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`); appena la WABA è collegata a EUM Social si inviano con il task **T-29** (comando in 09 §1)
 - [ ] **SES**: dominio verificato (DNS), **richiesta di uscita dalla sandbox oggi**, record MX per la ricezione
 - [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
@@ -158,7 +158,7 @@ Claude Code usa da solo i **subagent** del progetto quando servono:
 | `aws-docs-researcher` | Verifica API AWS recenti (AgentCore, Strands, S3 Vectors, canali) sulla documentazione ufficiale |
 | `test-runner` | Lint, type check, test, `cdk synth`; riassume solo gli errori |
 | `code-reviewer` | Revisione rispetto a criteri di accettazione, Definition of Done e regole di gara |
-| `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi |
+| `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi. **Solo su richiesta esplicita** (deciso il 26/10: troppi token) |
 
 I **team di agenti** non servono finché ogni stream ha una persona (guida §11).
 
@@ -184,6 +184,8 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Attende | Priorità | Stato |
 |---|---|---|---|---|
 | 1 | Merge delle PR, deploy degli stack condivisi da `main` | – | – | continuo |
+| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ◐ 26/10: dominio `suppliagent.stonecutters.besharp.net` verificato, ricezione ok; uscita dalla sandbox richiesta (in revisione AWS). **Ogni deploy di `channels` ora deve passare `-c sesDomain=suppliagent.stonecutters.besharp.net`** |
+| 1c | **WhatsApp**: WABA collegata ad AWS (`docs/WABA_SETUP.md` parte 1), poi destinazione eventi, `-c waPhoneNumberId`, prova di ricezione | numero di telefono (tu) | Must | ☐ |
 | 2 | T-05 dataset eval (≥ 15 bigliettini, vocali, email, conversazioni attese) | foto e vocali (tu, §1.3) | Should | ☐ |
 | 3 | T-11 ACE, PNG del diagramma, testi submission (EN) | – (avviabile subito) | Should | ☐ |
 | 4 | T-10 ambiente `demo`, reset, README giudici | code freeze (tutti i Must) | Should | ☐ |
@@ -195,6 +197,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 |---|---|---|---|---|---|
 | 1 | T-21 + T-23 | `feat/FN-01-inbound-pipeline` | – | Must | ✅ PR #16 |
 | 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ✅ PR #22 |
+| 2b | **T-15 valori dei canali nella config per ambiente** (alta priorità: elimina il rischio di cancellare la configurazione SES a ogni deploy) | | **Email SES (Integrazione 1b)**, **WhatsApp (Integrazione 1c)**: servono i valori reali | Must | ☐ |
 | 3 | T-14 simulatore canali + test end-to-end | | ↺ T-41 (Agente) per la risposta reale | Must | ☐ |
 | 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | | – | Must | ☐ |
 | 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
@@ -209,7 +212,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Branch / PR | Attende | Priorità | Stato |
 |---|---|---|---|---|---|
 | 1 | T-40 + T-41 (versione ridotta) | `feat/FN-03-agent-runtime` | – | Must | ✅ PR #15 |
-| 2 | T-43 `order_intake` (lettura bigliettini) | | ↺ T-23 (Piattaforma): fino ad allora immagini caricate a mano su S3 | Must | ☐ |
+| 2 | T-43 `order_intake` (lettura bigliettini) | `feat/FN-05-order-intake` | – | Must | ✅ PR #21 |
 | 3 | T-06 (**solo** indice prodotti S3 Vectors, niente Knowledge Base) | | – | Must | ☐ |
 | 4 | T-44 `catalog` (matching) | | – | Must | ☐ |
 | 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 (Piattaforma), ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 ✅ | Must | ☐ |
@@ -225,7 +228,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 
 | # | Task | Branch / PR | Attende | Priorità | Stato |
 |---|---|---|---|---|---|
-| 1 | T-66 ruolo `judge` in sola lettura, rifiniture demo | | – | Could | ☐ |
+| 1 | T-66 ruolo `judge` in sola lettura, rifiniture demo | `feat/FN-31-judge-demo-polish` | – | Could | ✅ PR #13 |
 | 2 | T-62 parte API (inbox e dettaglio su dati reali, correzione riga; vista chiave della demo: bigliettino accanto alle righe) | | **T-46 (Agente)** | Must | ☐ |
 | 3 | T-63 conversazioni live + take over / release | | **T-49 (Agente)** | Should | ☐ |
 | 4 | T-64 chat web agenti di commercio | | **T-41 (Agente)** | Could | ☐ |
