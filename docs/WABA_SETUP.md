@@ -1,7 +1,11 @@
 # Iscrizione WhatsApp Business (WABA) e collegamento ad AWS End User Messaging Social
 
 > Procedura operativa per collegare un numero WhatsApp a SuppliAgent in `dev` (account `471112860008`, region **eu-west-1**).
-> La parte 1 si fa a mano nel browser; le parti 2–4 le esegue Claude Code su richiesta. Riferimenti: [AWS – Getting started](https://docs.aws.amazon.com/social-messaging/latest/userguide/getting-started-whatsapp.html) · [Meta – numeri di telefono](https://developers.facebook.com/docs/whatsapp/cloud-api/phone-numbers) · [README – Manual steps](../README.md#getting-started).
+> La parte 1 si fa a mano nel browser; le parti 2–4 le esegue un agente di sviluppo su richiesta.
+>
+> **Stato al 27/10 (`dev`)**: parti 1–3 completate. WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a` (Meta `2035382963843064`), numero **+39 345 246 0472** (`phone-number-id-79f96a1ea97d47aabfce52eb7b8cf23c`), eventi su `suppliagent-dev-wa-events`; testo e foto reali ricevuti, riconosciuti e passati all'agente. Da fare: tag sulla risorsa del numero (il WABA li ha), template a Meta (T-29).
+>
+> Riferimenti: [AWS – Getting started](https://docs.aws.amazon.com/social-messaging/latest/userguide/getting-started-whatsapp.html) · [Meta – numeri di telefono](https://developers.facebook.com/docs/whatsapp/cloud-api/phone-numbers) · [README – Manual steps](../README.md#getting-started).
 
 ---
 
@@ -64,7 +68,7 @@ aws socialmessaging put-whatsapp-business-account-event-destinations --id <WABA_
   --event-destinations eventDestinationArn="$TOPIC"
 ```
 
-Registrare l'ID del numero nel parametro SSM `waPhoneNumberId` (letto a runtime dal router per scaricare i media), scrivendolo in `infra/config/environments.ts` (`waPhoneNumberId` dell'ambiente) e facendo un deploy di `channels` (mutante, solo dopo conferma). Il dominio SES resta quello della config, senza `-c`:
+Registrare l'ID del numero nel parametro SSM `waPhoneNumberId` (creato dallo stack **`channels`**, letto a runtime dal Router per scaricare i media): scriverlo in `infra/config/environments.ts` (`waPhoneNumberId` dell'ambiente) e fare un deploy di `channels` (mutante, solo dopo conferma). Il dominio SES resta quello della config, senza `-c`:
 
 ```bash
 cd infra && rm -rf cdk.out
@@ -73,20 +77,37 @@ npx cdk deploy suppliagent-dev-channels --exclusively -c env=dev \
 aws ssm get-parameter --name /suppliagent/dev/waPhoneNumberId --query Parameter.Value --output text
 ```
 
+Il **Router**, il Dispatcher e il Notifier sono invece nello stack **`messaging`**: una correzione al codice del Router si porta su AWS con `npx cdk deploy suppliagent-dev-messaging --exclusively -c env=dev --profile default`. Dopo il deploy controllare che `CodeSize` della Lambda non sia di poche centinaia di byte (zip vuoto, vedi `docs/DONE.md` del 27/10).
+
 ---
 
 ## 3. Prova di ricezione
 
-1. Dal tuo telefono personale scrivi `ciao` al nuovo numero.
-2. Verifiche (sola lettura):
-   - log del router: `aws logs tail /aws/lambda/suppliagent-dev-inbound-router --since 10m` → `message stored`;
-   - un item nuovo in `suppliagent-dev-messages` (il mittente sconosciuto risulta `UNKNOWN` finché non si identifica, o lo si registra nel seed);
+1. **Farsi riconoscere come cliente di prova** (altrimenti il mittente risulta `UNKNOWN` e l'agente chiede codice cliente e nome del locale; un contatto identificato così resta *in attesa di verifica* e non può ordinare). Aggiungere il proprio numero in `seed/private/channel-identities.json` (escluso da git; gli agenti di sviluppo non leggono `seed/private/`), stessa forma di `seed/data/channel-identities.json`:
+
+   ```json
+   [{ "channelAddress": "WHATSAPP#+39XXXXXXXXXX", "channel": "WHATSAPP",
+      "contactId": "con_003", "role": "CUSTOMER_CONTACT", "verified": true }]
+   ```
+
+   Poi `uv run python seed/seed.py --env dev` (riscrive **tutti** gli item del seed) oppure, meno invasivo, `PutItem` del solo item nella tabella `suppliagent-dev-channel-identities`. Il contatto scelto condivide la conversazione (`conv_con003`) con le prove del simulatore: ripulirla con `seed/reset.py` prima della demo.
+2. Dal tuo telefono scrivi `ciao` al numero e invia una **foto** (es. un bigliettino).
+3. Verifiche (sola lettura):
+   - log del Router: `aws logs tail /aws/lambda/suppliagent-dev-inbound-router --since 10m` → `message stored` con `role` del contatto, nessun `media dropped`;
+   - item nuovi in `suppliagent-dev-messages`; quello della foto ha l'attachment con `s3Uri`;
+   - oggetto nel bucket media sotto `media/<contactId|conversationId>/<messageId>/<mediaId>.jpeg`;
+   - Dispatcher `turn done`, Notifier `reply sent`;
    - DLQ `suppliagent-dev-inbound-dlq` vuota.
-3. Invia una **foto** (es. un bigliettino): l'oggetto deve comparire nel bucket media sotto `media/<contactId|conversationId>/<messageId>/`.
 
-La **risposta** dell'agente su WhatsApp arriva solo quando T-22 + T-24 (Dispatcher e Notifier) sono su `main` e deployati.
+**Risposta sul telefono**: su `dev` il Notifier è in **sandbox** (SSM `notifierSandbox` = `true`): la risposta dell'agente viene registrata (log `reply sent` con `sandbox: true` e item `OUTBOUND` nella tabella) ma non inviata. È il valore da tenere su `dev`, perché il simulatore (`scripts/simulate_channel.py`) funziona solo così e i numeri finti del seed non ricevono invii reali. Per una prova con risposta reale, attivare l'invio solo per la durata del test (letto a ogni invio, nessun deploy; un deploy di `foundation` lo riporta comunque a `true`) e avvisare chi lavora in parallelo, perché nel frattempo il simulatore su `dev` non funziona:
 
-Per farti riconoscere come cliente di prova: aggiungi il tuo numero personale in `seed/private/` (escluso da git) come `ChannelIdentity` di un contatto del seed, poi `uv run python seed/seed.py --env dev`.
+```bash
+aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value false --overwrite
+# ... prova ...
+aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value true --overwrite
+```
+
+Su `demo` il sandbox è già `false` (config).
 
 ---
 
@@ -117,3 +138,6 @@ Per farti riconoscere come cliente di prova: aggiungi il tuo numero personale in
 | Il WABA non compare nella console AWS | Region sbagliata: deve essere **eu-west-1** |
 | Messaggi inviati ma nessun `message stored` nel log | Destinazione eventi mancante o sul topic sbagliato: parte 2 |
 | Foto registrate senza file su S3 | `waPhoneNumberId` ancora `UNSET`: valorizzarlo in config e fare il deploy di `channels` (parte 2) |
+| Foto su S3 ma `media dropped: too large` nel log e messaggio senza `s3Uri` | Router precedente alla PR #31 (leggeva `fileSize` in KB, è in byte): deploy di `messaging` da `main` |
+| Mittente `UNKNOWN` con il proprio numero | Numero non in `channel-identities` o in formato diverso da `WHATSAPP#+39…` (parte 3, punto 1) |
+| L'agente risponde (log `reply sent`) ma sul telefono non arriva nulla | `notifierSandbox` = `true` (parte 3) |
