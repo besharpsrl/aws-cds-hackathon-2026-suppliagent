@@ -531,10 +531,4 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 
 ## 9. Punti da validare con il team (e con il cliente)
 
-- [ ] Dati per identificare un contatto nuovo (codice cliente, P.IVA) e procedura di verifica
-- [ ] Mostrare i prezzi al ristoratore?
-- [ ] Ordine inserito dall'agente di commercio: serve anche la conferma del ristoratore?
-- [ ] Regole reali di cut-off, giorni di consegna, minimi d'ordine, multipli
-- [ ] Soglie di matching tarate su bigliettini reali
-- [ ] Testi dei template WhatsApp da sottomettere a Meta
-- [ ] Politica sui suggerimenti (frequenza, tipologie ammesse)
+Domande aperte e decisioni prese sono in [`START_HERE.md`](../START_HERE.md) §6 (fonte unica).

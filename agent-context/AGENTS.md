@@ -17,7 +17,7 @@
 
 | Vincolo | Implicazione per il codice |
 |---|---|
-| Consegna **28/10/2026 21:00 (ora italiana)**, submission interna entro le 15:00; code freeze interno **27/10 ore 18:00** (calendario in `START_HERE.md`) | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
+| Consegna **28/10/2026 21:00 (ora italiana)**, submission interna entro le 15:00; code freeze interno **28/10 ore 12:00** (calendario in `START_HERE.md` §3) | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
 | Il codice deve **importare e chiamare** almeno un client CDS valido | Usare **solo**: `socialmessaging` (`SendWhatsAppMessage`), `pinpoint-sms-voice-v2` (`SendRcsMessage`, `SendTextMessage`), `sesv2` (`SendEmail`). **Vietati**: `pinpoint` (v1), `pinpoint-email`, EUM Push |
 | Lavoro **nuovo** (dal 14/09/2026) | Non copiare codice preesistente senza dichiararlo nel README (sezione "Pre-existing code") |
 | Repo con **licenza open source** visibile | Non rimuovere `LICENSE` |
@@ -37,11 +37,8 @@ Leggi **prima di implementare** la parte che ti riguarda:
 | `docs/02_TECHNICAL_FLOWS.md` | **Come** si comporta: stati, flussi `F-xx`, casi `F-xx.Cn`, errori `E-xx`, contratti JSON, parametri |
 | `docs/INFRASTRUCTURE_DESIGN.md` | Stack CDK, tabelle, code, IAM, sicurezza |
 | `docs/architecture.drawio` | Diagramma |
-| `docs/04_BACKLOG.md` | Task `T-xx` **ancora da fare**: descrizione completa, FN, dipendenze (anche dei task non ancora assegnati) |
-| `START_HERE.md` §3bis | **Assegnazione dei task alle sessioni** (fonte unica): ordine, dipendenze tra sessioni (bloccanti o di integrazione), stato |
-| `docs/DONE.md` | Lavoro completato: a task chiuso, nella stessa PR, si **rimuove** la riga dal backlog (o da `TODO_DOCS.md`, §12 di INFRASTRUCTURE_DESIGN), si segna ✅ in START_HERE §3bis e si aggiunge qui con data, commit e verifica |
-| `docs/HANDOFF_CLAUDE_CODE.md` | Setup, prompt di avvio e prompt per stream |
-| `docs/TODO_DOCS.md` | Documenti ancora mancanti (es. agent spec, contratti) |
+| `START_HERE.md` | **Fonte unica** di stato, timeline, backlog `T-xx` (descrizione, dipendenze, owner, stato), azioni manuali `M-xx`, decisioni `D-xx` e registro del fatto (§7). A task chiuso, nella stessa PR: riga tolta dal backlog (§4.2) e aggiunta in §7 |
+| `docs/OLD/` | Documenti superati (vecchi backlog, DONE, checklist, handoff): solo storico, non si aggiornano |
 
 Regole:
 - Ogni task fa riferimento a uno o più **`FN-xx`** e, se pertinente, a flussi/casi **`F-xx.Cn`**.
@@ -203,8 +200,8 @@ Per l'agente: ogni modifica a prompt o tool va verificata con gli **eval** in `a
 
 - Branch: `feat/FN-07-catalog-matching`, `fix/E-08-erp-retry`, `chore/...`, `docs/...`.
 - Commit **Conventional Commits** con riferimento: `feat(catalog): hybrid matching with history boost (FN-07)`.
-- PR piccole, con: FN/flussi coinvolti, come testare, screenshot/log per la console o i canali, assunzioni fatte. Un task = una PR, tranne i gruppi di task accoppiati elencati in `docs/04_BACKLOG.md` §1bis (una PR, un commit per task).
-- Flusso: l'agente di sviluppo fa push del branch e **apre la PR**; lo sviluppatore revisiona e fa **merge su `main`** con CI verde, sempre con *merge commit* (niente squash/rebase: gli hash citati in `docs/DONE.md` devono restare validi); il deploy si fa da locale da `main` aggiornato. Mai push diretti su `main`. I branch confluiti non si cancellano.
+- PR piccole, con: FN/flussi coinvolti, come testare, screenshot/log per la console o i canali, assunzioni fatte. Un task = una PR, tranne i gruppi di task accoppiati elencati in `START_HERE.md` §4.4 (una PR, un commit per task).
+- Flusso: l'agente di sviluppo fa push del branch e **apre la PR**; lo sviluppatore revisiona e fa **merge su `main`** con CI verde, sempre con *merge commit* (niente squash/rebase: gli hash citati in `START_HERE.md` §7 e in `docs/OLD/DONE.md` devono restare validi); il deploy si fa da locale da `main` aggiornato. Mai push diretti su `main`. I branch confluiti non si cancellano.
 - Non fare force-push su `main`. Non committare file generati (`cdk.out/`, `node_modules/`, `.venv/`, build della console).
 
 ## 11. Cosa NON fare senza chiedere

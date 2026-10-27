@@ -4,8 +4,8 @@ Le regole di progetto sono in `AGENTS.md` (caricato in automatico). Qui solo ci�
 
 ## Priorità delle fonti
 
-- **Calendario e stato del progetto: `START_HERE.md`** (code freeze 27/10 ore 18:00, submission entro le 15:00 del 28/10). Comportamento e requisiti: `docs/`. `AGENTS.md` riassume: in caso di conflitto segnalalo e correggilo.
-- Stato condiviso tra le sessioni parallele, versionato: assegnazione e dipendenze in `START_HERE.md` §3bis (fonte unica), descrizione dei task in `docs/04_BACKLOG.md`, fatto in `docs/DONE.md`. A fine task si aggiornano tutti e tre nella stessa PR. Le todo list della chat non sono un registro.
+- **Stato, timeline, backlog, azioni manuali, decisioni e fatto: `START_HERE.md`** (fonte unica; code freeze 28/10 ore 12:00, submission entro le 15:00 del 28/10). Comportamento e requisiti: `docs/`. `AGENTS.md` riassume: in caso di conflitto segnalalo e correggilo. `docs/OLD/` è solo storico.
+- Presa e chiusura dei task come da `START_HERE.md` §1.2, nella stessa PR del task. Le todo list della chat non sono un registro.
 
 ## Modo di lavorare
 

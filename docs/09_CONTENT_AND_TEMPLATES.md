@@ -1,6 +1,6 @@
 # SuppliAgent – Testi e template
 
-> Stato: **v0.1** (26/10/2026) · Contiene i template WhatsApp (T-28). Le altre sezioni (informativa e consenso, email HTML e PDF, RCS/SMS, messaggi di sistema) sono ancora in [TODO_DOCS](./TODO_DOCS.md) §3.
+> Stato: **v0.1** (26/10/2026) · Contiene i template WhatsApp (T-28). Gli altri testi si aggiungono qui con i task che li introducono (`START_HERE.md` §4): informativa e consenso (T-48), email HTML di conferma (T-26), messaggi di sistema (T-49, T-67); RCS/SMS è fuori perimetro (T-27).
 
 ## 1. Template WhatsApp
 

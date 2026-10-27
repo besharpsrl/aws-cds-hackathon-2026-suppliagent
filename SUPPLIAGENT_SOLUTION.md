@@ -1,7 +1,7 @@
 # SuppliAgent – Agente AI per gli ordini HoReCa via WhatsApp
 
 > Documento di progetto · AWS CDS Agentic AI Partner Hackathon · Team beSharp
-> Stato: **bozza v0.2** · Ultimo aggiornamento: 12/10/2026
+> Stato: **v0.3** · Ultimo aggiornamento: 27/10/2026
 > Caso d'uso di un **cliente reale di beSharp**: un distributore di prodotti alimentari per la ristorazione (di seguito "il Distributore")
 
 ---
@@ -44,6 +44,8 @@
 | 9 | RCS / SMS | Giorno di consegna: avviso con fascia oraria e pulsanti **Ricevuto / Segnala problema** |
 | 10 | WhatsApp | Una settimana dopo: "Di solito riordinate l'olio ogni 10 giorni: vuole lo stesso ordine?" → **riordino con un tap** |
 | 11 | Console | Il back office vede ordini, righe corrette, eccezioni e KPI in tempo reale |
+
+> Perimetro della gara: passi 1–6 e 11 (senza KPI); i passi 7–10 (SMS/RCS, copilota, consegna, riordino proattivo) sono dopo la submission e compaiono nel video come prossimi passi. Dettaglio in [`START_HERE.md`](./START_HERE.md) §4.
 
 ### 3.2 Funzionalità principali
 
@@ -135,37 +137,24 @@ Dettagli: [Infrastructure Design](./docs/INFRASTRUCTURE_DESIGN.md) · [Diagramma
 
 | Criterio | Peso | Come lo copriamo |
 |---|---|---|
-| Esecuzione tecnica | 40% | 3 servizi CDS bidirezionali (WhatsApp, SES in/out, RCS/SMS) + AgentCore (Runtime, Memory, Gateway, Identity, Observability) + Knowledge Base, vision, ricerca ibrida; CDK riproducibile |
+| Esecuzione tecnica | 40% | 2 servizi CDS bidirezionali chiamati nel codice (WhatsApp, SES in/out; SMS/RCS dopo la gara) + AgentCore Runtime e Gateway (Memory e Observability con T-54), vision, ricerca ibrida su S3 Vectors; CDK riproducibile |
 | Valore e impatto | 20% | **Cliente reale**, processo quotidiano ad alto volume, KPI misurabili |
-| Demo | 20% | Foto del bigliettino → ordine verificato in pochi secondi; riordino con un tap; consegna con RCS |
-| Creatività | 10% | Ordine da scrittura a mano, doppia persona (cliente + agente di commercio) sullo stesso agente, proattività |
+| Demo | 20% | Foto del bigliettino → ordine verificato in pochi secondi, conferma con email e PDF; riordino con un tap e consegna con RCS come prossimi passi nel video |
+| Creatività | 10% | Ordine da scrittura a mano, ruoli diversi (cliente, agente di commercio) sullo stesso agente; copilota e proattività come prossimi passi |
 | Funzionalità | 10% | Serverless, scalabile; i giudici possono ordinare da soli via WhatsApp |
 | **Premio WhatsApp (Meta)** | $10k | Commercio conversazionale su WhatsApp: esattamente lo scenario che Meta promuove |
 
-## 7. Organizzazione del team (4+ persone)
-
-| Stream | Responsabilità |
-|---|---|
-| **AG – Agent & AgentCore** | Prompt, tool, matching, raccomandazioni, memoria, guardrail, valutazioni |
-| **CH – Canali CDS** | WhatsApp, SES in/out, SMS/RCS, template, eventi, PDF |
-| **CO – Console & Analytics** | Console back office, chat web agenti, KPI |
-| **IN – Infra, Dati & Materiali** | CDK, dati di prova (catalogo dal cliente), ERP mock, README, video, ACE |
-
-## 8. Rischi e mitigazioni
+## 7. Rischi e mitigazioni
 
 | Rischio | Mitigazione |
 |---|---|
 | Scrittura a mano poco leggibile | Nova Pro vision (Claude se abilitato sull'account) + domande di chiarimento + storico cliente; dataset di bigliettini veri per i test |
 | Dati del cliente riservati | Catalogo **anonimizzato o sintetico** derivato da quello reale; nessun dato personale reale |
-| Marchio del cliente nel video | Solo con autorizzazione scritta; altrimenti brand fittizio |
+| Marchio del cliente nel video | Brand fittizio e dati sintetici (decisione del 27/10) |
 | Integrazione ERP reale non fattibile in 2 settimane | ERP adapter con implementazione mock e interfaccia documentata |
-| Approvazione template WhatsApp | Invio a Meta entro il 14/10; fallback SMS/email |
-| Costi | Budget alert, modelli più economici in dev, scale-to-zero |
+| Approvazione template WhatsApp | Template inviati a Meta il 27/10; servono solo fuori dalla finestra di 24 h, che la demo non usa; fallback email |
+| Costi | Account condiviso: costi isolati con i tag `Project`/`Env`; modelli più economici in dev, scale-to-zero |
 
-## 9. Decisioni aperte
+## 8. Team, stato e decisioni
 
-- [x] Nome del progetto: **SuppliAgent** (consigliata una verifica rapida dei marchi)
-- [ ] Possiamo citare il cliente e usare il suo marchio? (submission, video, case study)
-- [ ] Catalogo: quanti prodotti, in che formato ce lo fornisce, schede tecniche disponibili?
-- [ ] Chi conferma l'ordine quando lo inserisce l'agente di commercio: lui o anche il ristoratore?
-- [ ] Mostriamo i prezzi al ristoratore o solo quantità e data di consegna?
+Team, stato del progetto, backlog, decisioni prese e aperte: [`START_HERE.md`](./START_HERE.md) (fonte unica).

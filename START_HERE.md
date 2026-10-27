@@ -1,345 +1,326 @@
 # SuppliAgent – Da dove partire
 
-> **Documento unico di handoff**: cosa devi fare tu, cosa fa Claude Code e come farglielo fare, quali file esistono e cosa contengono.
-> Usalo come scaletta: segui le sezioni in ordine e spunta le caselle.
-> Aggiornato al **23/10/2026 pomeriggio** (P0 completata) · Consegna Devpost: **28/10/2026 ore 21:00** (ora italiana) · Obiettivo interno: submission **entro le 15:00 del 28/10** · Code freeze **27/10 ore 18:00**
+> **Fonte unica** per: punto di partenza, stato del progetto, timeline, backlog dei task (con dipendenze), azioni manuali, decisioni e registro del fatto.
+> Comportamento e requisiti: [`docs/`](./docs/README.md) · Regole per gli agenti di sviluppo: [`AGENTS.md`](./agent-context/AGENTS.md).
+> Aggiornato al **27/10/2026 ore 18:00** · Code freeze **28/10 ore 12:00** · Submission interna **28/10 ore 15:00** · Scadenza Devpost **28/10 ore 21:00** (ora italiana)
+
+**Team**: MG, MM, FZ (sviluppo) · PS (Team Representative su Devpost: invia la submission).
 
 ---
 
-## 0. A che punto siamo
+## 1. Punto di partenza
 
-| Area | Stato |
-|---|---|
-| Idea, perimetro, documentazione funzionale e tecnica | ✅ pronta (da validare con il team) |
-| Architettura AWS e diagramma | ✅ pronti |
-| Backlog: 39 task da fare in `docs/04_BACKLOG.md`; il completato è in `docs/DONE.md` | ✅ pronto |
-| Contesto per Claude Code (istruzioni, comandi, subagent, hook, MCP) | ✅ attivo |
-| Repo GitHub `besharpsrl/aws-cds-hackathon-2026-suppliagent` | ✅ creato, pubblico, CI verde su `main` · flusso PR in §1.1 (serve `gh` per far aprire le PR a Claude Code) |
-| Codice | ◐ **P0 + T-13 fatti e su `main`**: monorepo, CI, app CDK con Foundation e Data stack, tag obbligatori · primi 3 bigliettini di eval con soluzione attesa (`agent/evals/data/bigliettini/`) · deploy `dev` fatto |
-| Account AWS | ◐ account `471112860008` (condiviso con altri progetti beSharp), bootstrap già presente, **primo deploy `dev` fatto il 25/10** (Foundation + Data) · modello **Amazon Nova** (Claude non abilitato sull'account, §1.2) · tag obbligatori: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it` |
-| Devpost | ◐ iscritti e team creato |
-| Team | Una sola persona (MG): tutti gli stream sono suoi, lavoro con sessioni Claude Code parallele (§3) |
-| Canali (WhatsApp, SES, SMS/RCS), dati del cliente, ACE | ⬜ da fare (§1) |
+### 1.1 Se arrivi adesso (10 minuti)
 
-Calendario sintetico (dettaglio in §5):
-
-| Giorno | Tu | Claude Code |
-|---|---|---|
-| **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
-| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ✅ T-42 → T-40 + T-41 ridotti (26/10) |
-| **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
-| **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
-| **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |
-| **Mer 28/10** | **Submission entro le 15:00** · controllo link | Solo bugfix |
-
----
-
-## 1. Cosa devi fare tu
-
-Le cose che Claude Code non può fare: account, accessi, contatti con cliente e Meta, decisioni, approvazioni, video, submission.
-
-### 1.1 Flusso Git di ogni task (deciso il 26/10)
-
-1. **Claude Code** lavora su un branch `feat/FN-xx-…` (un task, o un gruppo di task accoppiati: vedi `docs/04_BACKLOG.md` §1bis), fa push e **apre la PR**.
-2. **Tu** revisioni la PR e fai il **merge su `main`** quando la CI è verde, sempre con **"Create a merge commit"** (mantiene gli hash citati in `docs/DONE.md` e un commit per task; niente squash/rebase). Niente push diretti su `main`, anche da admin.
-3. **Deploy** da locale, da `main` aggiornato: `git switch main && git pull && cd infra && npx cdk deploy <stack> -c env=dev` (lo può lanciare Claude Code su tua richiesta).
-4. I branch già confluiti restano su GitHub (storia tracciata).
-
-- [x] P0 e T-13 su `main` (25/10), CI verde sui push
-- [ ] Installare la GitHub CLI perché Claude Code possa aprire le PR: `brew install gh && gh auth login`
-- [x] GitHub → *Settings → Branches*: regola su `main` (PR obbligatoria, CI verde, niente force push)
-- [x] GitHub → *About*: descrizione e topic (vedi §4.6)
-- [x] Membri del team aggiunti al repo
-
-### 1.2 Oggi – account, canali, cliente, gara
-
-**Strumenti sul tuo Mac** → `docs/HANDOFF_CLAUDE_CODE.md` §2–§3
-- [ ] Strumenti installati (Node 22, Python 3.12, uv, AWS CLI, gh, CDK, Docker Desktop, Claude Code)
-- [ ] Profilo AWS `suppliagent-dev` funzionante (`aws sts get-caller-identity`)
-
-**Account AWS** (eu-west-1)
-- [x] Account: `471112860008`, condiviso con altri progetti → nessun AWS Budget creato dal CDK; costi isolati con i tag (attivare `Project` ed `Env` come *cost allocation tags* in Billing)
-- [x] Accesso ai modelli Bedrock: **Amazon Nova** Pro/Lite e Titan Text Embeddings V2 funzionanti (25/10) → il progetto usa Nova
-- [ ] (Opzionale) Chiedere al distributore/AWS l'abilitazione di Claude: l'account è in *channel program* e risponde `Access to this model is not available for channel program accounts`; se arriva, pianifichiamo il passaggio
-- [x] CDK bootstrap: già presente sull'account (`CDKToolkit` v30), non rifatto
-- [x] Prima del primo deploy: task **T-13** (tag obbligatori in CDK) fatto da Claude Code (branch `feat/FN-32-mandatory-tags`, vedi `docs/DONE.md`)
-- [ ] Risorse create a mano da console (EUM Social/numero WhatsApp, eventuali identità SES): aggiungere gli stessi due tag (WABA ✅; risorsa del numero `phone-number-id-79f9…` ancora senza tag)
-- [x] Primo deploy `dev` (25/10, da locale con profilo `default`): 9 stack, 18 tabelle, 6 bucket, CMK, event bus, 16 parametri SSM (dettagli in `docs/DONE.md`)
-- [ ] Crediti: quelli AWS ($50) probabilmente non arrivano in tempo (3–5 giorni, scadono il 31/10) → confermare un budget interno beSharp
-
-**Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
-- [x] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero +39 345 246 0472, testo e foto reali ricevuti il 27/10 → procedura e stato in `docs/WABA_SETUP.md`
-- [ ] **Template WhatsApp**: 8 template inviati a Meta il 27/10 (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`), tutti `PENDING`; resta da verificare l'approvazione (task **T-29**, comando in 09 §1)
-- [x] **SES**: dominio verificato (DNS), uscita dalla sandbox (27/10), record MX per la ricezione
-- [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
-
-**Cliente** → `docs/TODO_DOCS.md` §1
-- [ ] Catalogo e schede tecniche (anche parziali) → cartella `seed/private/` (esclusa da git, Claude Code non la legge)
-- [ ] Regole di consegna: zone, giorni, cut-off, minimi, multipli
-- [ ] Qualche esempio reale (anonimizzato) di bigliettino
-- [ ] Baseline del processo attuale (ordini/giorno, tempo di inserimento, % errori)
-- [ ] Autorizzazione a citare il cliente e usarne il marchio (sì/no)
-- [ ] Referente per l'opportunità ACE
-
-**Gara** → `docs/SUBMISSION_CHECKLIST.md`
-- [x] Tutti iscritti su Devpost con email @besharp.it, team formato
-- [ ] Rappresentante del team scelto
-- [ ] **Opportunità ACE** su Partner Central (codice campagna `AWS CDS Agentic AI Hackathon -Sept. 2026`, prodotti EUM, EUM Social, SES) → annotare l'ID
-
-**Team e decisioni** → §6
-- [ ] Owner di ogni stream (IN, CH, AG, CO) scritto in `docs/04_BACKLOG.md`
-- [ ] Decisioni aperte chiuse (§6)
-
-### 1.3 Sabato–lunedì (24–26/10)
-- [ ] **Dataset di prova**: ~15 bigliettini scritti a mano da persone diverse (fotografati) + qualche vocale → li usa Claude Code per lettura ed eval (task T-05)
-- [ ] Approvare i deploy su `dev` quando Claude Code li chiede; rivedere e fare merge delle PR
-- [ ] Provare gli scenari dal proprio telefono (S1 per primo)
-- [ ] Martedì 27 ore 18:00: **code freeze**
-
-### 1.4 Martedì–mercoledì (27–28/10)
-- [ ] Deploy sull'ambiente `demo` (una sola persona)
-- [ ] Video ≤ 3 minuti (telefono + console), caricato **pubblico** su YouTube
-- [ ] Repo pubblico con licenza visibile **oppure** privato condiviso con i contatti dei giudici (vedi regolamento)
-- [ ] Il rappresentante compila Devpost: repo, diagramma, descrizione (EN), video, istruzioni per i giudici, ID ACE, paragrafo su WhatsApp (premio Meta) → **invio il 28 mattina**
-- [ ] Ambiente `demo` attivo e costi sotto controllo fino al **12/11**
-
----
-
-## 2. Cosa fa Claude Code
-
-Tutto il codice, i test, l'infrastruttura CDK, i dati di prova sintetici, i testi (template, email, README) e le revisioni. Il lavoro è diviso in 42 task, organizzati in 4 stream e 5 fasi: quelli **da fare** sono in `docs/04_BACKLOG.md`, quelli **completati** in `docs/DONE.md` (a task chiuso la riga si sposta dal primo al secondo).
-
-| Fase | Quando | Cosa produce | Task principali |
-|---|---|---|---|
-| **P0 – Fondamenta** | 23/10 | Monorepo, CI, app CDK con Foundation e Data stack, template WhatsApp | ✅ T-01, T-03, T-02, T-13, T-28 (testi) · invio a Meta → T-29 |
-| **P1 – Walking skeleton** | 23–24/10 | Messaggio WhatsApp → pipeline → agente → risposta | T-04, T-20, T-21, T-22, T-23, T-24, T-40, T-41, T-42, T-60, T-61 |
-| **P2 – Ordine da foto** | 24–25/10 | Scenario S1 completo: lettura bigliettino, matching, chiarimenti, conferma, ERP mock, email PDF, SMS/RCS | T-06, T-07, T-25…T-27, T-43…T-49, T-62 |
-| **P3 – Copilota, proattività, console** | 25–26/10 | Copilota agenti, riordino proattivo, consegne, console, KPI | T-08, T-09, T-50…T-52, T-63…T-65 |
-| **P4 – Hardening e materiali** | 27–28/10 | Eval, ambiente demo, README giudici, testi submission | T-10, T-11, T-53, T-66 |
-
-Gli stream e chi li segue:
-
-| Stream | Contenuto | Prompt di avvio |
-|---|---|---|
-| **IN** – Infra, Dati & Materiali | CDK di base, dati di prova, catalogo e Knowledge Base, ERP mock, proattività, analytics, demo | `docs/HANDOFF_CLAUDE_CODE.md` §8 – Stream IN |
-| **CH** – Canali CDS | WhatsApp, SES, SMS/RCS, ricezione, debounce, Notifier | §8 – Stream CH |
-| **AG** – Agent & AgentCore | Agente Strands su AgentCore, tool, lettura bigliettini, matching, ordini, copilota, eval | §8 – Stream AG |
-| **CO** – Console & Analytics | Console back office, chat agenti, KPI | §8 – Stream CO |
-
----
-
-## 3. Come farglielo fare
-
-Guida completa, pensata per chi parte da zero: **`docs/HANDOFF_CLAUDE_CODE.md`**. In sintesi:
-
-1. **Primo avvio** (guida §5): dalla cartella del repo lanci `claude`, fai login, approvi i server MCP `aws-documentation` e `agentcore`, installi i plugin:
-   ```text
-   /plugin marketplace add strands-agents/harness-sdk
-   /plugin install strands@strands-agents
-   /plugin install security-guidance@claude-plugins-official
+1. Leggi §2 (stato) e §3 (timeline) di questo file.
+2. Setup (una volta): Node 22, Python 3.12, `uv`, AWS CLI, `gh`, CDK v2, Docker Desktop.
+   ```bash
+   bash agent-context/install.sh          # collega AGENTS.md, CLAUDE.md, .claude/, .mcp.json, .github/
+   npm ci && uv sync
+   npm run check                          # lint + typecheck + test + cdk synth (come la CI)
+   aws sts get-caller-identity            # account 471112860008, region eu-west-1 (profilo usato finora: default)
    ```
-   Non servono altre skill: istruzioni, comandi e subagent sono già nel repo.
-2. **Sessione delle fondamenta** (guida §7): ✅ fatta il 23/10 (dettagli in `docs/DONE.md`); resta push + PR (§1.1).
-3. **Sessioni parallele** (guida §8): ogni persona apre la propria copia di lavoro con `claude -w canali` / `agente` / `console` / `dati` e incolla il prompt del proprio stream.
-4. **Ciclo di ogni task** (guida §9):
-   ```text
-   /clear
-   Shift+Tab → plan mode
-   /implement-fn FN-xx
-   /dod-check            (+ /cds-check per i canali)
-   ```
-   poi `git push` e `gh pr create --fill`.
-5. **Regole** (guida §12): un task per sessione, sempre il piano prima, deploy solo su `dev` e approvati a mano, `Esc` per fermare, `/rewind` per tornare indietro.
+3. Scegli un task dal backlog (§4) con la regola di §1.2 e lavoralo con il tuo agente di sviluppo (Claude Code, Copilot, Kiro: tutti leggono `AGENTS.md`). Con Claude Code: `/implement-fn FN-xx`, poi `/dod-check` (+ `/cds-check` sui canali).
+4. Per capire **cosa** costruire: scheda `FN-xx` in [03](./docs/03_FUNCTIONAL_SPEC.md) e flussi `F-xx` in [02](./docs/02_TECHNICAL_FLOWS.md); architettura in [INFRASTRUCTURE_DESIGN](./docs/INFRASTRUCTURE_DESIGN.md).
 
-Claude Code usa da solo i **subagent** del progetto quando servono:
+### 1.2 Come prendere e chiudere un task
 
-| Subagent | Ruolo |
+- **Prendere**: un task del perimetro (§4.2) con stato ☐ e tutte le dipendenze **bloccanti** ✅. Crea il branch (`feat/FN-xx-…`), come primo commit metti la tua sigla in *Owner* e ◐ in *Stato* nella riga del task, fai push e apri subito la **PR in draft**; avvisa il team. Le dipendenze ↺ (di integrazione) non bloccano: si lavora con mock/stub dichiarati nella PR.
+- **Chiudere** (nella stessa PR): togli la riga da §4.2 e aggiungi una riga in §7 (data, task, cosa, PR). Se il lavoro crea o rinvia task, aggiorna §4.
+- **Git**: un task = una PR (salvo task accoppiati, §4.4). Merge su `main` solo da chi revisiona, con CI verde e *Create a merge commit*. Mai push o force push su `main`. `git pull --rebase origin main` prima di iniziare e prima di ogni deploy.
+- **Deploy** solo da `main` aggiornato, solo su `dev`, solo gli stack toccati: `cd infra && npx cdk deploy suppliagent-dev-<stack> --exclusively -c env=dev`. `demo` solo dopo conferma di MG (§6).
+
+### 1.3 Cosa non fare senza chiedere
+
+Deploy su `demo`, modifiche a risorse condivise (numero WhatsApp, dominio SES, template Meta), cambio di region/modello, servizi a costo fisso, cancellazione di dati o bucket, dati reali del cliente. Elenco completo: [AGENTS.md §11](./agent-context/AGENTS.md).
+
+### 1.4 Note operative (problemi già incontrati)
+
+- Dagli agenti di sviluppo il `cdk deploy` va lanciato **fuori dal sandbox** (il proxy interrompe i changeset con `Error: aborted`).
+- Se dopo un deploy una Lambda ha `CodeSize` di poche centinaia di byte, l'asset è stato pubblicato vuoto (sintesi concorrente tra worktree): ripubblicare lo zip corretto con la stessa chiave e aggiornare il codice.
+- Dopo un deploy di `agent`, le sessioni AgentCore già aperte restano sul codice vecchio: provare con una conversazione nuova.
+- `cdk synth` a volte fallisce senza motivo riproducibile: rilanciare.
+- Su `dev` il **Notifier è in sandbox** (`notifierSandbox = true`): le risposte sono registrate ma non inviate. Il simulatore (`scripts/simulate_channel.py`) funziona solo così.
+
+### 1.5 Mappa dei documenti
+
+| File | Contenuto |
 |---|---|
-| `aws-docs-researcher` | Verifica API AWS recenti (AgentCore, Strands, S3 Vectors, canali) sulla documentazione ufficiale |
-| `test-runner` | Lint, type check, test, `cdk synth`; riassume solo gli errori |
-| `code-reviewer` | Revisione rispetto a criteri di accettazione, Definition of Done e regole di gara |
-| `security-reviewer` | Autorizzazione per ruolo, prompt injection, dati personali, permessi. **Solo su richiesta esplicita** (deciso il 26/10: troppi token) |
+| `START_HERE.md` | Questo file |
+| `README.md` | Presentazione in inglese per GitHub e giudici, setup, passi manuali, "Try it" |
+| `SUPPLIAGENT_SOLUTION.md` | Concept: problema, scenario demo, KPI, criteri di gara, rischi |
+| [`docs/README.md`](./docs/README.md) | Indice di `docs/` e convenzioni sugli ID |
+| `agent-context/` | Regole e strumenti per gli agenti di sviluppo (si modificano solo lì; `install.sh` li collega) |
 
-I **team di agenti** non servono finché ogni stream ha una persona (guida §11).
+---
 
+## 2. Stato del progetto (27/10 ore 18:00)
 
-## 3bis. Piano per un team di una persona (deciso il 24/10)
+**In sintesi**: la pipeline è completa su `dev` e un ordine va da messaggio a `CONFIRMED` → ERP mock → PDF **col simulatore**. WhatsApp reale riceve testo e foto fino all'agente, ma **la risposta sul telefono non è mai stata provata** (Notifier in sandbox). Mancano: e2e da telefono, email di conferma, console su dati reali, ambiente per i giudici, materiali di submission.
 
-**Principio**: nel weekend S1 end-to-end testato **con il simulatore** (T-14), senza dipendere da Meta; lunedì si collega WhatsApp reale e si rifinisce; martedì alle 18:00 code freeze. Perimetro Must/Should/Could in `docs/04_BACKLOG.md` §1bis.
+| Area | Stato | Dettaglio |
+|---|---|---|
+| Infra di base (CDK, CI, tag, KMS, dati) | ✅ | 9 stack su `dev`, CI verde, cdk-nag |
+| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, `PENDING` (T-29); invio reale mai provato (T-68) |
+| Email (SES) | ◐ | Dominio `suppliagent.stonecutters.besharp.net` verificato, fuori sandbox, ricezione ok; email di conferma con PDF da fare (T-26) |
+| SMS/RCS | ⬜ | Fuori perimetro (§4.3): solo nel video/slide |
+| Pipeline (Router, debounce, Dispatcher, Notifier base) | ✅ | Errori del turno senza cortesia/handoff (T-67) |
+| Agente (AgentCore Runtime + Gateway, Strands, Nova `eu.`) | ◐ | Versione ridotta: ruoli e tool ok; Memory e Guardrail da fare (T-54); primo contatto (T-48) |
+| Lettura bigliettini (`order_intake`) | ✅ | 62% di righe corrette sul corsivo (3 note): da migliorare (T-05, T-53) |
+| Matching catalogo (S3 Vectors) | ✅ | Schede tecniche (Knowledge Base) fuori perimetro |
+| Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp da fare (T-25) |
+| ERP mock + PDF ordine | ✅ | |
+| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Online su `dev` ma con **dati mock** (T-62); live e handoff da fare (T-49, T-63) |
+| Copilota agenti, proattività, KPI | ⬜ | Fuori perimetro |
+| Ambiente per i giudici, README giudici | ☐ | T-10, decisione D-01 |
+| Materiali (diagramma, testi, video, ACE, Devpost) | ☐ | T-11, T-12, §5 |
 
-**Sessioni di Claude Code** (massimo 3 in parallelo: il limite è la tua attenzione su piani e PR): **Integrazione** (`claude` nella checkout principale: merge, stack condivisi Foundation/Data, `demo`), **Piattaforma** (`claude -w piattaforma`, stream IN + CH), **Agente** (`claude -w agente`, AG), **Console** (`claude -w console`, CO). Ogni sessione fa deploy solo dei propri stack (`npx cdk deploy <stack> --exclusively -c env=dev`). Si avvia con `/sa-next-task`.
+**Limiti noti** (da tenere presenti nella demo):
+- il matcher chiede conferma per "farina tipo 00 da 25 kg" (due candidati vicini); Nova a volte non converte "5 kg di farina" in sacchi da 25 kg;
+- nessun controllo di stock al momento della conferma (solo prima); `cancel_order` non avvisa l'ERP;
+- fuori dalla finestra 24h di WhatsApp niente template né fallback di canale;
+- rischi di sicurezza accettati fino alla demo: [INFRASTRUCTURE_DESIGN §12](./docs/INFRASTRUCTURE_DESIGN.md).
 
-### Assegnazione dei task (fonte unica, deciso il 26/10)
+---
 
-Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le dipendenze verso altre sessioni o verso di te. `docs/04_BACKLOG.md` resta la descrizione completa di ogni task (anche di quelli non ancora assegnati), `docs/DONE.md` il registro del fatto.
+## 3. Timeline
 
-**Colonna "Attende"** (solo dipendenze esterne alla sessione; quelle interne sono date dall'ordine):
-- **T-xx (sessione)** = **bloccante**: finché T-xx non è ✅ qui e su `main`, il task non si inizia.
-- ↺ T-xx (sessione) = **di integrazione**: si procede con mock/stub dichiarati nella PR; il collegamento si fa quando T-xx è su `main`.
+| Quando | Sviluppo (MG, MM, FZ) | Azioni manuali (§5) |
+|---|---|---|
+| ✅ 12/10–26/10 | Concept, documenti, P0, pipeline, agente, ordini, console su mock | Devpost, account AWS, SES, WABA |
+| **Mar 27/10 sera** | **T-68 per primo** (e2e da telefono); in parallelo T-26, T-62, T-25, T-49, T-48, T-54, T-11, T-12 | M-01 foto bigliettini, M-02 numeri tester, M-05 ACE, D-01 |
+| **Mer 28/10 08:00–12:00** | T-63, T-67, T-05 + T-53, T-29; correzioni da T-68 | M-06 utente `judge` |
+| **Mer 28/10 ore 12:00** | **Code freeze**: dopo, solo bugfix bloccanti | |
+| 12:00–13:00 | T-10: deploy ambiente giudici, reset, prova S1 | |
+| 13:00–14:00 | Supporto | M-07 registrazione e upload video |
+| 14:00–15:00 | Supporto | M-08 Devpost compilato e **inviato** (PS), M-09 controllo link |
+| 28/10 ore 21:00 | | Scadenza Devpost |
+| fino al 12/11 17:00 PT | | M-10 ambiente attivo, costi sotto controllo |
+| ~19/11 | | Annuncio vincitori |
 
-**Stato**: ☐ da fare · ◐ in corso (branch) · ⏸ in attesa di … · ✅ fatto (PR). Priorità come in `docs/04_BACKLOG.md` §1bis.
+Se T-68 non è verde entro le 08:00 del 28/10: si ferma tutto il resto e si lavora solo sull'e2e. Si taglia dal Should, non si sposta il freeze.
 
-**Integrazione** (con te)
+---
 
-| # | Task | Attende | Priorità | Stato |
+## 4. Backlog
+
+### 4.1 Legenda
+
+- **Stato**: ☐ da fare · ◐ in corso (branch/PR draft) · ⏸ in attesa · ✅ fatto (va in §7).
+- **Dipende da**: `T-xx` = bloccante (si inizia solo quando è ✅ su `main`); `↺ T-xx` = integrazione (si procede con mock); `M-xx` = azione manuale (§5).
+- **Stream** (area, non persona): **IN** infra, dati e materiali · **CH** canali CDS · **AG** agente e AgentCore · **CO** console.
+- **Priorità**: **Must** = serve al primo flusso end-to-end o alla submission · **Should** = rifinitura se c'è tempo prima del freeze.
+- **Owner**: chi ha preso il task (vuoto = libero). Chiunque può prendere qualsiasi task libero.
+
+### 4.2 Perimetro della submission
+
+```mermaid
+flowchart LR
+  T68[T-68 e2e WhatsApp] --> T53[T-53 eval]
+  T05[T-05 dataset] -.-> T53
+  M01([M-01 foto]) --> T05
+  M02([M-02 numeri tester]) --> T68
+  T49[T-49 handoff] --> T63[T-63 console live]
+  T49 -.-> T67[T-67 errori turno]
+  T68 --> FZ{{Code freeze 28/10 12:00}}
+  T26[T-26 email PDF] --> FZ
+  T62[T-62 console API] --> FZ
+  FZ --> T10[T-10 ambiente giudici]
+  D01([D-01]) --> T10
+  M06([M-06 utente judge]) --> T10
+  T10 --> M07([M-07 video])
+  T12[T-12 copione] --> M07
+  T11[T-11 testi e diagramma] --> M08([M-08 Devpost])
+  M05([M-05 ACE]) --> M08
+  M07 --> M08
+```
+
+**A. Ordine end-to-end (S1)**
+
+| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
+|---|---|---|---|---|---|---|---|
+| T-68 | S1 end-to-end su WhatsApp reale | FN-01, 05–14 | CH + AG | Must | M-02 | | ☐ |
+| T-26 | Email di conferma con PDF | FN-14 | CH | Must | – | | ☐ |
+| T-25 | Messaggi interattivi WhatsApp (pulsanti, liste) | FN-08, 12 | CH | Should | – | | ☐ |
+| T-48 | Primo contatto: informativa e consenso proattivo | FN-02 | AG | Should | – | | ☐ |
+| T-29 | Approvazione dei template WhatsApp | FN-12, 19 | CH | Should | – | | ☐ |
+
+**B. Supervisione del back office**
+
+| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
+|---|---|---|---|---|---|---|---|
+| T-62 | Console: inbox e dettaglio ordine su API reali | FN-28 | CO | Must | – | | ☐ |
+| T-49 | `handoff_to_human` e `mode = HUMAN` / release | FN-24 | AG | Should | – | | ☐ |
+| T-63 | Console: conversazioni live + *Take over / Reply / Release* | FN-24, 28 | CO | Should | T-49 | | ☐ |
+| T-67 | Errori del turno nel Dispatcher (E-05, E-12) | FN-26, 24 | CH | Should | ↺ T-49 | | ☐ |
+
+**C. Qualità dell'agente**
+
+| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
+|---|---|---|---|---|---|---|---|
+| T-54 | Memory, Guardrail, prompt `sales_rep`, Observability | FN-03, 04, 25, 27, 32 | AG | Should | – | | ☐ |
+| T-05 | Dataset eval (≥ 15 bigliettini, vocali, email) | FN-05, 07 | IN | Should | M-01 | | ☐ |
+| T-53 | Eval: lettura, matching, conversazione d'ordine | FN-04, 05, 07 | AG | Should | T-68, ↺ T-05 | | ☐ |
+
+**D. Demo e submission**
+
+| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
+|---|---|---|---|---|---|---|---|
+| T-11 | Diagramma aggiornato + PNG, testi submission (EN), paragrafo WhatsApp | – | IN | Must | – | | ☐ |
+| T-12 | Copione del video (≤ 3 min) | – | IN | Must | – | | ☐ |
+| T-10 | Ambiente per i giudici, reset, README giudici | FN-31 | IN | Must | code freeze, D-01, M-06 | | ☐ |
+
+<details>
+<summary><b>Dettaglio dei task del perimetro</b></summary>
+
+- **T-68 – S1 end-to-end su WhatsApp reale** (nuovo, 27/10). Su `dev`: numeri dei tester registrati come contatti (M-02), `notifierSandbox = false`, deploy di `messaging`. Dal telefono: foto del bigliettino (+ eventuale vocale) → righe lette → chiarimento → riepilogo → *Confermo* → `CONFIRMED` → ERP mock → PDF. Annotare nella PR tempi, numero di scambi e problemi; correggere quelli bloccanti (es. i limiti noti di §2). Uscita: S1 riuscito da telefono, ripetibile dopo `seed/reset.py`.
+- **T-26 – Email di conferma con PDF**. Template HTML (IT/EN) di conferma d'ordine con il PDF di `order_pdf` allegato, inviato dal Notifier con `sesv2:SendEmail` dopo `order.confirmed`, al contatto con email. Il resto del vecchio T-26 è in T-26b (§4.3).
+- **T-25 – Messaggi interattivi WhatsApp**. Button/list e parsing delle risposte; riepilogo d'ordine con *Confermo / Modifica* come messaggio interattivo: il Notifier registra l'id del messaggio in `Orders.summaryMessageId` (il tool `orders` accetta il tap solo se `interactiveReply.contextId` lo uguaglia); l'agente passa `interactiveReply` a `confirm_order`. Senza T-25 le risposte restano testuali.
+- **T-48 – Primo contatto**. Informativa e richiesta di consenso proattivo al primo messaggio di un contatto (F-01); preferenza salvata.
+- **T-29 – Template WhatsApp**. Gli 8 JSON di `services/notifier/whatsapp_templates/` sono stati inviati il 27/10, `PENDING`. Controllare con `aws socialmessaging list-whatsapp-message-templates --id <WABA_ID>` (comando in [09 §1](./docs/09_CONTENT_AND_TEMPLATES.md)) fino ad `APPROVED`; se Meta rifiuta o cambia categoria, correggere il JSON (test verde) e reinviare; annotare l'esito in 09. L'uso dei template fuori dalla finestra 24h è in T-24 (§4.3).
+- **T-62 – Console su API reali**. UI con mock già fatta: `VITE_ORDERS_SOURCE=api`, `PATCH` di correzione riga in `console_api` (oggi `correctLine` lancia errore), `customerName`/`uncertainLines`/`handoff` nel riepilogo, nome prodotto sulla riga, `imageS3Uri`. Vista chiave della demo: bigliettino accanto alle righe.
+- **T-49 – Handoff**. Tool `handoff_to_human` e gestione `mode = HUMAN` / release (il controllo `mode = HUMAN` è già nel Router), F-14.
+- **T-63 – Conversazioni live**. `broadcaster` (WebSocket) + azioni *Take over / Reply / Release* in `console_api`.
+- **T-67 – Errori del turno**. Messaggio di cortesia al primo errore del Runtime (E-05), al secondo `handoff_to_human` con `LOW_CONFIDENCE` (E-12); oggi solo retry SQS ×3 e DLQ senza avviso. Tetto alla lunghezza di `pending`.
+- **T-54 – Completamento dell'agente**. AgentCore Memory (`actorId = contactId`, storico e preferenze), Bedrock Guardrail (PII, topic negati), prompt e tool `sales_rep` completi, Observability/OTel (`aws-opentelemetry-distro`), retention e CMK del log group del Runtime, verifica multilingua; testo e allegati dei messaggi passati al modello come **contenuto non fidato** delimitato (`<user_message>`), mai come istruzioni.
+- **T-05 – Dataset eval**. ≥ 15 bigliettini scritti a mano (grafie diverse, da M-01), vocali, email d'ordine, conversazioni attese, in `agent/evals/data/`, con soluzione attesa.
+- **T-53 – Eval**. Runner e metriche (lettura righe, matching, intento, n. scambi) anche con AgentCore Evaluations; eval della conversazione d'ordine (da bigliettino a `CONFIRMED` con sostituto, arrotondamento, cut-off, *Modifica*, doppia conferma); miglioramento della lettura del corsivo (oggi 62% con Nova Pro). Report in `agent/evals/README.md`.
+- **T-11 – Materiali**. Aggiornare `docs/architecture.drawio` (coda `inbound` standard, niente Lambda Media Fetcher) ed esportarlo in PNG; testi Devpost in inglese (problema, soluzione, servizi AWS, impatto misurabile) e paragrafo sull'uso di EUM Social / WhatsApp (premio Meta); bozza in `docs/SUBMISSION_TEXT.md`.
+- **T-12 – Copione del video**. ≤ 3 minuti, in inglese o con sottotitoli: telefono del ristoratore + console affiancati; S1 completo, momento "wow" foto → ordine verificato; checklist di registrazione (reset dati, nessun marchio o musica senza licenza).
+- **T-10 – Ambiente per i giudici**. Ambiente scelto in D-01, deploy e `seed/reset.py`, prova S1; README "Try it (for judges)": URL della console, credenziali `judge` (M-06), cliente e bigliettino di prova; se si usa `demo`, spostare la destinazione eventi WhatsApp sul suo topic ([WABA_SETUP §4](./docs/WABA_SETUP.md)).
+
+</details>
+
+### 4.3 Fuori perimetro (dopo la submission; nella demo solo come video/slide)
+
+| ID | Task | FN | Stream | Dipende da |
 |---|---|---|---|---|
-| 1 | Merge delle PR, deploy degli stack condivisi da `main` | – | – | continuo |
-| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ✅ 26/10: dominio `suppliagent.stonecutters.besharp.net` verificato, ricezione ok; **uscita dalla sandbox ottenuta il 27/10**. Il dominio è nella config di `dev` (T-15): `-c sesDomain=…` serve solo come override |
-| 1c | **WhatsApp**: WABA collegata ad AWS (`docs/WABA_SETUP.md` parte 1), poi destinazione eventi, `waPhoneNumberId` in config, prova di ricezione | numero di telefono (tu) | Must | ✅ 27/10: numero +39 345 246 0472, testo e foto reali fino all'agente (Notifier in sandbox su `dev`); fix foto PR #31 |
-| 2 | T-05 dataset eval (≥ 15 bigliettini, vocali, email, conversazioni attese) | foto e vocali (tu, §1.3) | Should | ☐ |
-| 3 | T-11 ACE, PNG del diagramma, testi submission (EN) | – (avviabile subito) | Should | ☐ |
-| 4 | T-10 ambiente `demo`, reset, README giudici | code freeze (tutti i Must) | Should | ☐ |
-| 5 | T-12 copione e video | T-10 · registrazione (tu) | Should | ☐ |
+| T-24 | Completamento del Notifier: template fuori finestra 24h (anche `order_pending_reminder` dallo sweeper), fallback di canale e RCS→SMS, fasce orarie, opt-out, avvisi per media non scaricati (E-02) e allegati rifiutati (E-13), retry e fallback (E-09) | FN-01, 14, 15 | CH | – |
+| T-26b | Resto dell'email: conferma aggiornata dopo modifica (`order.updated`), ordini via email (corpo, foto, PDF, Excel), F-02.C3 | FN-06, 14, 16 | CH | T-26 |
+| T-27 | RCS/SMS: infra EUM SMS v2, `sms-inbound` nel Router, rich card conferma e consegna, fallback SMS | FN-15, 18 | CH | T-24 |
+| T-06b | Knowledge Base schede tecniche (S3 Vectors, indice `product-sheets`) | FN-21 | IN | – |
+| T-44b | Tool `ask_product_sheets` con citazione | FN-21 | AG | T-06b |
+| T-08 | `ProactiveStack`: `insights_analyzer`, `proactive_trigger`, scheduler | FN-19, 20 | IN | – |
+| T-50 | Tool `reco` (max 1 suggerimento, consenso, motivazione) | FN-11, 20 | AG | T-08 |
+| T-51 | Tool `sales`: briefing, agenda, ordine per conto del cliente | FN-20, 22, 23 | AG | T-50 |
+| T-52 | Turno proattivo di riordino | FN-19 | AG | T-08, T-24 |
+| T-64 | Chat web agenti di commercio (`rep_chat`, streaming) | FN-29 | CO | – |
+| T-09 | `AnalyticsStack` (Firehose → Parquet → Glue → Athena, allarmi) | FN-30, 33 | IN | – |
+| T-65 | Dashboard KPI con baseline | FN-30 | CO | T-09 |
+| T-70 | Hardening dai rilievi di revisione di T-40/T-41 (PR #15), dettaglio sotto | FN-32 | IN + AG | – |
 
-**Piattaforma** (IN + CH)
+<details>
+<summary><b>Dettaglio T-70 – hardening</b></summary>
 
-| # | Task | Branch / PR | Attende | Priorità | Stato |
-|---|---|---|---|---|---|
-| 1 | T-21 + T-23 | `feat/FN-01-inbound-pipeline` | – | Must | ✅ PR #16 |
-| 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ✅ PR #22 |
-| 2b | T-15 valori dei canali nella config per ambiente | `feat/FN-01-channel-config` | Email SES (Integrazione 1b) ✅; `waPhoneNumberId` valorizzato il 27/10 (Integrazione 1c) ✅ | Must | ✅ PR #24 |
-| 3 | T-14 simulatore canali + test end-to-end | `feat/FN-31-channel-simulator` | ↺ T-41 (Agente) per la risposta reale | Must | ✅ PR #26 |
-| 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | `feat/FN-13-erp-mock-order-pdf` | – | Must | ✅ PR #28 |
-| 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
-| 6 | T-26 (solo email di conferma con PDF) | | ↺ T-46 (Agente) per i dati d'ordine reali | Must | ☐ |
-| 7 | T-29 verifica approvazione template (inviati il 27/10, `PENDING`; ID EUM Social sempre da SSM) | | WABA collegata ✅ 27/10 | Should | ☐ |
-| 8 | T-08 `ProactiveStack` | | – | Could | ☐ |
-| 9 | T-24 completo, T-27 RCS | | – | Could | ☐ |
-| 10 | T-67 errori del turno nel Dispatcher (cortesia E-05, handoff E-12) | | ↺ T-49 (Agente) | Should | ☐ |
+- IAM Runtime: statement separato per i `foundation-model` con condizione `bedrock:InferenceProfileArn` (oggi Nova Pro è invocabile anche senza il profilo `eu.`, sempre in UE).
+- IAM tool: togliere `kms:Encrypt` e aggiungere `kms:ViaService` (`dynamodb.<region>.amazonaws.com`, `events.<region>.amazonaws.com`).
+- Il ruolo del Runtime legge l'intero bucket degli asset CDK (grant dell'L2 `fromCodeAsset`): restringere alla chiave dell'asset o accettare (oggi accettato e motivato in cdk-nag); test che gli unici statement `Resource: "*"` del Runtime siano X-Ray e metriche.
+- `TurnRequest`: `max_length` su `messages`, `attachments`, `customerIds`; `Literal` per `channel` e tipo di allegato.
+- `scripts/invoke_agent.py`: limitare a `dev` o chiedere conferma esplicita per `demo` (scrive `Contacts`/`ChannelIdentities`).
+- Limite ai cicli dell'agente per turno (E-12).
+- I rischi accettati della revisione T-21/T-23 sono in [INFRASTRUCTURE_DESIGN §12](./docs/INFRASTRUCTURE_DESIGN.md).
 
-**Agente** (AG)
+</details>
 
-| # | Task | Branch / PR | Attende | Priorità | Stato |
-|---|---|---|---|---|---|
-| 1 | T-40 + T-41 (versione ridotta) | `feat/FN-03-agent-runtime` | – | Must | ✅ PR #15 |
-| 2 | T-43 `order_intake` (lettura bigliettini) | `feat/FN-05-order-intake` | – | Must | ✅ PR #21 |
-| 3 | T-06 (**solo** indice prodotti S3 Vectors, niente Knowledge Base; il resto è T-06b, non assegnato) | `feat/FN-07-product-index` | – | Must | ✅ PR #25 |
-| 4 | T-44 `catalog` (`match_products`, `search_catalog`; `ask_product_sheets` è T-44b, non assegnato: attende T-06b) | `feat/FN-07-catalog-matching` | – | Must | ✅ PR #27 |
-| 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 ✅, ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 ✅ | Must | ✅ PR #29 |
-| 6 | T-49 `handoff_to_human` | | T-22 ✅ (il controllo `mode = HUMAN` è già nel Router) | Should | ☐ |
-| 7 | T-54 (prima Guardrail e Memory) | | – | Should | ☐ |
-| 8 | T-53 eval leggera | | ↺ T-05 (Integrazione): si parte dai 3 bigliettini in `agent/evals/` | Should | ☐ |
-| 9 | T-48 primo contatto e consenso | | – | Should | ☐ |
-| 10 | T-50 `reco` | | **T-08 (Piattaforma)** | Could | ☐ |
-| 11 | T-51 `sales` | | – (dopo T-50) | Could | ☐ |
-| 12 | T-52 turno proattivo di riordino | | **T-08 (Piattaforma)**, **T-24 (Piattaforma)** | Could | ☐ |
+### 4.4 PR accorpate
 
-**Console** (CO)
-
-| # | Task | Branch / PR | Attende | Priorità | Stato |
-|---|---|---|---|---|---|
-| 1 | T-66 ruolo `judge` in sola lettura, rifiniture demo | `feat/FN-31-judge-demo-polish` | – | Could | ✅ PR #13 |
-| 2 | T-62 parte API (inbox e dettaglio su dati reali, correzione riga; vista chiave della demo: bigliettino accanto alle righe) | | **T-46 (Agente)** | Must | ☐ |
-| 3 | T-63 conversazioni live + take over / release | | **T-49 (Agente)** | Should | ☐ |
-| 4 | T-64 chat web agenti di commercio | | **T-41 (Agente)** | Could | ☐ |
-| 5 | T-09 `AnalyticsStack` | | – | Could | ☐ |
-| 6 | T-65 dashboard KPI | | – (dopo T-09) | Could | ☐ |
-
-**Regole**
-- **Scelta del task**: la sessione prende il primo task della propria tabella non ✅ con le dipendenze **bloccanti** soddisfatte. Se il task successivo è bloccato, lo segna ⏸ "in attesa di T-xx (sessione)", lo **segnala** e passa al successivo sbloccato; se non ce ne sono, si ferma e lo dice.
-- **Fine task (nella stessa PR)**: qui lo stato diventa ✅ con il numero di PR; in `docs/04_BACKLOG.md` la riga si rimuove; in `docs/DONE.md` si aggiunge la voce. Se il lavoro crea, divide o rinvia task, si aggiornano **entrambi** i file (descrizione nel backlog, assegnazione qui).
-- **Task nuovi o liste esaurite**: un task del backlog non presente qui non è assegnato; prima di iniziarlo lo si aggiunge alla tabella della propria sessione (stessa PR del task).
-- Ogni sessione fa `git pull --rebase origin main` prima di iniziare un task e prima di ogni deploy.
-- Nessuna sessione fa deploy di uno stack di un'altra; gli stack condivisi solo dalla sessione Integrazione.
-- Un task = una PR piccola, **tranne i task accoppiati sullo stesso stack**, che vanno in una sola PR con un commit per task (gruppi in `docs/04_BACKLOG.md` §1bis). Claude Code apre la PR, tu revisioni e fai merge appena la CI è verde, così le altre sessioni ripartono da `main` aggiornato.
-- Checkpoint: **Dom h13** "ciao" via simulatore → risposta dell'agente; **Dom h20** foto via simulatore → righe, matching, conferma, ERP mock, email PDF; **Lun h18** stesso flusso su WhatsApp reale.
-- Se un checkpoint salta di più di 3 ore: si taglia dal Should, non si sposta il freeze.
+Task sullo stesso stack non testabili da soli: una PR, un commit per task. Finora: T-40 + T-41, T-45 + T-46 + T-47. Nel perimetro attuale nessuno: ogni task è una PR.
 
 ---
 
-## 4. Mappa dei file
+## 5. Azioni manuali
 
-### 4.1 Da leggere per primi
+Quello che gli agenti di sviluppo non possono fare: accessi, Meta, AWS Partner Central, registrazione, Devpost.
 
-| File | Contenuto |
-|---|---|
-| `START_HERE.md` | Questo documento |
-| `README.md` | Presentazione del progetto in inglese (per GitHub e i giudici): cosa fa, uso dei servizi CDS, architettura, struttura, avvio, licenza |
-| `SUPPLIAGENT_SOLUTION.md` | Il concept: problema, scenario demo in 11 passi, funzionalità per ristoratore/agente/back office, KPI, mappatura sui criteri di gara, rischi |
+| ID | Azione | Owner | Entro | Sblocca | Stato |
+|---|---|---|---|---|---|
+| M-01 | ≥ 15 foto di bigliettini scritti a mano da persone diverse (prodotti del catalogo sintetico) + qualche vocale, consegnate a chi fa T-05 | | 27/10 sera | T-05 | ☐ |
+| M-02 | Registrare i numeri WhatsApp dei tester come contatti di prova (`seed/private/`, mai nel repo) | MG | 27/10 sera | T-68 | ☐ |
+| M-03 | Tag `Project`, `Owner`, `Env` sulla risorsa del numero `phone-number-id-79f9…` (il WABA li ha già) | MG | 28/10 | – | ☐ |
+| M-04 | Attivare `Project` ed `Env` come *cost allocation tags* in Billing | MG | 28/10 | M-10 | ☐ |
+| M-05 | **Opportunità ACE** su Partner Central (dettagli sotto) → annotare l'ID | PS | 28/10 12:00 | M-08 | ☐ |
+| M-06 | Utente Cognito `judge` nell'ambiente dei giudici (README, *Manual steps* §4) | | 28/10 12:00 | T-10 | ☐ |
+| M-07 | Registrare il video (copione T-12) e caricarlo **pubblico** su YouTube o Vimeo | | 28/10 14:00 | M-08 | ☐ |
+| M-08 | Compilare e **inviare** Devpost (dettagli sotto) | PS | 28/10 15:00 | – | ☐ |
+| M-09 | Controllo finale: repo pubblico con licenza visibile, video pubblico, console raggiungibile, WhatsApp che risponde | | 28/10 15:00 | – | ☐ |
+| M-10 | Ambiente attivo e gratuito per i giudici fino al **12/11 17:00 PT**, costi sotto controllo, risposte ai giudici; in caso di vittoria moduli entro 10 giorni lavorativi | MG, PS | 12/11 | – | ☐ |
 
-### 4.2 Documentazione di progetto (`docs/`, in italiano)
+**M-05 – ACE** ([Partner Central](https://partnercentral.awspartner.com/)): opportunità **nuova** (creata dopo il 14/09/2026), stato almeno *Created*; Step 2 → *Opportunity marketing details* → *Sourced from marketing activity* → campaign `AWS CDS Agentic AI Hackathon -Sept. 2026`; Step 4 → prodotti **AWS End User Messaging**, **AWS End User Messaging Social**, **Amazon SES**; sul cliente reale (distribuzione alimentare HoReCa), ARR stimato con il commerciale beSharp; ID `OXXXXXXXX` in *Sell → Opportunities*.
 
-| File | Contenuto |
-|---|---|
-| `docs/README.md` | Indice della documentazione e convenzioni sugli ID |
-| `docs/01_PROJECT_OVERVIEW.md` | Panoramica: problema, attori, perimetro, architettura ad alto livello, **flusso principale con 20 diramazioni**, ruolo dei canali, glossario |
-| `docs/02_TECHNICAL_FLOWS.md` | Documento tecnico completo: stati di ordine e righe, ruoli, pipeline di ingresso e debounce, **15 flussi (F-01…F-15) con tutti i casi**, 13 errori, contratti JSON, eventi, tool, parametri |
-| `docs/03_FUNCTIONAL_SPEC.md` | **35 funzionalità (FN-01…FN-35)** con priorità e criteri di accettazione, personas, journey, requisiti non funzionali, 7 scenari demo |
-| `docs/04_BACKLOG.md` | Task **da fare** (T-xx) per stream, fasi, ondate parallele, dipendenze, owner, stato |
-| `docs/DONE.md` | Lavoro **completato**: task, documenti e punti aperti chiusi, con data, commit e come verificarli |
-| `docs/INFRASTRUCTURE_DESIGN.md` | Architettura AWS in eu-west-1: 9 stack CDK, canali, ingestion, AgentCore (incl. Evaluations), catalogo con S3 Vectors e Knowledge Base, ordini/ERP, proattività, dati, console, sicurezza, costi, configurazione |
-| `docs/architecture.drawio` | Diagramma architetturale (apri con draw.io); da esportare in PNG per la submission |
-| `docs/HANDOFF_CLAUDE_CODE.md` | Guida passo passo a Claude Code: concetti, installazione, AWS, GitHub, primo avvio, plugin, subagent, prompt di avvio e per stream, comandi |
-| `docs/SUBMISSION_CHECKLIST.md` | Passi per Devpost: iscrizione, crediti, ACE, materiali, invio |
-| `docs/TODO_DOCS.md` | Documenti ancora da scrivere (richiesta dati al cliente, specifica dell'agente, contratti, dati di prova, copione video, ADR, testi submission) |
-
-### 4.3 Contesto per Claude Code e altri tool (`agent-context/`)
-
-I file si modificano **solo qui**; `install.sh` li collega dove i tool li cercano.
-
-| File | Contenuto |
-|---|---|
-| `agent-context/AGENTS.md` | Regole di progetto per tutti gli agenti: vincoli di gara, architettura, struttura, stack e comandi, convenzioni, regole di dominio, Definition of Done, Git, cosa non fare |
-| `agent-context/CLAUDE.md` | Istruzioni specifiche per Claude Code (importa `AGENTS.md`) |
-| `agent-context/claude/settings.json` | Permessi (consentito / chiede conferma / vietato) e hook di lint |
-| `agent-context/claude/commands/` | Comandi `/implement-fn`, `/cds-check`, `/dod-check` |
-| `agent-context/claude/agents/` | I 4 subagent di §3 |
-| `agent-context/claude/hooks/lint-changed.sh` | Lint e formattazione automatici del file appena modificato |
-| `agent-context/claude/mcp.json` | Server MCP: documentazione AWS e AgentCore |
-| `agent-context/github/pull_request_template.md` | Template delle PR con la Definition of Done |
-| `agent-context/kiro-steering/` | Le stesse regole in formato Kiro |
-| `agent-context/install.sh` | Crea i collegamenti: `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`, `.kiro/`, `.github/` |
-| `agent-context/README.md` | Spiegazione della cartella |
-
-### 4.4 File generati da `install.sh` (non modificarli direttamente)
-
-`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/commands`, `.claude/agents`, `.mcp.json`, `.kiro/steering`, `.github/pull_request_template.md`
-
-### 4.5 Codice
-
-Comandi dalla root: `npm ci && uv sync`, poi `npm run check` (lint, type check, test, `cdk synth` con cdk-nag; gli stessi della CI). Dettagli in `agent-context/AGENTS.md` §6.
-
-| Cartella | Cosa conterrà |
-|---|---|
-| `infra/` | App CDK in TypeScript: config `dev`/`demo`, construct `PythonLambda`, `FoundationStack` e `DataStack` completi, gli altri 7 stack vuoti e collegati; test in `infra/test/` |
-| `agent/` | Package `suppliagent_agent` (vuoto); conterrà agente Strands per AgentCore, prompt per ruolo, `evals/` |
-| `services/` | Lambda Python (da fare): ricezione, debounce, Notifier, PDF, ERP mock, catalogo, proattività, console; `tools/` (tool dell'agente) e `shared/` (package `suppliagent_shared`, vuoto) |
-| `console/` | Console back office e chat agenti (React + Vite); oggi solo `package.json` segnaposto (T-61) |
-| `seed/` | Dati di prova anonimizzati/sintetici e script di caricamento/reset; `seed/private/` per i dati grezzi del cliente (esclusa da git) |
-| `scripts/` | Utility (deploy, reset demo, test end-to-end) |
-
-### 4.6 Altri file
-
-| File | Contenuto |
-|---|---|
-| `assets/brand/` | Logo SuppliAgent (icona, versioni chiara e scura, SVG e PNG) |
-| `LICENSE` | Licenza MIT (requisito di gara: licenza open source visibile) |
-| `.gitignore`, `.gitattributes`, `.editorconfig` | Igiene del repo (esclusi segreti, dati del cliente, build) |
-| `.env.example` | Modello del file `.env` locale (che non va mai committato) |
-
-Descrizione per GitHub *About*: *"Agentic AI ordering assistant for HoReCa food distributors: restaurants order on WhatsApp with a photo of a handwritten note, voice or text; the agent matches the catalog, clarifies, confirms via email/SMS/RCS and suggests reorders. Built on Amazon Bedrock AgentCore + AWS End User Messaging for the AWS CDS Agentic AI Hackathon."*
-Topic: `aws`, `amazon-bedrock`, `bedrock-agentcore`, `strands-agents`, `whatsapp`, `aws-end-user-messaging`, `amazon-ses`, `rcs`, `agentic-ai`, `aws-cdk`, `hackathon`.
+**M-08 – Form Devpost** ([overview](https://aws-cds-partner.devpost.com/) · [rules](https://aws-cds-partner.devpost.com/rules) · [FAQ](https://aws-cds-partner.devpost.com/details/faq)): URL del repo · diagramma (PNG da T-11) · descrizione (T-11) · link al video (M-07) · istruzioni di test per i giudici (README, T-10) · ID ACE (M-05) · paragrafo sull'uso di WhatsApp (premio Meta, T-11).
 
 ---
 
-## 5. Calendario dettagliato
+## 6. Decisioni
 
-| Giorno | Tu | Claude Code (backlog) |
-|---|---|---|
-| **Ven 23/10** | ✅ Repo, Devpost, account AWS | ✅ P0 (T-01, T-03, T-02) |
-| **Sab 24/10** | Merge P0 + T-13, bootstrap, primo deploy `dev`, avvio sessioni (§3bis) | ✅ T-13 · T-28 (testi) · ◐ T-04 (anagrafiche e storico, 26/10) · ✅ T-42 → T-40 + T-41 ridotti (26/10) |
-| **Dom 25/10** | Revisione PR e deploy · prove con il simulatore | **h13** walking skeleton via simulatore · **h20** S1 core via simulatore · console T-60/T-61 |
-| **Lun 26/10** | Colleghi: cliente, Meta/WhatsApp, DNS SES, bigliettini · template a Meta | WhatsApp reale · T-25, T-49/T-63 · T-62 su API reali · dati cliente |
-| **Mar 27/10** | **Code freeze ore 18:00** · deploy `demo` · video | Bugfix · T-10 · eval leggera · README giudici |
-| **Mer 28/10** | **Submission entro le 15:00** · controllo link | Solo bugfix |
+**Aperte**
+
+| ID | Decisione | Owner | Entro |
+|---|---|---|---|
+| D-01 | Ambiente per i giudici: nuovo `demo` (WABA da spostare sul suo topic, `dev` non riceve più) o `dev` stabilizzato dopo il freeze | MG | 27/10 sera |
+
+**Aperte, dopo la submission** (servono al cliente reale, non alla gara)
+
+| ID | Domanda |
+|---|---|
+| D-02 | Catalogo, schede tecniche ed ERP reali del cliente: formato, dimensione, integrazione futura dell'adapter |
+| D-03 | Baseline del processo attuale (ordini/giorno, tempo di inserimento, % errori) per i KPI |
+| D-04 | Soglie di matching (`matchAutoThreshold`, `matchAskThreshold`) tarate su bigliettini reali |
+| D-05 | Dati e procedura per identificare un contatto nuovo (codice cliente, P.IVA) |
+| D-06 | Politica dei suggerimenti: frequenza e tipologie ammesse |
+| D-07 | Passaggio a Claude se viene abilitato sull'account (eval di confronto Nova vs Claude sui bigliettini) |
+
+**Prese**
+
+| Data | Decisione |
+|---|---|
+| 27/10 | Code freeze spostato al 28/10 ore 12:00; perimetro = §4.2, il resto dopo la submission |
+| 27/10 | Prezzi mostrati al ristoratore (riepilogo con totale stimato) |
+| 27/10 | Repo pubblico (già pubblico, licenza MIT) |
+| 27/10 | Regole di consegna, cut-off (18:00), minimi e multipli: quelle sintetiche del seed |
+| 27/10 | Marchio del cliente non usato: brand fittizio, dati sintetici |
+| 27/10 | Ordine inserito dall'agente di commercio: basta la sua conferma |
+| 27/10 | Modello: Amazon Nova (`eu.`) per la gara; Claude non abilitato sull'account (*channel program*) |
+| 27/10 | Crediti AWS dell'hackathon non richiesti (scaduti): costi su budget beSharp |
+| 27/10 | Team: MG, MM, FZ sviluppo; PS Team Representative. Task non assegnati a priori: li prende chi è libero (§1.2) |
+| 26/10 | Flusso Git: PR aperta dall'agente, merge commit da chi revisiona, deploy da locale |
+| 26/10 | `security-reviewer` solo su richiesta esplicita |
+| 26/10 | Coda `inbound` SQS standard + debounce applicativo con lock (SNS standard non consegna a FIFO) |
+| 25/10 | Account `471112860008` condiviso: nessun AWS Budget nel CDK, costi isolati con i tag |
 
 ---
 
-## 6. Decisioni aperte (da chiudere oggi)
+## 7. Fatto
 
-- [ ] Owner di ogni stream (IN, CH, AG, CO)
-- [ ] Mostrare o no i prezzi al ristoratore
-- [ ] Ordini inseriti dall'agente di commercio: serve anche la conferma del ristoratore?
-- [ ] Regole reali di consegna, cut-off, minimi, multipli (dal cliente)
-- [ ] Uso del nome e del marchio del cliente (submission, video, case study)
-- [ ] Repo pubblico o privato al momento della submission
+Una riga per task chiuso (più recente in alto). Dettagli, scelte e verifiche: descrizione della PR; storico fino al 27/10 in [`docs/OLD/DONE.md`](./docs/OLD/DONE.md).
+
+| Data | Task | Cosa | PR |
+|---|---|---|---|
+| 27/10 | T-29 (invio) | 8 template WhatsApp inviati a Meta (`PENDING`); numero ed email d'ordine nel README e nella console | #33 |
+| 27/10 | – | WhatsApp reale su `dev`: WABA collegata, testo e foto fino all'agente; fix dimensione media | #31, #32 |
+| 27/10 | – | Deploy `dev` e prova e2e del flusso d'ordine col simulatore; fix nomi tool per Nova, prompt per ruolo, `seed/reset.py` | #30 |
+| 27/10 | T-45, T-46, T-47, T-04 | Stock, prezzi, consegne e cut-off; stato ordine, conferma idempotente, modifica/annullo, sweeper; catalogo e listini di prova | #29 |
+| 27/10 | T-07 | ERP adapter mock, PDF ordine, regola `order.confirmed` | #28 |
+| 27/10 | T-44 | Tool `catalog`: `match_products`, `search_catalog` | #27 |
+| 27/10 | T-14 | Simulatore canali (solo `dev`, Notifier in sandbox) | #26 |
+| 27/10 | T-06 | Indice prodotti S3 Vectors e `catalog_indexer` | #25 |
+| 27/10 | T-15 | `sesDomain` e `waPhoneNumberId` nella config per ambiente | #24 |
+| 27/10 | – | SES fuori dalla sandbox | #23 |
+| 26/10 | T-22, T-24 (base) | Debounce, Turn Dispatcher, Notifier con sandbox e idempotenza | #22 |
+| 26/10 | T-43 | Tool `order_intake`: lettura di foto, vocali e testo | #21 |
+| 26/10 | – | SES su `dev`: dominio, DNS, ricezione | #20 |
+| 26/10 | T-21, T-23 | `MessagingStack`, Inbound Router, media WhatsApp e allegati email su S3 | #16 |
+| 26/10 | T-40, T-41 (ridotti) | AgentCore Gateway + Runtime, agente Strands per ruolo | #15 |
+| 26/10 | T-66 | Ruolo `judge` in sola lettura, pagina demo | #13 |
+| 26/10 | – | Console online su `dev` (script di pubblicazione) | #12 |
+| 26/10 | T-62 (UI) | Inbox e dettaglio ordine con bigliettino, su mock | #10 |
+| 26/10 | T-61 | Scaffold console React + Vite + Cognito | #9, #11 |
+| 26/10 | T-20 | `ChannelsStack`: topic SNS, SES configuration set e rule set | #7 |
+| 26/10 | T-60 | `ConsoleStack` ridotto: Cognito, CloudFront, API ordini | #4, #6, #8 |
+| 26/10 | T-42 | Tool `customers`: `identify_contact`, `get_customer_profile` | #5 |
+| 26/10 | T-04 (parte) | Dati sintetici: clienti, contatti, storico ordini | #3 |
+| 26/10 | T-28 | Testi dei template WhatsApp (IT/EN) | #2 |
+| 25/10 | – | Primo deploy `dev` (9 stack, 18 tabelle, CMK, event bus, SSM) | – |
+| 24/10 | T-13 | Tag obbligatori su tutte le risorse | `2b5d967` |
+| 23/10 | T-01, T-03, T-02 | Monorepo, app CDK con Foundation e Data, CI | `chore/p0-foundations` |
+| ≤ 16/10 | – | Concept, documenti 01/02/03, Infrastructure Design, backlog | – |
