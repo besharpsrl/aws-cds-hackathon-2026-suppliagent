@@ -5,7 +5,7 @@
 | `AGENTS.md` | Tutti i tool (Codex, Cursor, …) e il team | Contesto completo: progetto, vincoli di gara, documenti, architettura, struttura, stack e comandi, convenzioni, regole di dominio, Definition of Done, Git, cosa non fare |
 | `CLAUDE.md` | Claude Code | Importa `AGENTS.md` + istruzioni specifiche |
 | `claude/settings.json` | Claude Code | Permessi di progetto (consentiti lint/test/synth; conferma per deploy, `aws`, push, `rm`; vietati force push e lettura di `.env` e `seed/private/`) |
-| `claude/commands/` | Claude Code | Comandi slash: `/implement-fn FN-xx`, `/cds-check`, `/dod-check` |
+| `claude/commands/` | Claude Code e Copilot | Comandi slash `/sa-next-task [T-xx] [loop]`, `/sa-dod-check`, `/sa-cds-check` (fonte unica; per Copilot li richiamano i file in `.github/prompts/`) |
 | `claude/agents/` | Claude Code | Subagent: `code-reviewer`, `aws-docs-researcher`, `test-runner`, `security-reviewer` |
 | `claude/hooks/lint-changed.sh` | Claude Code | Hook `PostToolUse`: lint/format del file appena modificato (ruff, eslint, prettier) |
 | `claude/mcp.json` | Claude Code | Server MCP di progetto (AWS Documentation, Amazon Bedrock AgentCore) |

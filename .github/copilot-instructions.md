@@ -4,16 +4,17 @@ Le regole di progetto sono in `AGENTS.md` (caricato in automatico). Qui solo ci�
 
 ## Priorità delle fonti
 
-- **Stato, timeline, backlog, azioni manuali, decisioni e fatto: `START_HERE.md`** (fonte unica; code freeze 28/10 ore 12:00, submission entro le 15:00 del 28/10). Comportamento e requisiti: `docs/`. `AGENTS.md` riassume: in caso di conflitto segnalalo e correggilo. `docs/OLD/` è solo storico.
-- Presa e chiusura dei task come da `START_HERE.md` §1.2, nella stessa PR del task. Le todo list della chat non sono un registro.
+- **Backlog e azioni manuali: GitHub Issues** (`gh issue list`). **Stato, timeline, lavoro in parallelo, flussi e decisioni: `START_HERE.md`** (code freeze 28/10 ore 12:00, submission entro le 15:00 del 28/10). Comportamento e requisiti: `docs/`. `AGENTS.md` riassume: in caso di conflitto segnalalo e correggilo. `docs/OLD/` è solo storico.
+- Presa e chiusura dei task come da `START_HERE.md` §1.2 (assegnazione dell'issue, `Closes #n` nella PR). Comando di lavoro: `/sa-next-task [T-xx] [loop]`. Le todo list della chat non sono un registro.
 
 ## Modo di lavorare
 
 - Prima di implementare leggi la scheda `FN-xx` (03) e i flussi `F-xx` (02); parti dai criteri di accettazione e scrivi prima i test.
-- Proponi un piano breve e attendi conferma prima di scrivere codice.
-- Verifica con i comandi di `AGENTS.md` §6; delega ai subagent di progetto (`test-runner`, `code-reviewer`, `security-reviewer`, `aws-docs-researcher`).
+- Scrivi un piano breve nella PR in draft; non attendere conferma se l'issue ha criteri chiari. Chiedi solo per ambiguità che cambiano il risultato, scelte non documentate su più aree, rischi su dati, costi o risorse condivise.
+- Verifica con i comandi di `AGENTS.md` §6; delega ai subagent di progetto (`test-runner`, `code-reviewer`, `aws-docs-researcher`). `security-reviewer` solo nel task T-73, non a ogni task.
 - Se documenti (`START_HERE.md`, `docs/*`, `AGENTS.md`) sono indietro rispetto a git o AWS, segnalalo e correggili nello stesso lavoro.
 - Flusso Git: branch `feat/FN-xx-…`, push e PR aperta dall'agente; merge su `main` solo da parte dello sviluppatore. Mai push su `main`, mai force push.
+- A fine task riporta sempre cosa deployare, con i comandi completi e gli script da lanciare prima e dopo (o "nessun deploy"): sezione *Deploy* del template PR.
 
 ## Terminale
 

@@ -37,7 +37,8 @@ Leggi **prima di implementare** la parte che ti riguarda:
 | `docs/02_TECHNICAL_FLOWS.md` | **Come** si comporta: stati, flussi `F-xx`, casi `F-xx.Cn`, errori `E-xx`, contratti JSON, parametri |
 | `docs/INFRASTRUCTURE_DESIGN.md` | Stack CDK, tabelle, code, IAM, sicurezza |
 | `docs/architecture.drawio` | Diagramma |
-| `START_HERE.md` | **Fonte unica** di stato, timeline, backlog `T-xx` (descrizione, dipendenze, owner, stato), azioni manuali `M-xx`, decisioni `D-xx` e registro del fatto (§7). A task chiuso, nella stessa PR: riga tolta dal backlog (§4.2) e aggiunta in §7 |
+| GitHub Issues | **Backlog** (fonte unica): task `T-xx` e azioni manuali `M-xx`, sotto-issue della madre del flusso, dipendenze *blocked by*, priorità ed etichette. Si prende un task assegnandosi l'issue; la PR la chiude con `Closes #n` |
+| `START_HERE.md` | Punto di partenza: stato, timeline, lavoro in parallelo (corsie, sessioni, deploy, file caldi), flussi utente, decisioni, storico del fatto fino al 27/10 |
 | `docs/OLD/` | Documenti superati (vecchi backlog, DONE, checklist, handoff): solo storico, non si aggiornano |
 
 Regole:

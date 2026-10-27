@@ -1,5 +1,5 @@
 ---
-description: Verifica la conformità ai requisiti di gara sull'uso dei servizi AWS CDS
+description: "SuppliAgent: verifica la conformità ai requisiti di gara sull'uso dei servizi AWS CDS (prima della submission)"
 ---
 
 Controlla il repository rispetto ai requisiti del hackathon sull'uso di AWS CDS e riporta un esito chiaro.

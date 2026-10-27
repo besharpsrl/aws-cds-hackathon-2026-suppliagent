@@ -28,13 +28,42 @@
       "Bash(uv run ruff:*)",
       "Bash(uv run mypy:*)",
       "Bash(uv run pytest:*)",
-      "Bash(uv run python seed/:*)",
       "Bash(uv run python agent/evals/:*)",
       "Bash(ls:*)",
       "Bash(tree:*)",
       "Bash(git mv:*)",
       "mcp__aws-documentation__*",
-      "mcp__agentcore__*"
+      "mcp__agentcore__*",
+      "Bash(git fetch:*)",
+      "Bash(git show:*)",
+      "Bash(git pull --rebase origin main)",
+      "Bash(git pull --ff-only origin main)",
+      "Bash(git push -u origin feat/:*)",
+      "Bash(git push -u origin fix/:*)",
+      "Bash(git push -u origin docs/:*)",
+      "Bash(git push -u origin chore/:*)",
+      "Bash(git push origin feat/:*)",
+      "Bash(git push origin fix/:*)",
+      "Bash(git push origin docs/:*)",
+      "Bash(git push origin chore/:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr ready:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(GH_PROMPT_DISABLED=1 GH_PAGER=cat gh issue:*)",
+      "Bash(GH_PROMPT_DISABLED=1 GH_PAGER=cat gh pr list:*)",
+      "Bash(GH_PROMPT_DISABLED=1 GH_PAGER=cat gh pr view:*)",
+      "Bash(GH_PROMPT_DISABLED=1 GH_PAGER=cat gh pr create:*)",
+      "Bash(GH_PROMPT_DISABLED=1 GH_PAGER=cat gh pr ready:*)",
+      "Bash(GH_PROMPT_DISABLED=1 GH_PAGER=cat gh pr edit:*)"
     ],
     "ask": [
       "Bash(npx cdk deploy:*)",
@@ -46,7 +75,9 @@
       "Bash(git reset:*)",
       "Bash(git rebase:*)",
       "Bash(rm:*)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(uv run python seed/:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",
@@ -55,7 +86,10 @@
       "Read(./.env.local)",
       "Read(./.env.*.local)",
       "Read(./seed/private/**)",
-      "Read(./seed/raw/**)"
+      "Read(./seed/raw/**)",
+      "Bash(gh pr merge:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push -u origin main:*)"
     ]
   },
   "hooks": {
