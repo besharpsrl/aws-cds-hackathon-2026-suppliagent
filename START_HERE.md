@@ -63,12 +63,12 @@ Le cose che Claude Code non può fare: account, accessi, contatti con cliente e 
 - [ ] (Opzionale) Chiedere al distributore/AWS l'abilitazione di Claude: l'account è in *channel program* e risponde `Access to this model is not available for channel program accounts`; se arriva, pianifichiamo il passaggio
 - [x] CDK bootstrap: già presente sull'account (`CDKToolkit` v30), non rifatto
 - [x] Prima del primo deploy: task **T-13** (tag obbligatori in CDK) fatto da Claude Code (branch `feat/FN-32-mandatory-tags`, vedi `docs/DONE.md`)
-- [ ] Risorse create a mano da console (EUM Social/numero WhatsApp, eventuali identità SES): aggiungere gli stessi due tag
+- [ ] Risorse create a mano da console (EUM Social/numero WhatsApp, eventuali identità SES): aggiungere gli stessi due tag (WABA ✅; risorsa del numero `phone-number-id-79f9…` ancora senza tag)
 - [x] Primo deploy `dev` (25/10, da locale con profilo `default`): 9 stack, 18 tabelle, 6 bucket, CMK, event bus, 16 parametri SSM (dettagli in `docs/DONE.md`)
 - [ ] Crediti: quelli AWS ($50) probabilmente non arrivano in tempo (3–5 giorni, scadono il 31/10) → confermare un budget interno beSharp
 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
-- [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova → procedura passo passo in `docs/WABA_SETUP.md`
+- [x] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero +39 345 246 0472, testo e foto reali ricevuti il 27/10 → procedura e stato in `docs/WABA_SETUP.md`
 - [ ] **Template WhatsApp** inviati a Meta: testi pronti (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`); appena la WABA è collegata a EUM Social si inviano con il task **T-29** (comando in 09 §1)
 - [x] **SES**: dominio verificato (DNS), uscita dalla sandbox (27/10), record MX per la ricezione
 - [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
@@ -184,8 +184,8 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Attende | Priorità | Stato |
 |---|---|---|---|---|
 | 1 | Merge delle PR, deploy degli stack condivisi da `main` | – | – | continuo |
-| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ✅ 26/10: dominio `suppliagent.stonecutters.besharp.net` verificato, ricezione ok; **uscita dalla sandbox ottenuta il 27/10**. **Ogni deploy di `channels` ora deve passare `-c sesDomain=suppliagent.stonecutters.besharp.net`** |
-| 1c | **WhatsApp**: WABA collegata ad AWS (`docs/WABA_SETUP.md` parte 1), poi destinazione eventi, `-c waPhoneNumberId`, prova di ricezione | numero di telefono (tu) | Must | ☐ |
+| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ✅ 26/10: dominio `suppliagent.stonecutters.besharp.net` verificato, ricezione ok; **uscita dalla sandbox ottenuta il 27/10**. Il dominio è nella config di `dev` (T-15): `-c sesDomain=…` serve solo come override |
+| 1c | **WhatsApp**: WABA collegata ad AWS (`docs/WABA_SETUP.md` parte 1), poi destinazione eventi, `waPhoneNumberId` in config, prova di ricezione | numero di telefono (tu) | Must | ✅ 27/10: numero +39 345 246 0472, testo e foto reali fino all'agente (Notifier in sandbox su `dev`); fix foto PR #31 |
 | 2 | T-05 dataset eval (≥ 15 bigliettini, vocali, email, conversazioni attese) | foto e vocali (tu, §1.3) | Should | ☐ |
 | 3 | T-11 ACE, PNG del diagramma, testi submission (EN) | – (avviabile subito) | Should | ☐ |
 | 4 | T-10 ambiente `demo`, reset, README giudici | code freeze (tutti i Must) | Should | ☐ |
@@ -197,12 +197,12 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 |---|---|---|---|---|---|
 | 1 | T-21 + T-23 | `feat/FN-01-inbound-pipeline` | – | Must | ✅ PR #16 |
 | 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ✅ PR #22 |
-| 2b | T-15 valori dei canali nella config per ambiente | `feat/FN-01-channel-config` | Email SES (Integrazione 1b) ✅; `waPhoneNumberId` resta da valorizzare con WhatsApp (Integrazione 1c) | Must | ✅ PR #24 |
+| 2b | T-15 valori dei canali nella config per ambiente | `feat/FN-01-channel-config` | Email SES (Integrazione 1b) ✅; `waPhoneNumberId` valorizzato il 27/10 (Integrazione 1c) ✅ | Must | ✅ PR #24 |
 | 3 | T-14 simulatore canali + test end-to-end | `feat/FN-31-channel-simulator` | ↺ T-41 (Agente) per la risposta reale | Must | ✅ PR #26 |
 | 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | `feat/FN-13-erp-mock-order-pdf` | – | Must | ✅ PR #28 |
 | 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
 | 6 | T-26 (solo email di conferma con PDF) | | ↺ T-46 (Agente) per i dati d'ordine reali | Must | ☐ |
-| 7 | T-29 invio template a Meta (ID EUM Social sempre da SSM) | | WABA collegata (tu) | Should | ☐ |
+| 7 | T-29 invio template a Meta (ID EUM Social sempre da SSM) | | WABA collegata ✅ 27/10 | Should | ☐ |
 | 8 | T-08 `ProactiveStack` | | – | Could | ☐ |
 | 9 | T-24 completo, T-27 RCS | | – | Could | ☐ |
 | 10 | T-67 errori del turno nel Dispatcher (cortesia E-05, handoff E-12) | | ↺ T-49 (Agente) | Should | ☐ |
