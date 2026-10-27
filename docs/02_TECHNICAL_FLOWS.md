@@ -515,6 +515,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `deliveryAutoConfirm` | true (fine giornata) |
 | `identificationMaxAttempts` | 3 |
 | `notifierSandbox` | `true` in `dev`, `false` in `demo` (il Notifier registra le uscite invece di inviarle) |
+| `erpMockFailure` | `false` (con `true` l'ERP mock risponde "non disponibile": ordine resta `CONFIRMED`, retry e poi DLQ, E-08; letto a runtime, cache 60 s) |
 
 ## 8. Tracciabilità e logging
 

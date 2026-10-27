@@ -1,0 +1,13 @@
+[project]
+name = "suppliagent-erp-adapter"
+version = "0.1.0"
+description = "SuppliAgent ERP adapter (T-07, FN-13): interface plus a mock that numbers, schedules and delivers confirmed orders"
+requires-python = ">=3.12,<3.13"
+dependencies = ["suppliagent-shared"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "erp_adapter"

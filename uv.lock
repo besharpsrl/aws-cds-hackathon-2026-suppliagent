@@ -8,8 +8,10 @@ members = [
     "suppliagent-agent",
     "suppliagent-catalog-indexer",
     "suppliagent-console-api",
+    "suppliagent-erp-adapter",
     "suppliagent-inbound-router",
     "suppliagent-notifier",
+    "suppliagent-order-pdf",
     "suppliagent-shared",
     "suppliagent-tool-customers",
     "suppliagent-tool-order-intake",
@@ -1079,8 +1081,10 @@ dependencies = [
     { name = "suppliagent-agent" },
     { name = "suppliagent-catalog-indexer" },
     { name = "suppliagent-console-api" },
+    { name = "suppliagent-erp-adapter" },
     { name = "suppliagent-inbound-router" },
     { name = "suppliagent-notifier" },
+    { name = "suppliagent-order-pdf" },
     { name = "suppliagent-shared" },
     { name = "suppliagent-tool-customers" },
     { name = "suppliagent-tool-order-intake" },
@@ -1101,8 +1105,10 @@ requires-dist = [
     { name = "suppliagent-agent", editable = "agent" },
     { name = "suppliagent-catalog-indexer", editable = "services/catalog_indexer" },
     { name = "suppliagent-console-api", editable = "services/console_api" },
+    { name = "suppliagent-erp-adapter", editable = "services/erp_adapter" },
     { name = "suppliagent-inbound-router", editable = "services/inbound_router" },
     { name = "suppliagent-notifier", editable = "services/notifier" },
+    { name = "suppliagent-order-pdf", editable = "services/order_pdf" },
     { name = "suppliagent-shared", editable = "services/shared" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
     { name = "suppliagent-tool-order-intake", editable = "services/tools/order_intake" },
@@ -1166,6 +1172,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "suppliagent-erp-adapter"
+version = "0.1.0"
+source = { editable = "services/erp_adapter" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
 name = "suppliagent-inbound-router"
 version = "0.1.0"
 source = { editable = "services/inbound_router" }
@@ -1180,6 +1197,17 @@ requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 name = "suppliagent-notifier"
 version = "0.1.0"
 source = { editable = "services/notifier" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
+name = "suppliagent-order-pdf"
+version = "0.1.0"
+source = { editable = "services/order_pdf" }
 dependencies = [
     { name = "suppliagent-shared" },
 ]

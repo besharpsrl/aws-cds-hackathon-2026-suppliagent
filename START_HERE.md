@@ -199,7 +199,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | 2 | T-22 + T-24 base (Notifier con modalità sandbox) | `feat/FN-26-debounce-notifier` | – | Must | ✅ PR #22 |
 | 2b | T-15 valori dei canali nella config per ambiente | `feat/FN-01-channel-config` | Email SES (Integrazione 1b) ✅; `waPhoneNumberId` resta da valorizzare con WhatsApp (Integrazione 1c) | Must | ✅ PR #24 |
 | 3 | T-14 simulatore canali + test end-to-end | `feat/FN-31-channel-simulator` | ↺ T-41 (Agente) per la risposta reale | Must | ✅ PR #26 |
-| 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | | – | Must | ☐ |
+| 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | `feat/FN-13-erp-mock-order-pdf` | – | Must | ✅ PR #TBD |
 | 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
 | 6 | T-26 (solo email di conferma con PDF) | | ↺ T-46 (Agente) per i dati d'ordine reali | Must | ☐ |
 | 7 | T-29 invio template a Meta (ID EUM Social sempre da SSM) | | WABA collegata (tu) | Should | ☐ |

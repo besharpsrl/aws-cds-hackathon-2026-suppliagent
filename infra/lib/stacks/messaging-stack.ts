@@ -2,7 +2,9 @@ import * as path from 'node:path';
 import { ArnFormat, Duration, Stack, Validations, type StackProps } from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import type { ITableV2 } from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
 import type { IEventBus } from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
@@ -23,6 +25,8 @@ export interface MessagingStackProps extends StackProps {
   readonly eventBus: IEventBus;
   readonly inboundMailBucket: IBucket;
   readonly mediaBucket: IBucket;
+  /** Order PDFs go to `orders/` here (T-07). */
+  readonly documentsBucket: IBucket;
   readonly inboundTopics: readonly ITopic[];
   /** The agent Runtime the Dispatcher invokes (AgentStack). */
   readonly agentRuntimeArn: string;
@@ -34,6 +38,8 @@ export interface MessagingStackProps extends StackProps {
     readonly conversations: ITableV2;
     readonly messages: ITableV2;
     readonly turnBuffer: ITableV2;
+    readonly orders: ITableV2;
+    readonly deliveries: ITableV2;
   };
 }
 
@@ -43,6 +49,7 @@ export interface MessagingStackProps extends StackProps {
  * to FIFO queues; per-chat order comes from the AWS receipt timestamp and the debounce.
  * Debounce (T-22, FN-26): Router -> TurnBuffer + SQS `turn-flush` (delay) -> Turn Dispatcher
  * (lock, one agent turn per burst) -> Notifier (T-24 base, the only sender).
+ * Orders (T-07, FN-13/14): EventBridge `order.confirmed` -> ERP adapter (mock) and Order PDF.
  */
 export class MessagingStack extends Stack {
   readonly inboundQueue: sqs.Queue;
@@ -212,6 +219,7 @@ export class MessagingStack extends Stack {
     );
     this.addNotifier(props, phoneNumberParam);
     this.addDispatcher(props, notifierName, debounce);
+    this.addOrderPipeline(props);
 
     Validations.of(router).acknowledge({
       id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttInboundMailBucket420E1CDEArn451947A0/mail/*]`,
@@ -320,6 +328,113 @@ export class MessagingStack extends Stack {
       id: `AwsSolutions-IAM5[Resource::arn:aws:social-messaging:${config.region}:<AWS::AccountId>:phone-number-id/*]`,
       reason:
         'The phone number id is set after deploy (SSM, manual WABA step); send only, this account.',
+    });
+  }
+
+  /** ERP adapter (mock) and Order PDF, both fed by `order.confirmed` (T-07, FN-13, FN-14). */
+  private addOrderPipeline(props: MessagingStackProps): void {
+    const { config, key, tables } = props;
+    const prefix = `suppliagent-${config.envName}`;
+    const failureParam = `/suppliagent/${config.envName}/erpMockFailure`;
+    const common = { TABLE_PREFIX: `${prefix}-`, EVENT_BUS_NAME: props.eventBus.eventBusName };
+
+    const erp = new PythonLambda(this, 'ErpAdapter', {
+      config,
+      key,
+      name: 'erp-adapter',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/erp_adapter'),
+        uvBundling({
+          package: 'suppliagent-erp-adapter',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/erp_adapter/src/erp_adapter': 'erp_adapter',
+          },
+          omit: ['boto3', 'botocore', 's3transfer', 'aws-lambda-powertools'],
+        }),
+      ),
+      handler: 'erp_adapter.handler.handler',
+      environment: { ...common, ERP_FAILURE_PARAM: failureParam },
+      withDlq: true, // E-08: after the retries below the event waits here for a redrive
+    });
+    // ponytail: Lambda's own async retries (about 3 min in all); a longer ERP outage ends in the
+    // DLQ and the alarm, to be redriven by hand. A scheduled sweep of CONFIRMED orders if needed.
+    erp.function.configureAsyncInvoke({ retryAttempts: 2, maxEventAge: Duration.hours(1) });
+    const allowErp = (actions: string[], resources: string[]) =>
+      erp.function.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+    allowErp(['dynamodb:GetItem', 'dynamodb:UpdateItem'], [tables.orders.tableArn]);
+    allowErp(['dynamodb:PutItem'], [tables.deliveries.tableArn]);
+    allowErp(['events:PutEvents'], [props.eventBus.eventBusArn]);
+    allowErp(
+      ['ssm:GetParameter'],
+      [
+        this.formatArn({
+          service: 'ssm',
+          resource: 'parameter',
+          resourceName: failureParam.slice(1),
+        }),
+      ],
+    );
+    allowErp(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
+
+    const pdf = new PythonLambda(this, 'OrderPdf', {
+      config,
+      key,
+      name: 'order-pdf',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/order_pdf'),
+        uvBundling({
+          package: 'suppliagent-order-pdf',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/order_pdf/src/order_pdf': 'order_pdf',
+          },
+          omit: ['boto3', 'botocore', 's3transfer', 'aws-lambda-powertools'],
+        }),
+      ),
+      handler: 'order_pdf.handler.handler',
+      environment: {
+        TABLE_PREFIX: common.TABLE_PREFIX,
+        DOCUMENTS_BUCKET: props.documentsBucket.bucketName,
+      },
+      withDlq: true,
+    });
+    const allowPdf = (actions: string[], resources: string[]) =>
+      pdf.function.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+    allowPdf(['dynamodb:GetItem'], [tables.orders.tableArn]);
+    allowPdf(['s3:PutObject'], [props.documentsBucket.arnForObjects('orders/*')]);
+    allowPdf(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
+
+    new events.Rule(this, 'OrderConfirmedRule', {
+      ruleName: `${prefix}-order-confirmed`,
+      eventBus: props.eventBus,
+      eventPattern: { detailType: ['order.confirmed'] },
+      targets: [new targets.LambdaFunction(erp.function), new targets.LambdaFunction(pdf.function)],
+    });
+
+    // E-08: errors and parked events are visible; the notification target arrives with T-09.
+    const alarm = (id: string, name: string, metric: cloudwatch.Metric) =>
+      metric.createAlarm(this, id, {
+        alarmName: `${prefix}-${name}`,
+        threshold: 0,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      });
+    alarm('ErpErrorsAlarm', 'erp-adapter-errors', erp.function.metricErrors());
+    alarm(
+      'ErpDlqAlarm',
+      'erp-adapter-dlq',
+      erp.deadLetterQueue!.metricApproximateNumberOfMessagesVisible(),
+    );
+    alarm(
+      'OrderPdfDlqAlarm',
+      'order-pdf-dlq',
+      pdf.deadLetterQueue!.metricApproximateNumberOfMessagesVisible(),
+    );
+    Validations.of(pdf).acknowledge({
+      id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttDocumentsBucket9EC9DEB9ArnEA5095A7/orders/*]`,
+      reason: 'One PDF per order under documents/orders/<orderId>.pdf; write-only.',
     });
   }
 
