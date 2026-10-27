@@ -214,6 +214,18 @@ def test_update_resubmits_a_submitted_order_with_the_same_number() -> None:
     assert order()["status"] == "SUBMITTED"
 
 
+def test_order_updated_resubmits_a_submitted_order_and_ignores_a_confirmed_one() -> None:
+    event = {"detail-type": "order.updated", "detail": {"orderId": "ord_001"}}
+    put_order()
+    assert erp.handler(event, None) == {"orderId": "ord_001"}  # still CONFIRMED: nothing to do
+    assert order()["status"] == "CONFIRMED"
+    number = erp.handler(confirmed_event(), None)["erpOrderNumber"]
+    assert erp.handler(event, None) == {"orderId": "ord_001", "erpOrderNumber": number}
+    erp.handler({"action": "advance", "orderId": "ord_001", "to": "SCHEDULED"}, None)
+    with pytest.raises(InvalidInputError):  # planned: no longer changeable
+        erp.handler(event, None)
+
+
 def test_unknown_request_is_rejected() -> None:
     with pytest.raises(InvalidInputError):
         erp.handler({"foo": "bar"}, None)

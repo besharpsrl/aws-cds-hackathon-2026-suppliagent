@@ -1,0 +1,26 @@
+[
+  {
+    "promoId": "promo_001",
+    "sku": "PARM-REGG-KG",
+    "description": "Parmigiano Reggiano in promozione questa settimana",
+    "promoPrice": 15.2,
+    "validFrom": "2026-10-19",
+    "validTo": "2026-11-15"
+  },
+  {
+    "promoId": "promo_002",
+    "sku": "FDL-PIZZA-2KG",
+    "description": "Fior di latte 2 kg: prezzo speciale",
+    "promoPrice": 12.4,
+    "validFrom": "2026-10-19",
+    "validTo": "2026-11-15"
+  },
+  {
+    "promoId": "promo_003",
+    "sku": "BIRRA-BOT-33CL",
+    "description": "Birra in bottiglia: promo autunno",
+    "promoPrice": 18.9,
+    "validFrom": "2026-10-19",
+    "validTo": "2026-11-15"
+  }
+]

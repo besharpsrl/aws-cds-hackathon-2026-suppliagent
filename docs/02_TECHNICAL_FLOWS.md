@@ -56,6 +56,7 @@ stateDiagram-v2
     SCHEDULED --> OUT_FOR_DELIVERY
     OUT_FOR_DELIVERY --> DELIVERED: Ricevuto / conferma autista
     OUT_FOR_DELIVERY --> DELIVERY_ISSUE: Segnala problema
+    DELIVERED --> DELIVERY_ISSUE: problema segnalato dopo la consegna
     DELIVERY_ISSUE --> DELIVERED: risolto dal back office
 ```
 
@@ -261,8 +262,8 @@ I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`att
 ### F-07 – Suggerimento, riepilogo e conferma (FN-11, FN-12, FN-13, FN-14, FN-15)
 
 1. **Suggerimento** (opzionale, max 1 per ordine): `recommend_products(customerId, orderLines)` → solo se pertinente e con consenso proattivo. Priorità: prodotto abituale dimenticato > complementare > promozione > novità.
-2. **Riepilogo**: righe confermate (nome, formato, quantità), eventuali sostituti, data di consegna, note, **totale stimato** (se si mostrano i prezzi), pulsanti **Confermo / Modifica**.
-3. **Conferma** → `confirm_order(orderId, idempotencyKey)` → `CONFIRMED` → evento `order.confirmed` → ERP adapter → `SUBMITTED` con numero ordine.
+2. **Riepilogo**: `request_order_confirmation(orderId)` controlla l'ordine (righe risolte, multipli di confezione, data di consegna valida e prima del cut-off, minimo d'ordine) e, se è a posto, lo porta a `PENDING_CONFIRMATION` restituendo il riepilogo: righe confermate (nome, formato, quantità, prezzo da listino), eventuali sostituti, data di consegna, note, **totale stimato**; l'agente chiede **Confermo / Modifica** (a parole finché non c'è T-25, poi pulsanti). Senza questo passaggio un ordine non si può confermare.
+3. **Conferma** → `confirm_order(orderId, idempotencyKey?, interactiveReply?)` solo da `PENDING_CONFIRMATION` → `CONFIRMED` → evento `order.confirmed` → ERP adapter → `SUBMITTED` con numero ordine. Un tap su pulsante vale solo se `interactiveReply.contextId` è il messaggio di riepilogo registrato sull'ordine (`summaryMessageId`): l'id del pulsante si può falsificare. `confirm_order` richiede inoltre, lato server, un messaggio inbound della conversazione arrivato dopo il riepilogo (`Messages`): nello stesso turno del riepilogo risponde `NOT_CONFIRMABLE` con `reason = NEEDS_CUSTOMER_REPLY`. Una conferma ripetuta restituisce `ALREADY_CONFIRMED` senza un secondo ordine né un secondo evento.
 4. **Notifiche di conferma**: WhatsApp (testo + PDF), **email SES con PDF** (Reply-To `ordine+<orderId>@`), **SMS/RCS** breve con numero ordine e data.
 5. Notifica all'**agente di commercio** del cliente (WhatsApp o console).
 
@@ -271,7 +272,7 @@ I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`att
 | C1 il cliente dimentica un prodotto abituale | Suggerimento "Di solito ordini anche il parmigiano: lo aggiungo?" |
 | C2 il cliente rifiuta il suggerimento | Nessuna insistenza; preferenza registrata in Memory |
 | C3 "Modifica" | Chiede cosa cambiare; torna a F-05/F-06 sulle righe interessate |
-| C4 nessuna risposta al riepilogo | Promemoria dopo 2h (`order_pending_reminder`); a fine giornata `EXPIRED` + messaggio |
+| C4 nessuna risposta al riepilogo | Promemoria dopo 2h (`order_pending_reminder`); a fine giornata `EXPIRED` + messaggio. Li gestisce la Lambda `order-sweeper` (ogni 15 minuti, in silenzio nella fascia notturna); i messaggi escono dal Notifier a testo libero entro la finestra 24h (i template con T-29) |
 | C5 conferma doppia (doppio tap) | Idempotenza: un solo ordine |
 | C6 ERP non disponibile | Ordine `CONFIRMED`, invio in retry; il cliente riceve "ordine ricevuto, numero definitivo a breve" |
 | C7 cliente senza email | Conferma via WhatsApp + SMS; chiede se vuole indicare un'email |
@@ -460,9 +461,10 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `conversation.started` | contactId, role, channel | KPI |
 | `contact.identified` | contactId, method | audit |
 | `order.draft_created` | orderId, source (photo/voice/text/email/reorder/rep) | KPI |
-| `order.lines_extracted` | conversationId (l'`orderId` non esiste ancora: arriva con T-45), source (photo/voice/text), lines, unreadable | qualità lettura |
-| `order.line_matched` | conversationId (l'`orderId`/`lineId` non esistono ancora: arrivano con T-45), status, confidence | qualità matching |
+| `order.lines_extracted` | conversationId (l'`orderId` non esiste ancora: la bozza nasce dopo la lettura), source (photo/voice/text), lines, unreadable | qualità lettura |
+| `order.line_matched` | conversationId (l'`orderId`/`lineId` non esistono ancora: la bozza nasce dopo l'abbinamento), status, confidence | qualità matching |
 | `order.line_corrected` | orderId, lineId, by, fromSku, toSku | accuratezza |
+| `order.updated` | orderId, revision | modifica di un ordine confermato entro il cut-off (F-08.C2): reinvio all'ERP e nuovo PDF |
 | `order.suggestion` | orderId, sku, reason, accepted | upsell |
 | `order.status_changed` | orderId, from, to, ts | tempi |
 | `order.confirmed` | orderId, value, lines, createdBy | KPI principali |
@@ -484,15 +486,17 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `match_products` | lines[], customerId | per riga: candidates[] con confidence |
 | `search_catalog` | query, filters | products[] |
 | `ask_product_sheets` | question, sku? | answer, citations[] |
-| `check_availability` | skus[], deliveryDate | per SKU: available, qty, nextArrival, substitutes[] |
-| `get_prices` | customerId, skus[] | prezzi da listino, promo applicabili |
-| `get_delivery_options` | customerId, orderTime | nextDeliveryDate, cutoff, servedDays |
+| `check_availability` | lines[] (sku, quantity), deliveryDate | per SKU: `status` (`AVAILABLE` \| `PARTIAL` \| `OUT_OF_STOCK` \| `DISCONTINUED` \| `UNKNOWN_SKU`), `availableQuantity` (parziale), `nextArrival`, `multiple` e `roundedQuantity` (non multiplo), `substitutes[]` disponibili; `stockQuantity` solo per l'agente di commercio |
+| `get_prices` | customerId, skus[] | per SKU: `unitPrice` del listino del cliente, `promo` valida oggi, `finalPrice` (EUR, IVA esclusa) o `NO_PRICE` |
+| `get_delivery_options` | customerId, orderTime?, requestedDate? | nextDeliveryDate, options[] (3 date), servedDays, cutoff, afterCutoff (+ missedDeliveryDate), minOrderValue, requestedDateServed |
 | `recommend_products` | customerId, context(lines) | suggestions[] con reason |
-| `create_order_draft` / `update_order_draft` | customerId, lines \| patch | order |
-| `confirm_order` | orderId, idempotencyKey | order (CONFIRMED) |
-| `cancel_order` | orderId | order |
-| `get_order_status` | customerId \| orderId | orders[] |
-| `report_delivery_issue` | orderId, type, lines, s3Uris | issueId |
+| `create_order_draft` | customerId, lines[] (sku, quantity, rawText, status?, candidates?…), source, deliveryDate?, deliveryNotes? | `existing`, order. Nome, unità, prezzi e totale li calcola il tool, mai il modello; se la conversazione ha già una bozza aperta la restituisce invariata |
+| `update_order_draft` | orderId, ops[] (`add` \| `update` \| `remove` + campi della riga), deliveryDate?, deliveryNotes? | `status`, order. Modificare un riepilogo lo riporta a bozza; un ordine `CONFIRMED`/`SUBMITTED` si modifica fino al cut-off (`UPDATED`, evento `order.updated`), oltre `ORDER_LOCKED`; `NEEDS_FIXES` non salva |
+| `request_order_confirmation` | orderId | `PENDING_CONFIRMATION` + summary, oppure `NEEDS_FIXES` + issues[] (`UNRESOLVED_LINES`, `NO_LINES`, `NOT_A_MULTIPLE`, `NO_PRICE`, `NO_DELIVERY_DATE`, `INVALID_DELIVERY_DATE` con `options`, `BELOW_MINIMUM` con `missing`) |
+| `confirm_order` | orderId, idempotencyKey?, interactiveReply? (`contextId`) | `CONFIRMED` \| `ALREADY_CONFIRMED` \| `NOT_CONFIRMABLE` (+ `orderStatus`) \| `NEEDS_FIXES`; errore `CONFIRMATION_MISMATCH` |
+| `cancel_order` | orderId | order (`CANCELLED`); errore `ORDER_LOCKED` oltre il cut-off o dopo la pianificazione |
+| `get_order_status` | customerId \| orderId (uno solo) | orders[] (ultimi 5, dal più recente): status, deliveryDate, erpOrderNumber, righe, totale, fascia di consegna |
+| `report_delivery_issue` | orderId, type (`MISSING` \| `DAMAGED` \| `WRONG` \| `EXPIRED`), lineIds[], note?, s3Uris[] (foto del solo chiamante) | issueId; ordine → `DELIVERY_ISSUE`, priorità `HIGH` per `DAMAGED`/`EXPIRED` |
 | `get_rep_agenda` | repId, date | visite[] con priorità |
 | `get_customer_briefing` | repId, customerId | briefing strutturato |
 | `send_notification` | contactId, channel?, template \| content, attachments | messageId, channelUsed |
@@ -508,7 +512,9 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `maxClarificationsPerMessage` | 5 |
 | `unmatchedMaxAttempts` | 2 |
 | `maxSuggestionsPerOrder` | 1 |
-| `pendingReminderHours` / `draftExpiry` | 2 / fine giornata |
+| `pendingReminderHours` / `draftExpiry` | 2 / fine giornata (mezzanotte `Europe/Rome` del giorno del riepilogo) |
+| `deliveryCutoff` | 18:00 (`Europe/Rome`): un ordine dopo il cut-off ha la consegna un giorno più tardi; un ordine resta modificabile fino al cut-off del giorno prima della consegna |
+| `minOrderValue` | 80 (EUR): sotto questo valore il riepilogo non si produce (`BELOW_MINIMUM`) |
 | `reorderDueFactor` | 1.5 (× intervallo medio) |
 | `reorderCooldownDays` | 7 |
 | `quietHours` | 21:00–07:00 |

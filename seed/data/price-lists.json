@@ -1,0 +1,262 @@
+[
+  {
+    "priceListId": "LIST_STD",
+    "sku": "FDL-PIZZA-1KG",
+    "price": 6.8
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "FDL-PIZZA-1KG",
+    "price": 6.8
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "FDL-PIZZA-2KG",
+    "price": 13.2
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "FDL-PIZZA-2KG",
+    "price": 13.2
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "FDL-JULIENNE-3KG",
+    "price": 19.5
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "FDL-JULIENNE-3KG",
+    "price": 19.5
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "MOZZ-BUF-250",
+    "price": 4.9
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "MOZZ-BUF-250",
+    "price": 4.9
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "MOZZ-BUF-125",
+    "price": 2.7
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "MOZZ-BUF-125",
+    "price": 2.7
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "BURRATA-125",
+    "price": 2.4
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "BURRATA-125",
+    "price": 2.4
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "GRANA-GRAT-1KG",
+    "price": 11.9
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "GRANA-GRAT-1KG",
+    "price": 11.9
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "PARM-REGG-KG",
+    "price": 16.8
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "PARM-REGG-KG",
+    "price": 16.8
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "BURRO-PAN-1KG",
+    "price": 8.4
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "BURRO-PAN-1KG",
+    "price": 8.4
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "BURRO-PAN-500",
+    "price": 4.5
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "BURRO-PAN-500",
+    "price": 4.5
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "LATTE-INT-1L",
+    "price": 14.4
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "LATTE-INT-1L",
+    "price": 14.4
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "FARINA-00-25KG",
+    "price": 21.5
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "FARINA-00-25KG",
+    "price": 21.5
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "FARINA-0-25KG",
+    "price": 20.8
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "FARINA-0-25KG",
+    "price": 20.8
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "POM-PELATI-2500",
+    "price": 17.4
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "POM-PELATI-2500",
+    "price": 17.4
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "OLIO-EVO-5L",
+    "price": 38.0
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "OLIO-EVO-5L",
+    "price": 38.0
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "OLIO-EVO-1L",
+    "price": 96.0
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "OLIO-EVO-1L",
+    "price": 96.0
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "PROSC-COTTO-KG",
+    "price": 12.9
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "PROSC-COTTO-KG",
+    "price": 12.9
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "PROSC-CRUDO-KG",
+    "price": 24.5
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "PROSC-CRUDO-KG",
+    "price": 24.5
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "SALAME-PICC-KG",
+    "price": 15.6
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "SALAME-PICC-KG",
+    "price": 15.6
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "PATATINE-SURG-2500",
+    "price": 7.2
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "PATATINE-SURG-2500",
+    "price": 7.2
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "CAFFE-GRANI-1KG",
+    "price": 14.8
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "CAFFE-GRANI-1KG",
+    "price": 14.8
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "ACQUA-NAT-50CL",
+    "price": 5.4
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "ACQUA-NAT-50CL",
+    "price": 4.9
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "ACQUA-FRIZ-50CL",
+    "price": 5.4
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "ACQUA-FRIZ-50CL",
+    "price": 4.9
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "BIRRA-FUSTO-20L",
+    "price": 62.0
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "BIRRA-FUSTO-20L",
+    "price": 56.0
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "BIRRA-FUSTO-30L",
+    "price": 89.0
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "BIRRA-FUSTO-30L",
+    "price": 81.0
+  },
+  {
+    "priceListId": "LIST_STD",
+    "sku": "BIRRA-BOT-33CL",
+    "price": 21.6
+  },
+  {
+    "priceListId": "LIST_BEVERAGE",
+    "sku": "BIRRA-BOT-33CL",
+    "price": 19.8
+  }
+]

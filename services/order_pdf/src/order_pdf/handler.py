@@ -1,6 +1,7 @@
 """Order PDF Lambda (T-07, FN-14): renders the order into `documents/orders/<orderId>.pdf`.
 
-Invoked by EventBridge `order.confirmed` (so the PDF is ready for the email, T-26) or directly
+Invoked by EventBridge `order.confirmed` (so the PDF is ready for the email, T-26) and
+`order.updated` (a change before the cut-off: the PDF is rewritten) or directly
 with `{"orderId"}`. The order is read from `Orders`; the key is stable, so a repeat or a later
 call after a change regenerates the file in place. Returns the `s3Uri` for the caller.
 
@@ -28,7 +29,11 @@ def _s3() -> Any:
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, str]:
-    detail = event["detail"] if event.get("detail-type") == "order.confirmed" else event
+    detail = (
+        event["detail"]
+        if event.get("detail-type") in ("order.confirmed", "order.updated")
+        else event
+    )
     order_id = parse_order_id(detail.get("orderId"))
     logger.set_correlation_id(order_id)
     order = table("orders").get_item(Key={"orderId": order_id}).get("Item")

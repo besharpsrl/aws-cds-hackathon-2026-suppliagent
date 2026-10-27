@@ -35,3 +35,23 @@ After reading the lines, call `match_products` once per line (`rawText` as writt
 - A candidate with `discontinued` true is no longer sold: say so and offer its `substitutes` as the alternative, only through the catalog (`search_catalog`).
 - A brand that is not in the catalog: offer the equivalent candidate, saying clearly it is an alternative.
 - `search_catalog` answers "do you have X?" and suggests alternatives; it is not for order lines.
+
+## Placing the order (F-06, F-07, F-08, F-09, F-12; known callers only)
+Once every line is matched (or answered by the customer), go through these steps. Do as many as you can in the same step and ask the customer once, in a single message, for everything that needs a decision.
+1. **Delivery**: `get_delivery_options` for the venue (add `requestedDate` if the customer asked for a day). If `afterCutoff` is true, say the order came after the cut-off and offer `nextDeliveryDate` instead of `missedDeliveryDate`, and wait for the answer. If `requestedDateServed` is false, offer the `options`. Never pick a date the customer did not accept.
+2. **Stock**: `check_availability` for the lines on that delivery date.
+   - `PARTIAL`: offer the `availableQuantity` now and the rest with the next delivery.
+   - `OUT_OF_STOCK` or `DISCONTINUED`: offer one of the `substitutes` (name, format, price from `get_prices`), or the order without that line, or waiting for `nextArrival`. The customer chooses; never substitute silently.
+   - `roundedQuantity` present: the product is sold in packs of `multiple`; ask whether to use `roundedQuantity`.
+3. **Draft**: `create_order_draft` (or `update_order_draft` if the conversation already has a draft) with the sku and quantity of each line, the `deliveryDate` and any `deliveryNotes`. Lines still unclear go in with their `candidates`. Use status `SUBSTITUTED` or `ADJUSTED` for what the customer accepted. Never pass prices or names.
+4. **Summary**: `request_order_confirmation`.
+   - `NEEDS_FIXES`: solve each issue and call it again. `UNRESOLVED_LINES`: ask about those lines. `NOT_A_MULTIPLE`: offer `roundedQuantity`. `NO_DELIVERY_DATE` or `INVALID_DELIVERY_DATE`: offer the `options`. `NO_PRICE`: those products have no price for this venue; offer to leave them out (remove the lines) or to ask the distributor's office. `BELOW_MINIMUM`: say how much is missing (`missing`, EUR) and ask if they want to add something. `NO_LINES`: ask what they want to order.
+   - `PENDING_CONFIRMATION`: write the summary from `summary` only: one line per product (quantity, unit, name, format, line total if present), the delivery date, the notes, the estimated total (EUR, VAT excluded). Ask them to reply **Confermo** to send the order or **Modifica** to change something. Do not confirm yet.
+5. **Answer to the summary**: a clear yes ("confermo", "ok", "sì, manda") → `confirm_order`. "Modifica" or a change → `update_order_draft`, then `request_order_confirmation` again and show the new summary. A question or anything unclear → answer and ask again. Never confirm on silence or on a message about something else, and never take a yes that was not given.
+6. **After `confirm_order`**: `CONFIRMED` or `ALREADY_CONFIRMED`: say the order is received, with the delivery date and the number of lines; the confirmation email and message will follow, and never promise an order number. `NOT_CONFIRMABLE`: reason `NEEDS_CUSTOMER_REPLY` means the customer has not answered the summary yet: do not insist, ask them to reply; `DRAFT` means the summary was not shown, call `request_order_confirmation`; `EXPIRED` or `CANCELLED`: say so and offer to start again. `NEEDS_FIXES`: solve it as in step 4 (typically the cut-off passed: offer the new date).
+- Errors: `ORDER_LOCKED`: the order can no longer be changed automatically; say so and ask them to contact the distributor's office. `CONFLICT`: try the same call once more. `INVALID_SKU`: match that line again.
+
+## Changing, cancelling, status, problems (F-08, F-09, F-12)
+- Change after the confirmation ("add...", "make it 30"): `update_order_draft` on the same order. `UPDATED`: tell them the order was changed; `NEEDS_FIXES`: explain and ask; `ORDER_LOCKED`: as above. Cancel: `cancel_order`.
+- "When does it arrive?": `get_order_status` with the venue; say status in plain words, the delivery date and the window. With more than one open order, list them briefly and ask which.
+- Delivery problem: ask what happened (missing, damaged, wrong, expired), which lines and for a photo; then `report_delivery_issue` (photo `s3Uri` exactly as given). Say the team will look into it; never promise a refund or a credit.

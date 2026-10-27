@@ -115,6 +115,12 @@ def test_eventbridge_order_confirmed_is_handled() -> None:
 
 
 @pytest.mark.usefixtures("aws")
+def test_eventbridge_order_updated_rewrites_the_pdf() -> None:
+    event = {"detail-type": "order.updated", "detail": {"orderId": "ord_001"}}
+    assert pdf_handler.handler(event, None)["s3Uri"].endswith("orders/ord_001.pdf")
+
+
+@pytest.mark.usefixtures("aws")
 def test_unknown_order_is_not_found() -> None:
     with pytest.raises(NotFoundError):
         pdf_handler.handler({"orderId": "ord_nope"}, None)

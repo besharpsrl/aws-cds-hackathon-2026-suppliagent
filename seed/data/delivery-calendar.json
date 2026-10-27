@@ -1,0 +1,38 @@
+[
+  {
+    "zone": "MI-CENTRO",
+    "date": "2026-12-08",
+    "closed": true,
+    "reason": "Immacolata"
+  },
+  {
+    "zone": "MI-CENTRO",
+    "date": "2026-12-25",
+    "closed": true,
+    "reason": "Natale"
+  },
+  {
+    "zone": "MI-NORD",
+    "date": "2026-12-08",
+    "closed": true,
+    "reason": "Immacolata"
+  },
+  {
+    "zone": "MI-NORD",
+    "date": "2026-12-25",
+    "closed": true,
+    "reason": "Natale"
+  },
+  {
+    "zone": "MI-SUD",
+    "date": "2026-12-08",
+    "closed": true,
+    "reason": "Immacolata"
+  },
+  {
+    "zone": "MI-SUD",
+    "date": "2026-12-25",
+    "closed": true,
+    "reason": "Natale"
+  }
+]

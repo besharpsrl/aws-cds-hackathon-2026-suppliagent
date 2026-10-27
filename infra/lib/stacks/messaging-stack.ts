@@ -220,6 +220,7 @@ export class MessagingStack extends Stack {
     this.addNotifier(props, phoneNumberParam);
     this.addDispatcher(props, notifierName, debounce);
     this.addOrderPipeline(props);
+    this.addOrderSweeper(props, notifierName);
 
     Validations.of(router).acknowledge({
       id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttInboundMailBucket420E1CDEArn451947A0/mail/*]`,
@@ -411,6 +412,13 @@ export class MessagingStack extends Stack {
       eventPattern: { detailType: ['order.confirmed'] },
       targets: [new targets.LambdaFunction(erp.function), new targets.LambdaFunction(pdf.function)],
     });
+    // F-08.C2: a confirmed order changed before the cut-off is resubmitted and its PDF rewritten.
+    new events.Rule(this, 'OrderUpdatedRule', {
+      ruleName: `${prefix}-order-updated`,
+      eventBus: props.eventBus,
+      eventPattern: { detailType: ['order.updated'] },
+      targets: [new targets.LambdaFunction(erp.function), new targets.LambdaFunction(pdf.function)],
+    });
 
     // E-08: errors and parked events are visible; the notification target arrives with T-09.
     const alarm = (id: string, name: string, metric: cloudwatch.Metric) =>
@@ -435,6 +443,71 @@ export class MessagingStack extends Stack {
     Validations.of(pdf).acknowledge({
       id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttDocumentsBucket9EC9DEB9ArnEA5095A7/orders/*]`,
       reason: 'One PDF per order under documents/orders/<orderId>.pdf; write-only.',
+    });
+  }
+
+  /**
+   * Order sweeper (T-47, FN-12): reminder after `pendingReminderHours` and expiry at the end of the
+   * day for summaries nobody confirmed. Every 15 minutes; silent during the quiet hours.
+   */
+  private addOrderSweeper(props: MessagingStackProps, notifierName: string): void {
+    const { config, key, tables } = props;
+    const prefix = `suppliagent-${config.envName}`;
+    const sweeper = new PythonLambda(this, 'OrderSweeper', {
+      config,
+      key,
+      name: 'order-sweeper',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/order_sweeper'),
+        uvBundling({
+          package: 'suppliagent-order-sweeper',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/order_sweeper/src/order_sweeper': 'order_sweeper',
+          },
+          omit: ['boto3', 'botocore', 's3transfer', 'aws-lambda-powertools'],
+        }),
+      ),
+      handler: 'order_sweeper.handler.handler',
+      timeout: Duration.minutes(2),
+      environment: {
+        TABLE_PREFIX: `${prefix}-`,
+        EVENT_BUS_NAME: props.eventBus.eventBusName,
+        NOTIFIER_FUNCTION_NAME: notifierName,
+        PENDING_REMINDER_HOURS: config.parameters.pendingReminderHours,
+        QUIET_HOURS: config.parameters.quietHours,
+      },
+    });
+    const allow = (actions: string[], resources: string[]) =>
+      sweeper.function.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+    allow(['dynamodb:Query'], [`${tables.orders.tableArn}/index/by-status`]);
+    allow(['dynamodb:UpdateItem'], [tables.orders.tableArn]);
+    allow(['dynamodb:GetItem'], [tables.conversations.tableArn]);
+    allow(['events:PutEvents'], [props.eventBus.eventBusArn]);
+    allow(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
+    allow(
+      ['lambda:InvokeFunction'],
+      [
+        this.formatArn({
+          service: 'lambda',
+          resource: 'function',
+          resourceName: notifierName,
+          arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+        }),
+      ],
+    );
+    // Schedules run on the default bus, not on the application bus.
+    new events.Rule(this, 'OrderSweeperSchedule', {
+      ruleName: `${prefix}-order-sweeper`,
+      schedule: events.Schedule.rate(Duration.minutes(15)),
+      targets: [new targets.LambdaFunction(sweeper.function)],
+    });
+    sweeper.function.metricErrors().createAlarm(this, 'OrderSweeperErrorsAlarm', {
+      alarmName: `${prefix}-order-sweeper-errors`,
+      threshold: 0,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
   }
 

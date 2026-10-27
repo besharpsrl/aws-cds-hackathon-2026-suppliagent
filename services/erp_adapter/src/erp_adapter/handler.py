@@ -2,6 +2,9 @@
 - EventBridge `order.confirmed` (`detail.orderId`): submits the order. The order is read from
   `Orders`, never taken from the event. ERP down (E-08) raises: the order stays CONFIRMED and
   Lambda's async retries then the DLQ take over.
+- EventBridge `order.updated` (a change before the cut-off, F-08.C2): a `SUBMITTED` order is
+  resubmitted with its number; one still `CONFIRMED` has nothing to do, the first submit reads
+  the changed order.
 - `{"action": "advance", "orderId", "to"}`: demo/test trigger for the mock delivery progress
   (SCHEDULED -> OUT_FOR_DELIVERY -> DELIVERED); invoked by hand, no schedule.
 """
@@ -24,6 +27,16 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, str]:
         logger.set_correlation_id(order_id)
         result = adapter.submit_order(_get_order(order_id))
         return {"orderId": order_id, "erpOrderNumber": result.erpOrderNumber}
+    if event.get("detail-type") == "order.updated":
+        order_id = parse_order_id(event.get("detail", {}).get("orderId"))
+        logger.set_correlation_id(order_id)
+        order = _get_order(order_id)
+        if order["status"] == "CONFIRMED":
+            return {"orderId": order_id}
+        return {
+            "orderId": order_id,
+            "erpOrderNumber": adapter.update_order(order_id).erpOrderNumber,
+        }
     if event.get("action") == "advance":
         order_id = parse_order_id(event.get("orderId"))
         logger.set_correlation_id(order_id)

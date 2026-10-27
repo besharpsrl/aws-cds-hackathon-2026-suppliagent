@@ -50,6 +50,9 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         mcp_tool("order-intake___extract_order_lines"),
         mcp_tool("catalog___match_products"),
         mcp_tool("catalog___search_catalog"),
+        mcp_tool("inventory-pricing___check_availability"),
+        mcp_tool("orders___confirm_order"),
+        mcp_tool("orders___delete_everything"),  # not an allowed tool of the target
         mcp_tool("other___identify_contact"),  # same short name on another target: not allowed
         mcp_tool("x_amz_bedrock_agentcore_search"),
     ]
@@ -62,9 +65,12 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         "order-intake___extract_order_lines",
         "catalog___match_products",
         "catalog___search_catalog",
+        "inventory-pricing___check_availability",
+        "orders___confirm_order",
     ]
+    assert "orders___confirm_order" not in {t.tool_name for t in unknown}
     rep = select_tools(tools, "SALES_REP")
-    assert {"order-intake___extract_order_lines", "catalog___match_products"} <= {
+    assert {"order-intake___extract_order_lines", "orders___confirm_order"} <= {
         t.tool_name for t in rep
     }
     for t in customer:

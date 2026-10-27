@@ -1,0 +1,13 @@
+[project]
+name = "suppliagent-order-sweeper"
+version = "0.1.0"
+description = "SuppliAgent order sweeper (T-47, FN-12): reminder at 2 h and expiry at the end of the day for unconfirmed order summaries"
+requires-python = ">=3.12,<3.13"
+dependencies = ["suppliagent-shared"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "order_sweeper"

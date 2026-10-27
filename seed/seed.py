@@ -18,9 +18,14 @@ from suppliagent_shared.models import (
     Contact,
     Customer,
     CustomerInsights,
+    DeliveryCalendarEntry,
     Item,
     OrderHistoryEntry,
+    PriceListEntry,
+    Product,
+    Promotion,
     SalesRep,
+    StockItem,
 )
 
 HERE = Path(__file__).parent
@@ -32,6 +37,11 @@ MODELS: dict[str, type[Item]] = {
     "sales-reps": SalesRep,
     "order-history": OrderHistoryEntry,
     "customer-insights": CustomerInsights,
+    "products": Product,
+    "price-lists": PriceListEntry,
+    "promotions": Promotion,
+    "stock": StockItem,
+    "delivery-calendar": DeliveryCalendarEntry,
 }
 
 

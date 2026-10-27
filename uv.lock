@@ -12,10 +12,13 @@ members = [
     "suppliagent-inbound-router",
     "suppliagent-notifier",
     "suppliagent-order-pdf",
+    "suppliagent-order-sweeper",
     "suppliagent-shared",
     "suppliagent-tool-catalog",
     "suppliagent-tool-customers",
+    "suppliagent-tool-inventory-pricing",
     "suppliagent-tool-order-intake",
+    "suppliagent-tool-orders",
     "suppliagent-turn-dispatcher",
 ]
 
@@ -1086,10 +1089,13 @@ dependencies = [
     { name = "suppliagent-inbound-router" },
     { name = "suppliagent-notifier" },
     { name = "suppliagent-order-pdf" },
+    { name = "suppliagent-order-sweeper" },
     { name = "suppliagent-shared" },
     { name = "suppliagent-tool-catalog" },
     { name = "suppliagent-tool-customers" },
+    { name = "suppliagent-tool-inventory-pricing" },
     { name = "suppliagent-tool-order-intake" },
+    { name = "suppliagent-tool-orders" },
     { name = "suppliagent-turn-dispatcher" },
 ]
 
@@ -1111,10 +1117,13 @@ requires-dist = [
     { name = "suppliagent-inbound-router", editable = "services/inbound_router" },
     { name = "suppliagent-notifier", editable = "services/notifier" },
     { name = "suppliagent-order-pdf", editable = "services/order_pdf" },
+    { name = "suppliagent-order-sweeper", editable = "services/order_sweeper" },
     { name = "suppliagent-shared", editable = "services/shared" },
     { name = "suppliagent-tool-catalog", editable = "services/tools/catalog" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
+    { name = "suppliagent-tool-inventory-pricing", editable = "services/tools/inventory_pricing" },
     { name = "suppliagent-tool-order-intake", editable = "services/tools/order_intake" },
+    { name = "suppliagent-tool-orders", editable = "services/tools/orders" },
     { name = "suppliagent-turn-dispatcher", editable = "services/turn_dispatcher" },
 ]
 
@@ -1219,6 +1228,17 @@ dependencies = [
 requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
+name = "suppliagent-order-sweeper"
+version = "0.1.0"
+source = { editable = "services/order_sweeper" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
 name = "suppliagent-shared"
 version = "0.1.0"
 source = { editable = "services/shared" }
@@ -1258,9 +1278,31 @@ dependencies = [
 requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
+name = "suppliagent-tool-inventory-pricing"
+version = "0.1.0"
+source = { editable = "services/tools/inventory_pricing" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
 name = "suppliagent-tool-order-intake"
 version = "0.1.0"
 source = { editable = "services/tools/order_intake" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
+name = "suppliagent-tool-orders"
+version = "0.1.0"
+source = { editable = "services/tools/orders" }
 dependencies = [
     { name = "suppliagent-shared" },
 ]

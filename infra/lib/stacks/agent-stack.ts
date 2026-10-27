@@ -13,7 +13,13 @@ import type { EnvConfig } from '../../config/environments.js';
 import { PythonLambda } from '../constructs/python-lambda.js';
 import { REPO_ROOT, uvBundling } from '../constructs/uv-bundling.js';
 import type { TableName } from './data-stack.js';
-import { CATALOG_TOOLS, CUSTOMERS_TOOLS, ORDER_INTAKE_TOOLS } from './tool-schemas.js';
+import {
+  CATALOG_TOOLS,
+  CUSTOMERS_TOOLS,
+  INVENTORY_PRICING_TOOLS,
+  ORDER_INTAKE_TOOLS,
+  ORDERS_TOOLS,
+} from './tool-schemas.js';
 
 export interface AgentStackProps extends StackProps {
   readonly config: EnvConfig;
@@ -193,6 +199,87 @@ export class AgentStack extends Stack {
     key.grant(catalogTool, 'kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey');
     eventBus.grantPutEventsTo(catalogTool);
 
+    // Stock, prices and delivery dates (T-45) and the order lifecycle (T-46): read-mostly tools that
+    // share the customer scope checks; only `orders` writes (Orders, Issues) and emits events.
+    const allowScope = (fn: lambda.IFunction) => {
+      const allowOn = (actions: string[], ...resources: string[]) =>
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+      allowOn(
+        ['dynamodb:GetItem', 'dynamodb:Query'],
+        customersTable,
+        `${customersTable}/index/by-repId`,
+      );
+      allowOn(['dynamodb:GetItem'], tables.Contacts.tableArn);
+      allowOn(['dynamodb:GetItem'], tables.PriceLists.tableArn, tables.DeliveryCalendar.tableArn);
+      allowOn(['dynamodb:Query'], `${tables.Promotions.tableArn}/index/by-sku`);
+      key.grant(fn, 'kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey');
+      return allowOn;
+    };
+    const deliveryRules = {
+      DELIVERY_CUTOFF: config.parameters.deliveryCutoff,
+      MIN_ORDER_VALUE: config.parameters.minOrderValue,
+    };
+
+    const inventoryPricingTool = new PythonLambda(this, 'InventoryPricingTool', {
+      config,
+      key,
+      name: 'tool-inventory-pricing',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/tools/inventory_pricing'),
+        uvBundling({
+          package: 'suppliagent-tool-inventory-pricing',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/tools/inventory_pricing/src/suppliagent_tool_inventory_pricing':
+              'suppliagent_tool_inventory_pricing',
+          },
+          omit: LAMBDA_PLATFORM_PACKAGES,
+        }),
+      ),
+      handler: 'suppliagent_tool_inventory_pricing.handler.lambda_handler',
+      environment: { TABLE_PREFIX: `${prefix}-`, ...deliveryRules },
+    }).function;
+    allowScope(inventoryPricingTool)(
+      ['dynamodb:GetItem'],
+      tables.Products.tableArn,
+      tables.Stock.tableArn,
+    );
+
+    const ordersTool = new PythonLambda(this, 'OrdersTool', {
+      config,
+      key,
+      name: 'tool-orders',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/tools/orders'),
+        uvBundling({
+          package: 'suppliagent-tool-orders',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/tools/orders/src/suppliagent_tool_orders': 'suppliagent_tool_orders',
+          },
+          omit: LAMBDA_PLATFORM_PACKAGES,
+        }),
+      ),
+      handler: 'suppliagent_tool_orders.handler.lambda_handler',
+      environment: {
+        TABLE_PREFIX: `${prefix}-`,
+        EVENT_BUS_NAME: eventBus.eventBusName,
+        MEDIA_BUCKET: mediaBucket.bucketName,
+        ...deliveryRules,
+      },
+    }).function;
+    const allowOrders = allowScope(ordersTool);
+    allowOrders(['dynamodb:GetItem'], tables.Products.tableArn, tables.Deliveries.tableArn);
+    allowOrders(
+      ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem'],
+      tables.Orders.tableArn,
+    );
+    allowOrders(['dynamodb:Query'], `${tables.Orders.tableArn}/index/by-customerId`);
+    allowOrders(['dynamodb:PutItem'], tables.Issues.tableArn);
+    // Evidence that the customer answered after the summary (confirm_order): read-only.
+    allowOrders(['dynamodb:Query'], tables.Messages.tableArn);
+    eventBus.grantPutEventsTo(ordersTool);
+
     const gateway = new agentcore.Gateway(this, 'Gateway', {
       gatewayName: `${prefix}-gateway`,
       description: 'SuppliAgent tools (MCP); invoked only by the agent runtime (SigV4).',
@@ -224,6 +311,18 @@ export class AgentStack extends Stack {
       description: 'Product matching with order history and catalog search (T-44).',
       lambdaFunction: catalogTool,
       toolSchema: agentcore.ToolSchema.fromInline(CATALOG_TOOLS),
+    });
+    gateway.addLambdaTarget('InventoryPricingTarget', {
+      gatewayTargetName: 'inventory-pricing',
+      description: 'Stock with substitutes, price lists and delivery dates (T-45).',
+      lambdaFunction: inventoryPricingTool,
+      toolSchema: agentcore.ToolSchema.fromInline(INVENTORY_PRICING_TOOLS),
+    });
+    gateway.addLambdaTarget('OrdersTarget', {
+      gatewayTargetName: 'orders',
+      description: 'Order drafts, confirmation, changes, status and delivery issues (T-46).',
+      lambdaFunction: ordersTool,
+      toolSchema: agentcore.ToolSchema.fromInline(ORDERS_TOOLS),
     });
     const gatewayUrl = gateway.gatewayUrl;
     if (!gatewayUrl) throw new Error('Gateway L2 returned no gatewayUrl');
@@ -286,6 +385,10 @@ export class AgentStack extends Stack {
       'Resource::<OrderIntakeToolFunctionCF96ADCC.Arn>:*':
         'lambda.grantInvoke covers the versions/aliases of the single tool function.',
       'Resource::<CatalogToolFunctionA3D81DAD.Arn>:*':
+        'lambda.grantInvoke covers the versions/aliases of the single tool function.',
+      'Resource::<InventoryPricingToolFunction29E9FD79.Arn>:*':
+        'lambda.grantInvoke covers the versions/aliases of the single tool function.',
+      'Resource::<OrdersToolFunction85C7D529.Arn>:*':
         'lambda.grantInvoke covers the versions/aliases of the single tool function.',
     });
     acknowledgeWildcards(this.runtime, {

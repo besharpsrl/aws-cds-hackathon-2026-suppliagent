@@ -255,3 +255,41 @@ describe('MessagingStack – order pipeline (T-07, FN-13, FN-14)', () => {
     expect(rolePolicy('order-pdf')).not.toContain('dynamodb:UpdateItem');
   });
 });
+
+describe('MessagingStack – order sweeper and changes (T-47, T-46, FN-12, FN-16)', () => {
+  it('routes order.updated to the ERP adapter and the order PDF generator', () => {
+    const rule = Object.values(template.findResources('AWS::Events::Rule')).find(
+      (r) => r.Properties.Name === 'suppliagent-dev-order-updated',
+    );
+    expect(rule?.Properties.EventPattern).toEqual({ 'detail-type': ['order.updated'] });
+    expect(rule?.Properties.Targets).toHaveLength(2);
+  });
+
+  it('runs the sweeper every 15 minutes with the reminder and quiet-hours parameters', () => {
+    const rule = Object.values(template.findResources('AWS::Events::Rule')).find(
+      (r) => r.Properties.Name === 'suppliagent-dev-order-sweeper',
+    );
+    expect(rule?.Properties.ScheduleExpression).toBe('rate(15 minutes)');
+    expect(rule?.Properties.EventBusName).toBeUndefined(); // schedules run on the default bus
+    expect(functionProps('order-sweeper')?.Environment.Variables).toMatchObject({
+      PENDING_REMINDER_HOURS: '2',
+      QUIET_HOURS: '21:00-07:00',
+      NOTIFIER_FUNCTION_NAME: 'suppliagent-dev-notifier',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'suppliagent-dev-order-sweeper-errors',
+    });
+  });
+
+  it('lets the sweeper only expire orders and ask the Notifier to write: no CDS send permission', () => {
+    const policy = rolePolicy('order-sweeper');
+    expect(policy).toContain('dynamodb:Query');
+    expect(policy).toContain('index/by-status');
+    expect(policy).toContain('dynamodb:UpdateItem');
+    expect(policy).toContain('lambda:InvokeFunction');
+    expect(policy).toContain('suppliagent-dev-notifier');
+    expect(policy).not.toMatch(/dynamodb:(PutItem|DeleteItem|Scan)/);
+    expect(policy).not.toMatch(/social-messaging|ses:Send|sms-voice|sns:Publish/);
+    expect(policy).not.toMatch(/"(dynamodb|s3|events|ssm|kms|sqs|lambda):\*"/);
+  });
+});

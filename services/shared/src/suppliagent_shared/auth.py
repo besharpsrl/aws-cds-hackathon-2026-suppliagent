@@ -13,6 +13,7 @@ from boto3.dynamodb.conditions import Key
 from pydantic import BaseModel, ConfigDict, Field
 
 from suppliagent_shared.aws import table
+from suppliagent_shared.errors import AccessDeniedError
 from suppliagent_shared.models import ContactStatus, Role
 
 
@@ -63,3 +64,17 @@ def caller_scope(caller: CallerContext) -> Scope:
         )["Items"]
         return Scope(frozenset(i["customerId"] for i in items))
     return NO_ACCESS
+
+
+def require_customer_access(
+    caller: CallerContext, customer_id: str | None = None
+) -> frozenset[str]:
+    """Customers the caller may fully access; `AccessDeniedError` for `UNKNOWN`, a contact still
+    in verification, or a customer outside the scope (F-02, FN-32). Without `customer_id`, any
+    verified caller passes (catalog-like data)."""
+    if caller.role is Role.UNKNOWN or not caller.contactId:
+        raise AccessDeniedError
+    allowed = caller_scope(caller).customer_ids
+    if not allowed or (customer_id is not None and customer_id not in allowed):
+        raise AccessDeniedError
+    return allowed

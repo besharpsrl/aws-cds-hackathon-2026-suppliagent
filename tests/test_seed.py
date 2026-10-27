@@ -18,6 +18,11 @@ KEYS = {
     "sales-reps": ("repId",),
     "order-history": ("customerId", "dateOrderId"),
     "customer-insights": ("customerId",),
+    "products": ("sku",),
+    "price-lists": ("priceListId", "sku"),
+    "promotions": ("promoId",),
+    "stock": ("sku",),
+    "delivery-calendar": ("zone", "date"),
 }
 
 
@@ -83,6 +88,35 @@ def test_demo_scenarios_are_covered() -> None:
         for ins in DATA["customer-insights"]
         for r in ins["expectedReorders"]
     )  # overdue reorder, F-13
+
+
+def test_catalog_covers_history_prices_and_stock() -> None:
+    skus = ids("products", "sku")
+    bought = {li["sku"] for order in DATA["order-history"] for li in order["lines"]}
+    assert bought <= skus  # every SKU of the history is in the catalog
+    assert ids("stock", "sku") == skus
+    assert {p["sku"] for p in DATA["promotions"]} <= skus
+    for list_id in {c["priceListId"] for c in DATA["customers"]}:
+        assert {p["sku"] for p in DATA["price-lists"] if p["priceListId"] == list_id} == skus
+    for item in DATA["stock"]:
+        assert set(item["substitutes"]) <= skus
+    zones = {c["zone"] for c in DATA["customers"]}
+    assert {e["zone"] for e in DATA["delivery-calendar"]} <= zones
+
+
+def test_catalog_scenarios_are_covered() -> None:
+    """Fixtures of F-06: out of stock with a substitute, partial stock, pack multiple, retired."""
+    stock = {i["sku"]: i for i in DATA["stock"]}
+    products = {p["sku"]: p for p in DATA["products"]}
+    assert any(i["quantity"] == 0 and i["substitutes"] for i in DATA["stock"])  # C2
+    assert any(0 < i["quantity"] < 10 for i in DATA["stock"])  # C3
+    assert any(p.get("multiple", 1) > 1 for p in DATA["products"])  # C4
+    assert any(not p.get("active", True) for p in DATA["products"])  # retired, F-05.C6
+    assert all(
+        products[s]["active"] if "active" in products[s] else True
+        for i in stock.values()
+        for s in i["substitutes"][:1]
+    )  # best substitute is sold
 
 
 @pytest.fixture

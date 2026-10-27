@@ -26,7 +26,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     const toolsOf = (name: string) =>
       targets.find((t) => t.Properties.Name === name)?.Properties.TargetConfiguration.Mcp.Lambda
         .ToolSchema.InlinePayload;
-    expect(targets).toHaveLength(3);
+    expect(targets).toHaveLength(5);
     expect(toolsOf('customers').map((t: { Name: string }) => t.Name)).toEqual([
       'identify_contact',
       'get_customer_profile',
@@ -38,10 +38,26 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       'match_products',
       'search_catalog',
     ]);
+    expect(toolsOf('inventory-pricing').map((t: { Name: string }) => t.Name)).toEqual([
+      'check_availability',
+      'get_prices',
+      'get_delivery_options',
+    ]);
+    expect(toolsOf('orders').map((t: { Name: string }) => t.Name)).toEqual([
+      'create_order_draft',
+      'update_order_draft',
+      'request_order_confirmation',
+      'confirm_order',
+      'cancel_order',
+      'get_order_status',
+      'report_delivery_issue',
+    ]);
     for (const tool of [
       ...toolsOf('customers'),
       ...toolsOf('order-intake'),
       ...toolsOf('catalog'),
+      ...toolsOf('inventory-pricing'),
+      ...toolsOf('orders'),
     ]) {
       expect(tool.InputSchema.Properties.caller.Type).toBe('object'); // forwarded to the Lambda
     }
@@ -200,6 +216,46 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       Handler: 'suppliagent_tool_catalog.handler.lambda_handler',
       Environment: {
         Variables: Match.objectLike({ INDEX_NAME: 'products', MATCH_AUTO_THRESHOLD: '0.85' }),
+      },
+    });
+  });
+
+  it('gives the inventory/pricing tool read-only access and the delivery rules from config', () => {
+    const all = actions(statementsOf('InventoryPricingTool'));
+    expect(all.filter((a) => /^dynamodb:(Put|Update|Delete|Scan|Batch)/.test(a))).toEqual([]);
+    expect(all.some((a) => a.endsWith('*'))).toBe(false);
+    expect(all).not.toContain('events:PutEvents');
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'suppliagent-dev-tool-inventory-pricing',
+      Handler: 'suppliagent_tool_inventory_pricing.handler.lambda_handler',
+      Environment: {
+        Variables: Match.objectLike({ DELIVERY_CUTOFF: '18:00', MIN_ORDER_VALUE: '80' }),
+      },
+    });
+  });
+
+  it('lets the orders tool write only Orders and Issues, never delete, and emit events', () => {
+    const statements = statementsOf('OrdersTool');
+    const all = actions(statements);
+    expect(all.filter((a) => /^dynamodb:(Delete|Scan|Batch)/.test(a))).toEqual([]);
+    expect(all.some((a) => a.endsWith('*'))).toBe(false);
+    expect(all).toContain('events:PutEvents');
+    const writes = statements.filter((s) =>
+      [s.Action].flat().some((a) => /^dynamodb:(Put|Update)/.test(a)),
+    );
+    const written = JSON.stringify(writes.map((s) => s.Resource));
+    expect(written).toMatch(/GetAttOrders/);
+    expect(written).toMatch(/GetAttIssues/);
+    expect(written).not.toMatch(/Customers|Contacts|Products|PriceLists|Promotions/);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'suppliagent-dev-tool-orders',
+      Handler: 'suppliagent_tool_orders.handler.lambda_handler',
+      Environment: {
+        Variables: Match.objectLike({
+          DELIVERY_CUTOFF: '18:00',
+          MIN_ORDER_VALUE: '80',
+          MEDIA_BUCKET: Match.anyValue(),
+        }),
       },
     });
   });
