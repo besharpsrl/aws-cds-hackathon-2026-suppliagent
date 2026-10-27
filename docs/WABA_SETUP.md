@@ -64,12 +64,12 @@ aws socialmessaging put-whatsapp-business-account-event-destinations --id <WABA_
   --event-destinations eventDestinationArn="$TOPIC"
 ```
 
-Registrare l'ID del numero nel parametro SSM `waPhoneNumberId` (letto a runtime dal router per scaricare i media), con un deploy di `channels` (mutante, solo dopo conferma). **Ripassare anche `-c sesDomain=…` se il dominio SES è già configurato** (README, Manual steps §3):
+Registrare l'ID del numero nel parametro SSM `waPhoneNumberId` (letto a runtime dal router per scaricare i media), scrivendolo in `infra/config/environments.ts` (`waPhoneNumberId` dell'ambiente) e facendo un deploy di `channels` (mutante, solo dopo conferma). Il dominio SES resta quello della config, senza `-c`:
 
 ```bash
 cd infra && rm -rf cdk.out
 npx cdk deploy suppliagent-dev-channels --exclusively -c env=dev \
-  -c waPhoneNumberId=phone-number-id-XXXXXXXX [-c sesDomain=…] --profile default
+  --profile default
 aws ssm get-parameter --name /suppliagent/dev/waPhoneNumberId --query Parameter.Value --output text
 ```
 
@@ -116,5 +116,4 @@ Per farti riconoscere come cliente di prova: aggiungi il tuo numero personale in
 | "Numero già registrato su WhatsApp" | Sul telefono con quella SIM: WhatsApp → Impostazioni → Account → **Elimina account**, attendi qualche minuto e riprova |
 | Il WABA non compare nella console AWS | Region sbagliata: deve essere **eu-west-1** |
 | Messaggi inviati ma nessun `message stored` nel log | Destinazione eventi mancante o sul topic sbagliato: parte 2 |
-| Foto registrate senza file su S3 | `waPhoneNumberId` ancora `UNSET`: deploy di `channels` della parte 2 |
-| Deploy successivo e numero "sparito" (SSM `UNSET`) | Un deploy di `channels` senza `-c waPhoneNumberId`: rifarlo con il parametro (README, Manual steps §3) |
+| Foto registrate senza file su S3 | `waPhoneNumberId` ancora `UNSET`: valorizzarlo in config e fare il deploy di `channels` (parte 2) |

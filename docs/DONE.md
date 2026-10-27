@@ -8,10 +8,19 @@
 
 ## 27/10/2026
 
+### T-15 – Valori dei canali nella config per ambiente · FN-01, FN-32
+- **Fatto**: `sesDomain` e `waPhoneNumberId` opzionali in `EnvConfig` (`infra/config/environments.ts`), letti da `ChannelsStack` e `MessagingStack` con `channelValue()` (il context `-c` resta solo override). `dev.sesDomain = suppliagent.stonecutters.besharp.net`; `waPhoneNumberId` dichiarato ma non valorizzato in `dev` e `demo`; `demo.sesDomain` non valorizzato (risorse condivise, AGENTS §11).
+- **Scelte**: nessun valore inventato per `demo`; `ORDER_DOMAIN` del router e l'identity SES del Notifier usano lo stesso valore della config.
+- **Test**: `infra/test` (+ senza `-c` identity, configuration set, rule set e parametri SSM di `dev` restano; `-c` sovrascrive; `demo` senza valori → `UNSET` e nessuna risorsa SES; `ORDER_DOMAIN` e permessi del Notifier dalla config). `npm run check` verde (vitest 83 + 48, pytest 238, `cdk synth` con cdk-nag).
+- **Non fatto**: `cdk diff` contro l'account (serve conferma del profilo): da lanciare prima del prossimo deploy di `channels`, atteso senza differenze su `dev`. Resta da valorizzare `waPhoneNumberId` quando la WABA è collegata.
+- **Documenti**: tolta la regola "ripassare i `-c`" da README, INFRASTRUCTURE_DESIGN §11, WABA_SETUP.
+
 ### Uscita dalla sandbox SES · FN-01
 - **Fatto**: AWS ha portato l'account `471112860008` fuori dalla sandbox SES in `eu-west-1` (richiesta del 26/10). Quota: 50.000 invii/24 h, 14/s. Invio verso destinatari non verificati ora ammesso.
 - **Suppression list** di account già attiva su `BOUNCE` e `COMPLAINT` (default SES, nessuna modifica): SES blocca i reinvii a indirizzi con bounce permanente o complaint. Gli eventi bounce/complaint arrivano anche sul topic SNS `email-events` (nessun subscriber: per il cliente reale serve una Lambda che alimenti la lista).
 - **Verifica**: `sesv2 GetAccount` → `ProductionAccessEnabled: true`; `SendEmail` di prova da `ordine@suppliagent.stonecutters.besharp.net` (configuration set `suppliagent-dev-cs`) a un indirizzo non verificato, accettato da SES (invio diretto una tantum, non dal Notifier).
+
+---
 
 ## 26/10/2026
 
@@ -39,7 +48,7 @@
 - **Cosa**: `cdk deploy suppliagent-dev-channels --exclusively -c env=dev -c sesDomain=suppliagent.stonecutters.besharp.net` (identity SES, rule set di ricezione attivato, parametri SSM `sesDomain` e `sesFromAddress` = `ordine@…`). Nella zona Route 53 condivisa `stonecutters.besharp.net` aggiunti **solo** 5 record con `CREATE` (mai sovrascritture; da 20 a 25 record): 3 CNAME DKIM, `MX 10 inbound-smtp.eu-west-1.amazonaws.com` e `_dmarc` TXT `p=none` su `suppliagent.stonecutters.besharp.net`.
 - **Verifica**: DKIM `SUCCESS`, identity verificata; mail di prova da `test@` a `ordini@` del dominio (ammessa in sandbox) → oggetto in `inbound-mail/mail/…`, router `message stored` canale `EMAIL`.
 - **Uscita dalla sandbox SES** richiesta il 26/10 (`put-account-details`, transazionale, contatto `matteo.goretti@besharp.it`): poi approvata il 27/10; vale per tutto l'account in `eu-west-1`.
-- **Da ricordare**: ogni deploy che tocca `channels` deve ripassare `-c sesDomain=suppliagent.stonecutters.besharp.net` finché T-15 non porta il valore nella config.
+- Il valore di `sesDomain` è ora nella config per ambiente (T-15, 27/10).
 
 ### Deploy `dev` allineato a `main` (`a9225ec`: PR #13, #15, #16) · FN-32
 - **Cosa**: da `origin/main`, profilo `default` (account `471112860008`, `eu-west-1`): `cdk deploy suppliagent-dev-messaging` con le dipendenze (Foundation e Data solo nuovi export; **primo deploy di `channels`** (T-20): topic `wa-events`/`mail-inbound`/`email-events`, configuration set SES, parametri SSM `UNSET`; `agent`: codice di `tool-customers`; `messaging`: coda inbound + DLQ, allarme, `inbound-router`); `suppliagent-dev-console` (codice di `console_api`); SPA pubblicata con `scripts/deploy-console.sh dev` (senza `VITE_DEMO_*`).
