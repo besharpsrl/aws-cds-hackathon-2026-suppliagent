@@ -211,7 +211,8 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 **Indice prodotti (S3 Vectors)**
 - Per ogni SKU un documento testuale: nome, marca, categoria, formato/pezzatura, unità di vendita, **sinonimi e abbreviazioni** (es. "fdl" → fior di latte, "pelati" → pomodori pelati), descrizione breve.
 - Embedding **Titan Text Embeddings V2** (o Cohere Embed Multilingual), indice `products` con metadati filtrabili (categoria, attivo, unità).
-- Lambda `catalog-indexer` reindicizza su modifica del catalogo (S3 event / custom resource al seed).
+- Lambda `catalog-indexer` (T-06): evento `{"mode": "full"}` (scan di `Products`) o `{"skus": [...]}`; upsert degli SKU attivi (`PutVectors`, batch da 500), `DeleteVectors` per quelli inattivi o assenti dalla tabella. Va invocata dal seed/`reset.py` dopo il caricamento di `Products` (nessuno stream sulla tabella). Una run completa non vede gli SKU cancellati dalla tabella (niente sweep con `ListVectors`): si passano con `skus`.
+- Indice `products`: 1024 dimensioni, `float32`, cosine; chiave del vettore = `sku`; metadati `category`, `unit`, `active` (filtrabili) e `text` (documento, **non** filtrabile). Titan V2 con `normalize: true`.
 
 **Matching ibrido (`match_products`)**
 1. Candidati semantici da S3 Vectors (top-k 10).
@@ -269,7 +270,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 | `Contacts` | `contactId` | – | `customerId` | persone: ruolo, lingua, preferenze, consenso |
 | `ChannelIdentities` | `channelAddress` (`channel#address`) | – | `contactId` | phone/email → contatto; include agenti di commercio |
 | `SalesReps` | `repId` | – | – | agenti: portafoglio, zona |
-| `Products` | `sku` | – | `category` | catalogo, sinonimi, unità, multipli, attivo |
+| `Products` | `sku` | – | `category` | catalogo: `name`, `brand`, `category`, `format`, `unit`, `synonyms` (lista), `description`, multipli, `active` (booleano, assente = attivo) |
 | `PriceLists` | `priceListId` | `sku` | – | prezzi per listino |
 | `Promotions` | `promoId` | – | `sku` | promozioni con validità |
 | `Stock` | `sku` | – | – | disponibilità, prossimo arrivo, sostituti suggeriti |
@@ -298,7 +299,7 @@ Convenzioni implementate (T-03): attributi chiave tutti stringa; GSI chiamati `b
 | `console-site` | build React | – |
 | `access-logs` | log | 30 gg |
 
-**S3 Vectors**: vector bucket `suppliagent-vectors` con indici `products` e `product-sheets` (Knowledge Base).
+**S3 Vectors**: vector bucket `suppliagent-<env>-vectors-<account>` (SSE-KMS con la CMK; la key policy del `FoundationStack` autorizza `indexing.s3vectors.amazonaws.com`) con indici `products` (T-06) e `product-sheets` (Knowledge Base, T-06b).
 
 ### 5.8 Console (back office + chat agenti)
 

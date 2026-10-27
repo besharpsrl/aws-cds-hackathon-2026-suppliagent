@@ -8,6 +8,12 @@
 
 ## 27/10/2026
 
+### T-06 – Indice prodotti S3 Vectors e `catalog_indexer` · FN-07
+- **Fatto**: `CatalogStack` con vector bucket `suppliagent-<env>-vectors-<account>` (SSE-KMS, CMK del Foundation) e indice `products` (1024 float32, cosine, `text` non filtrabile); Lambda `catalog-indexer` (`services/catalog_indexer`, Titan Text Embeddings V2) con evento `{"mode": "full"}` o `{"skus": [...]}`; statement sulla key policy del `FoundationStack` per `indexing.s3vectors.amazonaws.com`. `CatalogStack` espone `vectorBucketName`, `productsIndexArn` e `indexer` per T-44.
+- **Scelte**: nessun trigger automatico (`Products` non ha stream): si invoca dal seed/`reset.py`; nessuna rimozione degli SKU cancellati nella run completa (ceiling documentato in §5.4); IAM sul solo ARN della tabella e dell'indice, senza `index/*`; schema di `Products` definito in §5.7 (`name`, `brand`, `category`, `format`, `unit`, `synonyms`, `description`, `active`).
+- **Test**: `services/catalog_indexer/tests` (documento, batch da 500, inattivi, `skus`, validazione evento; Bedrock e S3 Vectors in stub, `Products` in moto) e `infra/test/catalog-stack.test.ts` (bucket, indice, IAM minimo, key policy). `npm run check` verde (pytest 245, `cdk synth` con cdk-nag).
+- **Non fatto**: Knowledge Base schede tecniche → nuovo task **T-06b** (backlog). Deploy e invocazione reale non eseguiti: servono accesso a Titan V2 su Bedrock in `eu-west-1` e le righe di `Products` (resto di T-04, T-45); dopo il deploy: `aws lambda invoke --function-name suppliagent-dev-catalog-indexer --payload '{"mode":"full"}'`.
+
 ### T-15 – Valori dei canali nella config per ambiente · FN-01, FN-32
 - **Fatto**: `sesDomain` e `waPhoneNumberId` opzionali in `EnvConfig` (`infra/config/environments.ts`), letti da `ChannelsStack` e `MessagingStack` con `channelValue()` (il context `-c` resta solo override). `dev.sesDomain = suppliagent.stonecutters.besharp.net`; `waPhoneNumberId` dichiarato ma non valorizzato in `dev` e `demo`; `demo.sesDomain` non valorizzato (risorse condivise, AGENTS §11).
 - **Scelte**: nessun valore inventato per `demo`; `ORDER_DOMAIN` del router e l'identity SES del Notifier usano lo stesso valore della config.
