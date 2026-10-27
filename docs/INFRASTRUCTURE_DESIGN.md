@@ -445,7 +445,7 @@ Prerequisiti non automatizzabili:
 
 ## 12. Punti aperti
 
-> Qui restano solo i **rischi di sicurezza accettati** (scelte di design). Hardening da fare: task T-70; domande aperte e decisioni: `START_HERE.md` §4.3 e §6. Storico dei punti chiusi: [OLD/DONE.md](./OLD/DONE.md).
+> Qui restano solo i **rischi di sicurezza accettati** (scelte di design). Hardening non pianificato (il repo serve solo alla gara, `START_HERE.md` §4.4); decisioni: `START_HERE.md` §6. Storico dei punti chiusi: [OLD/DONE.md](./OLD/DONE.md).
 
 - [ ] **Rischi di sicurezza accettati** (revisione T-21/T-23, decisione del 26/10: si lasciano così fino alla demo):
   - i topic `wa-events` e `mail-inbound` accettano pubblicazioni da qualunque regola SES o WABA dell'account (condizione solo `aws:SourceAccount`, senza `aws:SourceArn`); il Router sceglie il parser dal contenuto, non dal `TopicArn`;
