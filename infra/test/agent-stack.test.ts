@@ -26,7 +26,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     const toolsOf = (name: string) =>
       targets.find((t) => t.Properties.Name === name)?.Properties.TargetConfiguration.Mcp.Lambda
         .ToolSchema.InlinePayload;
-    expect(targets).toHaveLength(2);
+    expect(targets).toHaveLength(3);
     expect(toolsOf('customers').map((t: { Name: string }) => t.Name)).toEqual([
       'identify_contact',
       'get_customer_profile',
@@ -34,7 +34,15 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     expect(toolsOf('order-intake').map((t: { Name: string }) => t.Name)).toEqual([
       'extract_order_lines',
     ]);
-    for (const tool of [...toolsOf('customers'), ...toolsOf('order-intake')]) {
+    expect(toolsOf('catalog').map((t: { Name: string }) => t.Name)).toEqual([
+      'match_products',
+      'search_catalog',
+    ]);
+    for (const tool of [
+      ...toolsOf('customers'),
+      ...toolsOf('order-intake'),
+      ...toolsOf('catalog'),
+    ]) {
       expect(tool.InputSchema.Properties.caller.Type).toBe('object'); // forwarded to the Lambda
     }
   });
@@ -176,5 +184,23 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
         expect.arrayContaining([expect.stringMatching(/RoleDefaultPolicy/)]),
       );
     }
+  });
+
+  it('gives the catalog tool read-only access to the product index, tables and the embedding model', () => {
+    const statements = statementsOf('CatalogTool');
+    const all = actions(statements);
+    expect(all).toEqual(expect.arrayContaining(['s3vectors:QueryVectors', 'bedrock:InvokeModel']));
+    // reads only: no table or index writes, no wildcard actions
+    expect(all.filter((a) => /^(dynamodb|s3vectors):.*(Put|Update|Delete|Scan)/.test(a))).toEqual(
+      [],
+    );
+    expect(all.some((a) => a.endsWith('*'))).toBe(false);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'suppliagent-dev-tool-catalog',
+      Handler: 'suppliagent_tool_catalog.handler.lambda_handler',
+      Environment: {
+        Variables: Match.objectLike({ INDEX_NAME: 'products', MATCH_AUTO_THRESHOLD: '0.85' }),
+      },
+    });
   });
 });

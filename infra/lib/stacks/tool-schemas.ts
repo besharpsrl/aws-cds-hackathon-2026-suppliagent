@@ -77,3 +77,39 @@ export const ORDER_INTAKE_TOOLS: agentcore.ToolDefinition[] = [
     },
   },
 ];
+
+/** Mirrors the pydantic inputs in services/tools/catalog (T-44). */
+export const CATALOG_TOOLS: agentcore.ToolDefinition[] = [
+  {
+    name: 'match_products',
+    description:
+      "Matches one raw order line to catalog products, using the customer's order history. Returns status MATCHED (order it), AMBIGUOUS (ask the customer, at most the 3 candidates given, the first is the one they buy most) or UNMATCHED (ask for a better description or a photo), with the candidates and their confidence. A discontinued candidate carries its official substitutes. Call once per line.",
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        rawText: {
+          type: STRING,
+          description: 'The line as written ("il solito mozzarella" is understood).',
+        },
+        customerId: { type: STRING, description: 'customerId of the venue the order is for.' },
+        rawUnit: { type: STRING, description: 'The unit as written (cs, ct, kg, pz, lt), if any.' },
+        caller: CALLER,
+      },
+      required: ['rawText', 'customerId', 'caller'],
+    },
+  },
+  {
+    name: 'search_catalog',
+    description:
+      'Searches the catalog by description (not by order line). Returns up to 5 active products with sku, name, brand, category, format and unit. Use it to answer "do you have X" and to suggest alternatives.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        query: { type: STRING, description: 'What the user is looking for.' },
+        category: { type: STRING, description: 'Optional product category to restrict to.' },
+        caller: CALLER,
+      },
+      required: ['query', 'caller'],
+    },
+  },
+];

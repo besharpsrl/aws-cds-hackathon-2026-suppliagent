@@ -24,10 +24,12 @@ CALLER = "caller"
 IDENTIFY = "customers___identify_contact"
 PROFILE = "customers___get_customer_profile"
 EXTRACT = "order-intake___extract_order_lines"
+MATCH = "catalog___match_products"
+SEARCH = "catalog___search_catalog"
 ROLE_TOOLS: dict[Role, frozenset[str]] = {
     "UNKNOWN": frozenset({IDENTIFY}),
-    "CUSTOMER_CONTACT": frozenset({IDENTIFY, PROFILE, EXTRACT}),
-    "SALES_REP": frozenset({IDENTIFY, PROFILE, EXTRACT}),
+    "CUSTOMER_CONTACT": frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH}),
+    "SALES_REP": frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH}),
 }
 ROLE_PROMPTS: dict[Role, str] = {
     "UNKNOWN": "customer.md",

@@ -74,7 +74,7 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 
 | # | ID | Task | FN | Fase | Dipende da | Owner | Stato |
 |---|---|---|---|---|---|---|---|
-| 5 | T-44 | Tool `catalog`: `match_products` (semantico + fuzzy + storico + unità), `search_catalog`, `ask_product_sheets` con citazioni | FN-07, 21 | P2 | T-06 | MG | ☐ |
+| 5 | T-44b | Tool `ask_product_sheets` (target Gateway `catalog`, stessa Lambda `tool-catalog` di T-44): risposte dalle schede tecniche con citazione, o dichiarazione esplicita che l'informazione non c'è; per tutti i ruoli, senza dati interni | FN-21 | P3 | T-06b, T-44 | MG | ☐ |
 | 6 | T-45 | Tool `inventory_pricing`: `check_availability` (sostituti), `get_prices`, `get_delivery_options` (cut-off, giorni serviti) | FN-09, 10 | P2 | T-04 | MG | ☐ |
 | 7 | T-46 | Tool `orders`: draft/update/confirm (idempotente)/cancel/status/issue + macchina a stati ordine e righe; `confirm_order` da pulsante solo se `interactiveReply.contextId` è il messaggio di conferma inviato per quell'ordine (l'id del pulsante si può falsificare) | FN-12, 16, 17, 18 | P2 | T-03, T-07 | MG | ☐ |
 | 8 | T-47 | Logica conversazionale ordine: chiarimenti raggruppati, sostituti, vincoli, riepilogo, conferma, promemoria e scadenza bozza | FN-08, 09, 12 | P2 | T-43…T-46, T-25 | MG | ☐ |

@@ -214,7 +214,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | 1 | T-40 + T-41 (versione ridotta) | `feat/FN-03-agent-runtime` | – | Must | ✅ PR #15 |
 | 2 | T-43 `order_intake` (lettura bigliettini) | `feat/FN-05-order-intake` | – | Must | ✅ PR #21 |
 | 3 | T-06 (**solo** indice prodotti S3 Vectors, niente Knowledge Base; il resto è T-06b, non assegnato) | `feat/FN-07-product-index` | – | Must | ✅ PR #25 |
-| 4 | T-44 `catalog` (matching) | | – | Must | ☐ |
+| 4 | T-44 `catalog` (`match_products`, `search_catalog`; `ask_product_sheets` è T-44b, non assegnato: attende T-06b) | `feat/FN-07-catalog-matching` | – | Must | ✅ PR #?? |
 | 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 (Piattaforma), ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 ✅ | Must | ☐ |
 | 6 | T-49 `handoff_to_human` | | T-22 ✅ (il controllo `mode = HUMAN` è già nel Router) | Should | ☐ |
 | 7 | T-54 (prima Guardrail e Memory) | | – | Should | ☐ |
