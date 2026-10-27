@@ -3,6 +3,7 @@ description: "SuppliAgent: controlla la Definition of Done del branch corrente p
 ---
 
 Rivedi il lavoro del branch corrente rispetto a `origin/main` (prima `git fetch origin`). Non modificare file.
+Serve per il lavoro fatto **senza** `/sa-next-task` (che fa già questi controlli): non lanciarlo dopo `/sa-next-task`.
 
 1. `git --no-pager diff origin/main...HEAD --stat`, lettura delle modifiche e di quelle non committate (`git status --short`).
 2. Trova l'issue del task (`Closes #n` nella PR: `GH_PROMPT_DISABLED=1 GH_PAGER=cat gh pr view --json body`, o `T-xx` nel branch) e le `FN-xx` coinvolte; rileggi i criteri di accettazione in `docs/03_FUNCTIONAL_SPEC.md` e la descrizione dell'issue.

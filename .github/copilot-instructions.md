@@ -13,7 +13,7 @@ Le regole di progetto sono in `AGENTS.md` (caricato in automatico). Qui solo ci�
 - Scrivi un piano breve nella PR in draft; non attendere conferma se l'issue ha criteri chiari. Chiedi solo per ambiguità che cambiano il risultato, scelte non documentate su più aree, rischi su dati, costi o risorse condivise.
 - Verifica con i comandi di `AGENTS.md` §6; delega ai subagent di progetto (`test-runner`, `code-reviewer`, `aws-docs-researcher`). `security-reviewer` solo nel task T-73, non a ogni task.
 - Se documenti (`START_HERE.md`, `docs/*`, `AGENTS.md`) sono indietro rispetto a git o AWS, segnalalo e correggili nello stesso lavoro.
-- Flusso Git: branch `feat/FN-xx-…`, push e PR aperta dall'agente; merge su `main` solo da parte dello sviluppatore. Mai push su `main`, mai force push.
+- Flusso Git: branch `feat/FN-xx-…`, push e PR aperta dall'agente; merge su `main` solo da parte dello sviluppatore (regola per le PR a basso rischio in `START_HERE.md` §1.2). Mai push su `main`, mai force push. Durante lo sviluppo solo controlli mirati; un solo `npm run check` completo prima di `gh pr ready`.
 - A fine task riporta sempre cosa deployare, con i comandi completi e gli script da lanciare prima e dopo (o "nessun deploy"): sezione *Deploy* del template PR.
 
 ## Terminale
