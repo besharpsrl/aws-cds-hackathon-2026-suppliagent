@@ -461,7 +461,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `contact.identified` | contactId, method | audit |
 | `order.draft_created` | orderId, source (photo/voice/text/email/reorder/rep) | KPI |
 | `order.lines_extracted` | conversationId (l'`orderId` non esiste ancora: arriva con T-45), source (photo/voice/text), lines, unreadable | qualità lettura |
-| `order.line_matched` | orderId, lineId, status, confidence | qualità matching |
+| `order.line_matched` | conversationId (l'`orderId`/`lineId` non esistono ancora: arrivano con T-45), status, confidence | qualità matching |
 | `order.line_corrected` | orderId, lineId, by, fromSku, toSku | accuratezza |
 | `order.suggestion` | orderId, sku, reason, accepted | upsell |
 | `order.status_changed` | orderId, from, to, ts | tempi |

@@ -51,6 +51,8 @@ export function buildApp(app: App, config: EnvConfig) {
       tables: data.tables,
       eventBus: foundation.eventBus,
       mediaBucket: foundation.mediaBucket,
+      vectorBucketName: catalog.vectorBucketName,
+      productsIndexArn: catalog.productsIndexArn,
     }),
     foundation,
     data,
