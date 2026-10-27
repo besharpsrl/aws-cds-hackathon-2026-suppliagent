@@ -70,7 +70,7 @@ Le cose che Claude Code non può fare: account, accessi, contatti con cliente e 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
 - [ ] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero dedicato, messaggio di prova → procedura passo passo in `docs/WABA_SETUP.md`
 - [ ] **Template WhatsApp** inviati a Meta: testi pronti (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`); appena la WABA è collegata a EUM Social si inviano con il task **T-29** (comando in 09 §1)
-- [ ] **SES**: dominio verificato (DNS), **richiesta di uscita dalla sandbox oggi**, record MX per la ricezione
+- [x] **SES**: dominio verificato (DNS), uscita dalla sandbox (27/10), record MX per la ricezione
 - [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
 
 **Cliente** → `docs/TODO_DOCS.md` §1
@@ -184,7 +184,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | # | Task | Attende | Priorità | Stato |
 |---|---|---|---|---|
 | 1 | Merge delle PR, deploy degli stack condivisi da `main` | – | – | continuo |
-| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ◐ 26/10: dominio `suppliagent.stonecutters.besharp.net` verificato, ricezione ok; uscita dalla sandbox richiesta (in revisione AWS). **Ogni deploy di `channels` ora deve passare `-c sesDomain=suppliagent.stonecutters.besharp.net`** |
+| 1b | **Email SES**: sottodominio, deploy di `channels` con `-c sesDomain`, record DNS (DKIM, MX), prova di ricezione, richiesta di uscita dalla sandbox | dominio e via libera sulla zona DNS (tu) | Must | ✅ 26/10: dominio `suppliagent.stonecutters.besharp.net` verificato, ricezione ok; **uscita dalla sandbox ottenuta il 27/10**. **Ogni deploy di `channels` ora deve passare `-c sesDomain=suppliagent.stonecutters.besharp.net`** |
 | 1c | **WhatsApp**: WABA collegata ad AWS (`docs/WABA_SETUP.md` parte 1), poi destinazione eventi, `-c waPhoneNumberId`, prova di ricezione | numero di telefono (tu) | Must | ☐ |
 | 2 | T-05 dataset eval (≥ 15 bigliettini, vocali, email, conversazioni attese) | foto e vocali (tu, §1.3) | Should | ☐ |
 | 3 | T-11 ACE, PNG del diagramma, testi submission (EN) | – (avviabile subito) | Should | ☐ |
