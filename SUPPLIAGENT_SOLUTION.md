@@ -1,7 +1,7 @@
 # SuppliAgent – Agente AI per gli ordini HoReCa via WhatsApp
 
 > Documento di progetto · AWS CDS Agentic AI Partner Hackathon · Team beSharp
-> Stato: **bozza v0.2** · Ultimo aggiornamento: 12/10/2026
+> Stato: **v0.3** · Ultimo aggiornamento: 27/10/2026
 > Caso d'uso di un **cliente reale di beSharp**: un distributore di prodotti alimentari per la ristorazione (di seguito "il Distributore")
 
 ---
@@ -142,30 +142,17 @@ Dettagli: [Infrastructure Design](./docs/INFRASTRUCTURE_DESIGN.md) · [Diagramma
 | Funzionalità | 10% | Serverless, scalabile; i giudici possono ordinare da soli via WhatsApp |
 | **Premio WhatsApp (Meta)** | $10k | Commercio conversazionale su WhatsApp: esattamente lo scenario che Meta promuove |
 
-## 7. Organizzazione del team (4+ persone)
-
-| Stream | Responsabilità |
-|---|---|
-| **AG – Agent & AgentCore** | Prompt, tool, matching, raccomandazioni, memoria, guardrail, valutazioni |
-| **CH – Canali CDS** | WhatsApp, SES in/out, SMS/RCS, template, eventi, PDF |
-| **CO – Console & Analytics** | Console back office, chat web agenti, KPI |
-| **IN – Infra, Dati & Materiali** | CDK, dati di prova (catalogo dal cliente), ERP mock, README, video, ACE |
-
-## 8. Rischi e mitigazioni
+## 7. Rischi e mitigazioni
 
 | Rischio | Mitigazione |
 |---|---|
 | Scrittura a mano poco leggibile | Nova Pro vision (Claude se abilitato sull'account) + domande di chiarimento + storico cliente; dataset di bigliettini veri per i test |
 | Dati del cliente riservati | Catalogo **anonimizzato o sintetico** derivato da quello reale; nessun dato personale reale |
-| Marchio del cliente nel video | Solo con autorizzazione scritta; altrimenti brand fittizio |
+| Marchio del cliente nel video | Brand fittizio e dati sintetici (decisione del 27/10) |
 | Integrazione ERP reale non fattibile in 2 settimane | ERP adapter con implementazione mock e interfaccia documentata |
-| Approvazione template WhatsApp | Invio a Meta entro il 14/10; fallback SMS/email |
-| Costi | Budget alert, modelli più economici in dev, scale-to-zero |
+| Approvazione template WhatsApp | Template inviati a Meta il 27/10; servono solo fuori dalla finestra di 24 h, che la demo non usa; fallback email |
+| Costi | Account condiviso: costi isolati con i tag `Project`/`Env`; modelli più economici in dev, scale-to-zero |
 
-## 9. Decisioni aperte
+## 8. Team, stato e decisioni
 
-- [x] Nome del progetto: **SuppliAgent** (consigliata una verifica rapida dei marchi)
-- [ ] Possiamo citare il cliente e usare il suo marchio? (submission, video, case study)
-- [ ] Catalogo: quanti prodotti, in che formato ce lo fornisce, schede tecniche disponibili?
-- [ ] Chi conferma l'ordine quando lo inserisce l'agente di commercio: lui o anche il ristoratore?
-- [ ] Mostriamo i prezzi al ristoratore o solo quantità e data di consegna?
+Team, stato del progetto, backlog, decisioni prese e aperte: [`START_HERE.md`](./START_HERE.md) (fonte unica).

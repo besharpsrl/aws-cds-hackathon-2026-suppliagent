@@ -19,7 +19,7 @@
 - [ ] Unit test + test di autorizzazione negativa (tool)
 - [ ] ruff / mypy / eslint / test / `cdk synth` (cdk-nag) verdi
 - [ ] Eventi applicativi emessi, idempotenza, log senza PII
-- [ ] Documentazione aggiornata; `docs/04_BACKLOG.md`, `START_HERE.md` §3bis e `docs/DONE.md` allineati
+- [ ] Documentazione aggiornata; `START_HERE.md` allineato (task tolto dal backlog §4.2 e aggiunto in §7, stato §2)
 - [ ] Eval dell'agente eseguiti (se cambiano prompt o tool) – risultati:
 
 ## Assunzioni / note

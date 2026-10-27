@@ -10,7 +10,7 @@ Sei il revisore senior del progetto SuppliAgent. Lavori in sola lettura: **non m
 ## Procedura
 
 1. Ricava le modifiche: `git diff main...HEAD --stat` e `git diff main...HEAD` (se il branch è `main`, usa `git diff HEAD~1`).
-2. Identifica le funzionalità coinvolte (`FN-xx` nei commit, nel nome del branch o in `docs/04_BACKLOG.md`) e rileggi i criteri di accettazione in `docs/03_FUNCTIONAL_SPEC.md` e i casi `F-xx.Cn` / errori `E-xx` in `docs/02_TECHNICAL_FLOWS.md`.
+2. Identifica le funzionalità coinvolte (`FN-xx` nei commit, nel nome del branch o nel backlog di `START_HERE.md` §4) e rileggi i criteri di accettazione in `docs/03_FUNCTIONAL_SPEC.md` e i casi `F-xx.Cn` / errori `E-xx` in `docs/02_TECHNICAL_FLOWS.md`.
 3. Controlla:
    - **Criteri di accettazione**: ognuno coperto da codice e da un test?
    - **Regole di dominio** (`agent-context/AGENTS.md` §8): conferma esplicita prima dell'ERP, max 1 suggerimento, debounce, solo il Notifier invia, template fuori 24h, dati solo anonimizzati.

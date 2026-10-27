@@ -288,10 +288,4 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 
 ## 9. Domande aperte
 
-- [ ] Catalogo del cliente: numero di SKU, formato, schede tecniche disponibili, possibilità di uso (anonimizzato) nella demo
-- [ ] Possiamo citare il cliente e usarne il marchio?
-- [ ] Mostrare i prezzi al ristoratore?
-- [ ] Conferma del ristoratore sugli ordini inseriti dall'agente di commercio?
-- [ ] Regole reali di consegna, cut-off, minimi e multipli
-- [ ] Baseline del processo attuale per la dashboard (ordini/giorno, tempo di inserimento, % errori)
-- [ ] Priorità Should/Could in base alla capacità del team e owner di ogni stream
+Domande aperte e decisioni prese sono in [`START_HERE.md`](../START_HERE.md) §6 (fonte unica).

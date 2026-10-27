@@ -10,7 +10,7 @@ Built by [beSharp](https://www.besharp.it) for the **AWS Communication Developer
 
 > Status: 🚧 in development – submission deadline 28 Oct 2026.
 >
-> **Team: start from [`START_HERE.md`](START_HERE.md)** (Italian) – single handoff document with tasks, Claude Code workflow and file map.
+> **Team: start from [`START_HERE.md`](START_HERE.md)** (Italian) – single source for project status, timeline, task backlog, manual actions and decisions.
 
 ---
 

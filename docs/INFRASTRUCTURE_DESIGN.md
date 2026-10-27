@@ -445,24 +445,11 @@ Prerequisiti non automatizzabili:
 
 ## 12. Punti aperti
 
-> Solo i punti ancora aperti; quelli chiusi sono in [DONE.md](./DONE.md).
+> Qui restano solo i **rischi di sicurezza accettati** (scelte di design). Hardening da fare: task T-70; domande aperte e decisioni: `START_HERE.md` §4.3 e §6. Storico dei punti chiusi: [OLD/DONE.md](./OLD/DONE.md).
 
-- [ ] Claude non invocabile sull'account `471112860008` (`Access to this model is not available for channel program accounts`, 25/10): per ora si usa **Amazon Nova** (§2). Se viene abilitato tramite il distributore/AWS, pianificare il passaggio (task dedicato con eval di confronto Nova vs Claude sui bigliettini)
 - [ ] **Rischi di sicurezza accettati** (revisione T-21/T-23, decisione del 26/10: si lasciano così fino alla demo):
   - i topic `wa-events` e `mail-inbound` accettano pubblicazioni da qualunque regola SES o WABA dell'account (condizione solo `aws:SourceAccount`, senza `aws:SourceArn`); il Router sceglie il parser dal contenuto, non dal `TopicArn`;
   - le grant KMS del Router (`kms:Decrypt`, `kms:GenerateDataKey` sulla CMK unica) non hanno la condizione `kms:ViaService`;
   - `social-messaging:GetWhatsAppMessageMedia` è concesso su `phone-number-id/*` dell'account, non sul solo numero della demo;
   - il `conversationId` dei mittenti sconosciuti è uno SHA-256 troncato dell'indirizzo (invertibile per forza bruta sui numeri di telefono) e compare nei log come correlation id; la correzione sarebbe un HMAC con segreto (Secrets Manager, costo fisso);
   - testo nascosto via CSS (`display:none`) nelle email HTML non rimosso.
-
-- [ ] Formato e dimensione del catalogo del cliente; schede tecniche disponibili
-- [ ] ERP del cliente (per documentare l'adapter futuro)
-- [ ] Soglie di matching tarate sui bigliettini reali
-- [ ] Hardening dell'agente dai rilievi di revisione di T-40/T-41 (PR #15), non bloccanti; da fare con T-54 o in P4:
-  - IAM Runtime: statement separato per i `foundation-model` con condizione `bedrock:InferenceProfileArn` (oggi Nova Pro è invocabile anche senza il profilo `eu.`, sempre in UE)
-  - IAM tool: togliere `kms:Encrypt` e aggiungere `kms:ViaService` (`dynamodb.<region>.amazonaws.com`, `events.<region>.amazonaws.com`)
-  - Il ruolo del Runtime legge l'intero bucket degli asset CDK (grant dell'L2 `fromCodeAsset`): restringere alla chiave dell'asset o accettare (oggi accettato e motivato in cdk-nag); test che gli unici statement `Resource: "*"` del Runtime siano X-Ray e metriche
-  - Prompt: racchiudere i messaggi utente tra delimitatori (`<user_message>`) e dire che il contesto vale solo nel system prompt
-  - `TurnRequest`: `max_length` su `messages`, `attachments`, `customerIds`; `Literal` per `channel` e tipo di allegato
-  - `scripts/invoke_agent.py`: limitare a `dev` o chiedere conferma esplicita per `demo` (scrive `Contacts`/`ChannelIdentities`, AGENTS §11)
-  - Limite ai cicli dell'agente per turno (E-12)

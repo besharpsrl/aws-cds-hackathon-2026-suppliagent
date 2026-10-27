@@ -3,7 +3,7 @@
 > Procedura operativa per collegare un numero WhatsApp a SuppliAgent in `dev` (account `471112860008`, region **eu-west-1**).
 > La parte 1 si fa a mano nel browser; le parti 2–4 le esegue un agente di sviluppo su richiesta.
 >
-> **Stato al 27/10 (`dev`)**: parti 1–3 completate. WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a` (Meta `2035382963843064`), numero **+39 345 246 0472** (`phone-number-id-79f96a1ea97d47aabfce52eb7b8cf23c`), eventi su `suppliagent-dev-wa-events`; testo e foto reali ricevuti, riconosciuti e passati all'agente. Da fare: tag sulla risorsa del numero (il WABA li ha), template a Meta (T-29).
+> **Stato al 27/10 (`dev`)**: parti 1–3 completate. WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a` (Meta `2035382963843064`), numero **+39 345 246 0472** (`phone-number-id-79f96a1ea97d47aabfce52eb7b8cf23c`), eventi su `suppliagent-dev-wa-events`; testo e foto reali ricevuti, riconosciuti e passati all'agente. Azioni e task ancora aperti (tag sul numero, approvazione template, invio reale): `START_HERE.md` §4–§5.
 >
 > Riferimenti: [AWS – Getting started](https://docs.aws.amazon.com/social-messaging/latest/userguide/getting-started-whatsapp.html) · [Meta – numeri di telefono](https://developers.facebook.com/docs/whatsapp/cloud-api/phone-numbers) · [README – Manual steps](../README.md#getting-started).
 
@@ -77,7 +77,7 @@ npx cdk deploy suppliagent-dev-channels --exclusively -c env=dev \
 aws ssm get-parameter --name /suppliagent/dev/waPhoneNumberId --query Parameter.Value --output text
 ```
 
-Il **Router**, il Dispatcher e il Notifier sono invece nello stack **`messaging`**: una correzione al codice del Router si porta su AWS con `npx cdk deploy suppliagent-dev-messaging --exclusively -c env=dev --profile default`. Dopo il deploy controllare che `CodeSize` della Lambda non sia di poche centinaia di byte (zip vuoto, vedi `docs/DONE.md` del 27/10).
+Il **Router**, il Dispatcher e il Notifier sono invece nello stack **`messaging`**: una correzione al codice del Router si porta su AWS con `npx cdk deploy suppliagent-dev-messaging --exclusively -c env=dev --profile default`. Dopo il deploy controllare che `CodeSize` della Lambda non sia di poche centinaia di byte (zip vuoto, vedi `START_HERE.md` §1.4).
 
 ---
 
@@ -113,10 +113,10 @@ Su `demo` il sandbox è già `false` (config).
 
 ## 4. Dopo il collegamento
 
-- **Template WhatsApp (T-29)**: ✅ gli 8 template (4 × IT/EN) sono stati inviati a Meta il 27/10 con il comando di [09 §1](./09_CONTENT_AND_TEMPLATES.md) (WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a`), tutti `PENDING`. Approvazione entro 24 h. **Da fare**: controllare lo stato (comando in 09 §1; resta aperto in T-29 nel backlog) e correggere/reinviare quelli rifiutati. Servono per scrivere fuori dalla finestra di 24 h (conferme, promemoria, riordino).
+- **Template WhatsApp (T-29)**: ✅ gli 8 template (4 × IT/EN) sono stati inviati a Meta il 27/10 con il comando di [09 §1](./09_CONTENT_AND_TEMPLATES.md) (WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a`), tutti `PENDING`. Approvazione entro 24 h: verifica e reinvio dei rifiutati sono il task T-29 (`START_HERE.md` §4). Servono per scrivere fuori dalla finestra di 24 h (conferme, promemoria, riordino).
 - **Pagina demo della console**: `AWS_PROFILE=default VITE_DEMO_WHATSAPP="+393452460472" VITE_DEMO_ORDER_EMAIL="ordini@suppliagent.stonecutters.besharp.net" scripts/deploy-console.sh dev` (i valori sono anche in `console/.env.example`; lo script li legge dalle variabili d'ambiente, non dai file `.env`).
-- **README per i giudici**: ✅ numero WhatsApp ed email d'ordine inseriti in "Try it (for judges)" il 27/10; restano da aggiungere URL console, credenziali `judge` e cliente di prova (T-10).
-- **Ambiente `demo`** (T-10): stesso account, quindi stesso WABA e stesso numero. Da decidere al deploy di `demo` se spostare la destinazione eventi sul topic `suppliagent-demo-wa-events` (da quel momento `dev` non riceve più) o tenere un solo ambiente collegato.
+- **README per i giudici**: ✅ numero WhatsApp ed email d'ordine inseriti in "Try it (for judges)" il 27/10; URL console, credenziali `judge` e cliente di prova sono nel task T-10 (`START_HERE.md` §4).
+- **Ambiente `demo`** (T-10): stesso account, quindi stesso WABA e stesso numero. Se si usa `demo` (decisione D-01 in `START_HERE.md` §6), la destinazione eventi va spostata sul topic `suppliagent-demo-wa-events` e da quel momento `dev` non riceve più.
 
 ---
 

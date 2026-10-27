@@ -15,7 +15,7 @@
 
 ## Attivazione
 
-I tool cercano questi file in posizioni precise (`CLAUDE.md` e `AGENTS.md` nella root, `.claude/settings.json`, `.claude/commands/`, `.claude/agents/`, `.mcp.json`, `.kiro/steering/`, `.github/`). Guida completa: `docs/HANDOFF_CLAUDE_CODE.md`. Dalla root di `SuppliAgent/`:
+I tool cercano questi file in posizioni precise (`CLAUDE.md` e `AGENTS.md` nella root, `.claude/settings.json`, `.claude/commands/`, `.claude/agents/`, `.mcp.json`, `.kiro/steering/`, `.github/`). Setup del team: `START_HERE.md` §1.1. Dalla root di `SuppliAgent/`:
 
 ```bash
 bash agent-context/install.sh
