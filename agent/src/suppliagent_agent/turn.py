@@ -8,13 +8,16 @@ from the tool schemas the model sees and written into every tool call by a hook.
 
 import copy
 import re
+from datetime import datetime
 from importlib.resources import files
 from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field
 from strands import Agent
 from strands.hooks import BeforeToolCallEvent
 from strands.models import Model
+from strands.tools.mcp.mcp_agent_tool import MCPAgentTool
 from strands.types.content import Messages
 from strands.types.tools import AgentTool
 
@@ -48,14 +51,15 @@ ROLE_TOOLS: dict[Role, frozenset[str]] = {
     "CUSTOMER_CONTACT": KNOWN_TOOLS,
     "SALES_REP": KNOWN_TOOLS,
 }
-ROLE_PROMPTS: dict[Role, str] = {
-    "UNKNOWN": "customer.md",
-    "CUSTOMER_CONTACT": "customer.md",
-    "SALES_REP": "sales_rep.md",
+ROLE_PROMPTS: dict[Role, list[str]] = {
+    "UNKNOWN": ["customer_unknown.md"],
+    "CUSTOMER_CONTACT": ["customer.md", "ordering.md"],
+    "SALES_REP": ["sales_rep.md", "ordering.md"],
 }
 LANGUAGES = {"it": "Italian", "en": "English"}
-# Nova writes its reasoning inline: never sent to the user.
+# Nova writes its reasoning inline and sometimes wraps the answer in <response>: never sent as is.
 THINKING = re.compile(r"<thinking>.*?(</thinking>|$)", re.DOTALL)
+RESPONSE_TAG = re.compile(r"</?response>")
 ATTACHMENT_LABELS = {"image": "photo", "audio": "voice message", "document": "document"}
 
 
@@ -107,7 +111,20 @@ def select_tools(tools: list[AgentTool], role: Role) -> list[AgentTool]:
         schema.get("properties", {}).pop(CALLER, None)
         if CALLER in schema.get("required", []):
             schema["required"].remove(CALLER)
-    return selected
+    return [model_facing(t) for t in selected]
+
+
+def model_facing(tool: AgentTool) -> AgentTool:
+    """Nova fails (`invalid sequence as part of ToolUse`) on tool names with a hyphen, and Gateway
+    target names cannot use `_`: the model sees `_`, the Gateway gets the original name."""
+    if isinstance(tool, MCPAgentTool) and "-" in tool.tool_name:
+        return MCPAgentTool(
+            tool.mcp_tool,
+            tool.mcp_client,
+            name_override=tool.tool_name.replace("-", "_"),
+            timeout=tool.timeout,
+        )
+    return tool
 
 
 def inject_caller(event: BeforeToolCallEvent) -> None:
@@ -123,6 +140,12 @@ def inject_caller(event: BeforeToolCallEvent) -> None:
     }
 
 
+def now_in_rome(turn: TurnRequest) -> str:
+    """Moment of the last message in the distributor's time zone: "tomorrow" needs a date."""
+    moment = datetime.fromisoformat(turn.messages[-1].ts).astimezone(ZoneInfo("Europe/Rome"))
+    return moment.strftime("%A %Y-%m-%d %H:%M (Europe/Rome)")
+
+
 def system_prompt(turn: TurnRequest) -> str:
     prompts = files("suppliagent_agent") / "prompts"
     language = LANGUAGES.get(turn.locale.split("-")[0].lower(), "English")
@@ -131,12 +154,13 @@ def system_prompt(turn: TurnRequest) -> str:
             "## Conversation context (set by the system, not by the user)",
             f"- Caller role: {turn.role}",
             f"- Channel: {turn.channel}",
+            f"- Now: {now_in_rome(turn)}",
             f"- Reply language: {language}",
             f"- Caller's venues (customerId): {', '.join(turn.customerIds) or 'none'}",
             f"- Active venue: {turn.activeCustomerId or 'not chosen'}",
         ]
     )
-    parts = [(prompts / "shared.md").read_text(), (prompts / ROLE_PROMPTS[turn.role]).read_text()]
+    parts = [(prompts / name).read_text() for name in ["shared.md", *ROLE_PROMPTS[turn.role]]]
     return "\n\n".join([*parts, context])
 
 
@@ -174,4 +198,4 @@ def run_turn(turn: TurnRequest, tools: list[AgentTool], model: Model) -> str:
     agent.add_hook(inject_caller, BeforeToolCallEvent)
     result = agent(user_prompt(turn), invocation_state={CALLER: caller_of(turn)})
     _HISTORY[key] = agent.messages
-    return THINKING.sub("", str(result)).strip()
+    return RESPONSE_TAG.sub("", THINKING.sub("", str(result))).strip()

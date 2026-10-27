@@ -62,15 +62,15 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
     assert [t.tool_name for t in customer] == [
         "customers___identify_contact",
         "customers___get_customer_profile",
-        "order-intake___extract_order_lines",
+        "order_intake___extract_order_lines",
         "catalog___match_products",
         "catalog___search_catalog",
-        "inventory-pricing___check_availability",
+        "inventory_pricing___check_availability",
         "orders___confirm_order",
     ]
     assert "orders___confirm_order" not in {t.tool_name for t in unknown}
     rep = select_tools(tools, "SALES_REP")
-    assert {"order-intake___extract_order_lines", "orders___confirm_order"} <= {
+    assert {"order_intake___extract_order_lines", "orders___confirm_order"} <= {
         t.tool_name for t in rep
     }
     for t in customer:
@@ -173,6 +173,11 @@ def test_model_thinking_is_never_sent_to_the_user() -> None:
     assert run_turn(TurnRequest.model_validate(TURN), [], model) == "Buongiorno!"
 
 
+def test_the_response_wrapper_of_the_model_is_never_sent_to_the_user() -> None:
+    model = ScriptedModel([], "<response>Buongiorno!\nQuale sede?</response>")
+    assert run_turn(TurnRequest.model_validate(TURN), [], model) == "Buongiorno!\nQuale sede?"
+
+
 def test_history_is_kept_per_conversation() -> None:
     model = ScriptedModel([], "Ciao!")
     run_turn(TurnRequest.model_validate(TURN), [], model)
@@ -197,11 +202,27 @@ def test_a_failed_turn_leaves_the_history_unchanged() -> None:
     assert json.dumps(turn_module._HISTORY[KEY]) == before
 
 
+def test_the_model_sees_no_hyphen_in_tool_names_but_the_gateway_gets_the_original() -> None:
+    """Nova fails with "invalid sequence as part of ToolUse" on a tool name with `-`."""
+    [tool_] = select_tools([mcp_tool("inventory-pricing___get_prices")], "CUSTOMER_CONTACT")
+    assert tool_.tool_name == "inventory_pricing___get_prices"
+    assert tool_.tool_spec["name"] == "inventory_pricing___get_prices"
+    assert isinstance(tool_, MCPAgentTool)
+    assert (
+        tool_.mcp_tool.name == "inventory-pricing___get_prices"
+    )  # what the Gateway is called with
+
+
 @pytest.mark.parametrize(
     ("role", "locale", "expected", "absent"),
     [
-        ("UNKNOWN", "it-IT", ["Reply language: Italian", "identify first"], []),
-        ("CUSTOMER_CONTACT", "en-GB", ["Reply language: English"], []),
+        ("UNKNOWN", "it-IT", ["Reply language: Italian", "identify first"], ["Known customer"]),
+        (
+            "CUSTOMER_CONTACT",
+            "en-GB",
+            ["Reply language: English", "already registered"],
+            ["identify first"],
+        ),
         ("SALES_REP", "it-IT", ["Sales rep (copilot)"], ["identify first"]),
     ],
 )
@@ -214,6 +235,18 @@ def test_system_prompt_by_role_and_language(
         assert text in prompt
     for text in absent:
         assert text not in prompt
+
+
+def test_system_prompt_gives_the_current_date_in_rome_time() -> None:
+    prompt = system_prompt(TurnRequest.model_validate(TURN))  # 08:00Z, Rome is on CET (UTC+1)
+    assert "- Now: Monday 2026-10-26 09:00 (Europe/Rome)" in prompt
+
+
+def test_sales_rep_gets_the_ordering_rules_and_unknown_does_not() -> None:
+    rep = system_prompt(TurnRequest.model_validate({**TURN, "role": "SALES_REP"}))
+    assert "Placing the order" in rep and "## Matching to the catalog" in rep
+    unknown = system_prompt(TurnRequest.model_validate({**TURN, "role": "UNKNOWN"}))
+    assert "## Placing the order" not in unknown
 
 
 def test_user_prompt_joins_the_burst_and_labels_attachments() -> None:

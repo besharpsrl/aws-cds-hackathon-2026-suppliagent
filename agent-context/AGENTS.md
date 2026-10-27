@@ -82,7 +82,7 @@ SuppliAgent/
 ├── agent/                       # Strands agent (Python) per AgentCore Runtime
 │   ├── main.py                  # entrypoint dello zip (code deploy, niente container)
 │   ├── src/suppliagent_agent/   # app AgentCore, turno, tool per ruolo, SigV4 verso il Gateway
-│   │   └── prompts/             # system prompt: customer.md, sales_rep.md, shared.md
+│   │   └── prompts/             # system prompt: shared.md, customer*.md, sales_rep.md, ordering.md
 │   └── evals/                   # dataset (bigliettini, vocali, conversazioni) + runner
 ├── services/                    # Lambda (Python 3.12) – una cartella per funzione
 │   ├── inbound_router/  turn_dispatcher/  notifier/   # media → S3 dentro inbound_router

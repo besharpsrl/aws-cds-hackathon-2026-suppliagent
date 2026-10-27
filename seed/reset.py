@@ -32,7 +32,7 @@ def clear(dynamodb: Any, env: str) -> None:
                 TableName=table.name, ProjectionExpression=", ".join(key)
             ):
                 for item in page["Items"]:
-                    batch.delete_item(Key={k: item[k]["S"] for k in key})
+                    batch.delete_item(Key={k: item[k] for k in key})
 
 
 def main() -> None:

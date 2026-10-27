@@ -134,6 +134,24 @@ def dynamodb() -> Any:
         yield resource
 
 
+def test_reset_clears_orders_that_exist(dynamodb: Any) -> None:
+    for table, key in [("orders", "orderId"), ("deliveries", "orderId"), ("issues", "issueId")]:
+        dynamodb.create_table(
+            TableName=f"suppliagent-dev-{table}",
+            KeySchema=[{"AttributeName": key, "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": key, "AttributeType": "S"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        dynamodb.Table(f"suppliagent-dev-{table}").put_item(Item={key: f"{table}_1"})
+    spec = importlib.util.spec_from_file_location("reset_script", SEED_PY.with_name("reset.py"))
+    assert spec and spec.loader
+    reset = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(reset)
+    reset.clear(dynamodb, "dev")
+    for table in ("orders", "deliveries", "issues"):
+        assert dynamodb.Table(f"suppliagent-dev-{table}").scan()["Count"] == 0
+
+
 def test_write_loads_every_item(dynamodb: Any) -> None:
     seed.write(dynamodb, "dev", DATA)
     seed.write(dynamodb, "dev", DATA)  # idempotent: same items, no duplicates
