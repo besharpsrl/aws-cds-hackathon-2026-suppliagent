@@ -34,8 +34,11 @@ export class CatalogStack extends Stack {
     const { config, key, productsTable } = props;
     const prefix = `suppliagent-${config.envName}`;
 
+    // The name, not `bucket.ref`: for S3 Vectors the Ref is the bucket ARN, and the S3 Vectors API
+    // calls of the indexer and of the catalog tool take the name.
+    const vectorBucketName = `${prefix}-vectors-${this.account}`;
     const bucket = new s3vectors.CfnVectorBucket(this, 'VectorBucket', {
-      vectorBucketName: `${prefix}-vectors-${this.account}`,
+      vectorBucketName,
       encryptionConfiguration: { sseType: 'aws:kms', kmsKeyArn: key.keyArn },
     });
     const index = new s3vectors.CfnIndex(this, 'ProductsIndex', {
@@ -47,7 +50,7 @@ export class CatalogStack extends Stack {
       // The document text is only returned with the hit, never filtered on (2 KB filterable limit).
       metadataConfiguration: { nonFilterableMetadataKeys: ['text'] },
     });
-    this.vectorBucketName = bucket.ref;
+    this.vectorBucketName = vectorBucketName;
     this.productsIndexArn = index.attrIndexArn;
 
     const indexer = new PythonLambda(this, 'CatalogIndexer', {

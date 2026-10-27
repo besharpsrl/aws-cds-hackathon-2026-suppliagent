@@ -64,4 +64,14 @@ describe('CatalogStack (T-06, FN-07)', () => {
       },
     });
   });
+
+  it('passes the bucket name, not its ARN, to the indexer and exposes it to the other stacks', () => {
+    const [indexer] = Object.values(template.findResources('AWS::Lambda::Function')).filter(
+      (f) => f.Properties.FunctionName === 'suppliagent-dev-catalog-indexer',
+    );
+    const name = JSON.stringify(indexer.Properties.Environment.Variables.VECTOR_BUCKET_NAME);
+    expect(name).toContain('suppliagent-dev-vectors-');
+    expect(name).not.toContain('Fn::GetAtt');
+    expect(name).not.toContain('"Ref":"VectorBucket');
+  });
 });
