@@ -13,7 +13,7 @@ import type { EnvConfig } from '../../config/environments.js';
 import { PythonLambda } from '../constructs/python-lambda.js';
 import { REPO_ROOT, uvBundling } from '../constructs/uv-bundling.js';
 import type { TableName } from './data-stack.js';
-import { CUSTOMERS_TOOLS, ORDER_INTAKE_TOOLS } from './tool-schemas.js';
+import { CATALOG_TOOLS, CUSTOMERS_TOOLS, ORDER_INTAKE_TOOLS } from './tool-schemas.js';
 
 export interface AgentStackProps extends StackProps {
   readonly config: EnvConfig;
@@ -21,6 +21,9 @@ export interface AgentStackProps extends StackProps {
   readonly tables: Readonly<Record<TableName, dynamodb.TableV2>>;
   readonly eventBus: events.IEventBus;
   readonly mediaBucket: s3.IBucket;
+  /** S3 Vectors bucket name and `products` index ARN from the CatalogStack (T-06). */
+  readonly vectorBucketName: string;
+  readonly productsIndexArn: string;
 }
 
 // Provided by the Lambda runtime and the Powertools layer: not bundled.
@@ -28,7 +31,7 @@ const LAMBDA_PLATFORM_PACKAGES = ['boto3', 'botocore', 's3transfer', 'aws-lambda
 
 /**
  * Agent runtime (T-40, reduced): Gateway (MCP, IAM inbound auth) with the `customers` and
- * `order_intake` tool targets and an AgentCore Runtime running the Strands agent from a zip (no container). Memory, Guardrail,
+ * `order_intake` and `catalog` tool targets and an AgentCore Runtime running the Strands agent from a zip (no container). Memory, Guardrail,
  * the other tool targets and observability extras: T-54.
  */
 export class AgentStack extends Stack {
@@ -36,7 +39,8 @@ export class AgentStack extends Stack {
 
   constructor(scope: Construct, id: string, props: AgentStackProps) {
     super(scope, id, props);
-    const { config, key, tables, eventBus, mediaBucket } = props;
+    const { config, key, tables, eventBus, mediaBucket, vectorBucketName, productsIndexArn } =
+      props;
     const prefix = `suppliagent-${config.envName}`;
 
     const foundationModel = config.model.profileId.replace(/^eu\./, '');
@@ -144,6 +148,51 @@ export class AgentStack extends Stack {
         'Job names are derived from the media key (ordint-<hash>), unknown at deploy time; this account and region only.',
     });
 
+    const catalog = new PythonLambda(this, 'CatalogTool', {
+      config,
+      key,
+      name: 'tool-catalog',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/tools/catalog'),
+        uvBundling({
+          package: 'suppliagent-tool-catalog',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/tools/catalog/src/suppliagent_tool_catalog': 'suppliagent_tool_catalog',
+          },
+          omit: LAMBDA_PLATFORM_PACKAGES,
+        }),
+      ),
+      handler: 'suppliagent_tool_catalog.handler.lambda_handler',
+      environment: {
+        TABLE_PREFIX: `${prefix}-`,
+        EVENT_BUS_NAME: eventBus.eventBusName,
+        VECTOR_BUCKET_NAME: vectorBucketName,
+        INDEX_NAME: 'products',
+        MATCH_AUTO_THRESHOLD: config.parameters.matchAutoThreshold,
+        MATCH_ASK_THRESHOLD: config.parameters.matchAskThreshold,
+      },
+    });
+    const catalogTool = catalog.function;
+    const allowCatalog = (actions: string[], ...resources: string[]) =>
+      catalogTool.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+    const customersTable = tables.Customers.tableArn;
+    allowCatalog(
+      ['dynamodb:GetItem', 'dynamodb:Query'],
+      customersTable,
+      `${customersTable}/index/by-repId`,
+    );
+    allowCatalog(['dynamodb:GetItem'], tables.Contacts.tableArn);
+    allowCatalog(['dynamodb:Query'], tables.OrderHistory.tableArn);
+    allowCatalog(['dynamodb:GetItem'], tables.Products.tableArn, tables.Stock.tableArn);
+    allowCatalog(['s3vectors:QueryVectors', 's3vectors:GetVectors'], productsIndexArn);
+    allowCatalog(
+      ['bedrock:InvokeModel'],
+      `arn:aws:bedrock:${this.region}::foundation-model/amazon.titan-embed-text-v2:0`,
+    );
+    key.grant(catalogTool, 'kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey');
+    eventBus.grantPutEventsTo(catalogTool);
+
     const gateway = new agentcore.Gateway(this, 'Gateway', {
       gatewayName: `${prefix}-gateway`,
       description: 'SuppliAgent tools (MCP); invoked only by the agent runtime (SigV4).',
@@ -169,6 +218,12 @@ export class AgentStack extends Stack {
       description: 'Order lines from photos, voice notes and text (T-43).',
       lambdaFunction: orderIntakeTool,
       toolSchema: agentcore.ToolSchema.fromInline(ORDER_INTAKE_TOOLS),
+    });
+    gateway.addLambdaTarget('CatalogTarget', {
+      gatewayTargetName: 'catalog',
+      description: 'Product matching with order history and catalog search (T-44).',
+      lambdaFunction: catalogTool,
+      toolSchema: agentcore.ToolSchema.fromInline(CATALOG_TOOLS),
     });
     const gatewayUrl = gateway.gatewayUrl;
     if (!gatewayUrl) throw new Error('Gateway L2 returned no gatewayUrl');
@@ -229,6 +284,8 @@ export class AgentStack extends Stack {
       'Resource::<CustomersToolFunction4E53AA48.Arn>:*':
         'lambda.grantInvoke covers the versions/aliases of the single tool function.',
       'Resource::<OrderIntakeToolFunctionCF96ADCC.Arn>:*':
+        'lambda.grantInvoke covers the versions/aliases of the single tool function.',
+      'Resource::<CatalogToolFunctionA3D81DAD.Arn>:*':
         'lambda.grantInvoke covers the versions/aliases of the single tool function.',
     });
     acknowledgeWildcards(this.runtime, {

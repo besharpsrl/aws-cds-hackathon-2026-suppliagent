@@ -11,6 +11,7 @@ members = [
     "suppliagent-inbound-router",
     "suppliagent-notifier",
     "suppliagent-shared",
+    "suppliagent-tool-catalog",
     "suppliagent-tool-customers",
     "suppliagent-tool-order-intake",
     "suppliagent-turn-dispatcher",
@@ -1082,6 +1083,7 @@ dependencies = [
     { name = "suppliagent-inbound-router" },
     { name = "suppliagent-notifier" },
     { name = "suppliagent-shared" },
+    { name = "suppliagent-tool-catalog" },
     { name = "suppliagent-tool-customers" },
     { name = "suppliagent-tool-order-intake" },
     { name = "suppliagent-turn-dispatcher" },
@@ -1104,6 +1106,7 @@ requires-dist = [
     { name = "suppliagent-inbound-router", editable = "services/inbound_router" },
     { name = "suppliagent-notifier", editable = "services/notifier" },
     { name = "suppliagent-shared", editable = "services/shared" },
+    { name = "suppliagent-tool-catalog", editable = "services/tools/catalog" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
     { name = "suppliagent-tool-order-intake", editable = "services/tools/order_intake" },
     { name = "suppliagent-turn-dispatcher", editable = "services/turn_dispatcher" },
@@ -1203,6 +1206,17 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.43.118" },
     { name = "pydantic", specifier = ">=2.14.1" },
 ]
+
+[[package]]
+name = "suppliagent-tool-catalog"
+version = "0.1.0"
+source = { editable = "services/tools/catalog" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
 name = "suppliagent-tool-customers"

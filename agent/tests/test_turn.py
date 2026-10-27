@@ -48,6 +48,8 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         mcp_tool("customers___identify_contact"),
         mcp_tool("customers___get_customer_profile"),
         mcp_tool("order-intake___extract_order_lines"),
+        mcp_tool("catalog___match_products"),
+        mcp_tool("catalog___search_catalog"),
         mcp_tool("other___identify_contact"),  # same short name on another target: not allowed
         mcp_tool("x_amz_bedrock_agentcore_search"),
     ]
@@ -58,9 +60,13 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         "customers___identify_contact",
         "customers___get_customer_profile",
         "order-intake___extract_order_lines",
+        "catalog___match_products",
+        "catalog___search_catalog",
     ]
     rep = select_tools(tools, "SALES_REP")
-    assert "order-intake___extract_order_lines" in [t.tool_name for t in rep]
+    assert {"order-intake___extract_order_lines", "catalog___match_products"} <= {
+        t.tool_name for t in rep
+    }
     for t in customer:
         schema = t.tool_spec["inputSchema"]["json"]
         assert "caller" not in schema["properties"]

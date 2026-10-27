@@ -180,9 +180,9 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 | `identify_contact` | `tool-customers` | tutti | Contacts, Customers |
 | `get_customer_profile` | `tool-customers` | tutti (agente: solo portafoglio) | Customers, CustomerInsights |
 | `extract_order_lines` | `tool-order-intake` (target Gateway `order-intake`: i nomi dei target non ammettono `_`) | tutti i ruoli noti (non `UNKNOWN`) | S3 `media/<contactId\|conversationId>/…` del solo chiamante → Nova Pro vision / testo; vocali via Transcribe (job `ordint-<hash>`, trascrizione in `transcripts/` dello stesso bucket, stesso ciclo di vita di 90 gg) |
-| `match_products` | `tool-catalog` | tutti | S3 Vectors + Products + storico ordini |
-| `search_catalog` | `tool-catalog` | tutti | S3 Vectors + Products |
-| `ask_product_sheets` | `tool-catalog` | tutti | Bedrock Knowledge Base (schede tecniche) |
+| `match_products` | `tool-catalog` (target Gateway `catalog`) | tutti i ruoli noti, solo clienti del chiamante | S3 Vectors + Products + OrderHistory (+ Stock per i sostituti) |
+| `search_catalog` | `tool-catalog` | tutti i ruoli noti | S3 Vectors + Products |
+| `ask_product_sheets` (T-44b) | `tool-catalog` | tutti | Bedrock Knowledge Base (schede tecniche, dopo T-06b) |
 | `check_availability` | `tool-inventory` | tutti | Stock |
 | `get_prices` | `tool-pricing` | tutti (solo listino del cliente) | PriceLists, Promotions |
 | `get_delivery_options` | `tool-orders` | tutti | DeliveryCalendar |
