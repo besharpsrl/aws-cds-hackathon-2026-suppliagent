@@ -11,10 +11,11 @@ const channels = (extraContext: Record<string, string> = {}, env = 'dev') => {
   return { app, stacks, template: Template.fromStack(stacks.channels) };
 };
 
-const ssm = (template: Template, name: string) =>
+const ssmIn = (template: Template, env: string, name: string) =>
   Object.values(template.findResources('AWS::SSM::Parameter')).find(
-    (r) => r.Properties.Name === `/suppliagent/dev/${name}`,
+    (r) => r.Properties.Name === `/suppliagent/${env}/${name}`,
   )?.Properties.Value;
+const ssm = (template: Template, name: string) => ssmIn(template, 'dev', name);
 
 describe('ChannelsStack (T-20, FN-01)', () => {
   it('creates encrypted SNS topics for WhatsApp events, inbound mail and email events', () => {
@@ -58,14 +59,31 @@ describe('ChannelsStack (T-20, FN-01)', () => {
     });
   });
 
-  it('without sesDomain creates no identity nor receipt rules, and publishes UNSET parameters', () => {
-    const { template } = channels();
+  it('without sesDomain (demo) creates no identity nor receipt rules, and publishes UNSET parameters', () => {
+    const { template } = channels({}, 'demo');
     template.resourceCountIs('AWS::SES::EmailIdentity', 0);
     template.resourceCountIs('AWS::SES::ReceiptRuleSet', 0);
     template.resourceCountIs('AWS::SES::ReceiptRule', 0);
     for (const name of ['waPhoneNumberId', 'sesDomain', 'sesFromAddress']) {
-      expect(ssm(template, name)).toBe('UNSET');
+      expect(ssmIn(template, 'demo', name)).toBe('UNSET');
     }
+  });
+
+  describe('values from the environment config, without -c (T-15)', () => {
+    const { template } = channels();
+
+    it('keeps SES identity, receipt rules and SSM parameters on dev', () => {
+      template.resourceCountIs('AWS::SES::EmailIdentity', 1);
+      template.resourceCountIs('AWS::SES::ReceiptRuleSet', 1);
+      template.resourceCountIs('AWS::SES::ReceiptRule', 1);
+      expect(ssm(template, 'sesDomain')).toBe('suppliagent.stonecutters.besharp.net');
+      expect(ssm(template, 'sesFromAddress')).toBe('ordine@suppliagent.stonecutters.besharp.net');
+    });
+
+    it('lets -c override the config', () => {
+      const { template: overridden } = channels({ sesDomain: 'ordini.example.com' });
+      expect(ssm(overridden, 'sesDomain')).toBe('ordini.example.com');
+    });
   });
 
   it('publishes the WhatsApp phone number id from context, with no code change', () => {

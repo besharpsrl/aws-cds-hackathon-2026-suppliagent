@@ -13,7 +13,7 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
-import type { EnvConfig } from '../../config/environments.js';
+import { channelValue, type EnvConfig } from '../../config/environments.js';
 import { PythonLambda } from '../constructs/python-lambda.js';
 import { REPO_ROOT, uvBundling } from '../constructs/uv-bundling.js';
 
@@ -113,8 +113,8 @@ export class MessagingStack extends Stack {
         INBOUND_MAIL_BUCKET: props.inboundMailBucket.bucketName,
         MEDIA_BUCKET: props.mediaBucket.bucketName,
         WA_PHONE_NUMBER_ID_PARAM: phoneNumberParam,
-        // `ordine+<orderId>@` is trusted only on our own domain (same context as ChannelsStack).
-        ORDER_DOMAIN: (this.node.tryGetContext('sesDomain') as string | undefined) ?? '',
+        // `ordine+<orderId>@` is trusted only on our own domain (same value as ChannelsStack).
+        ORDER_DOMAIN: channelValue(this.node, props.config, 'sesDomain') ?? '',
         TURN_FLUSH_QUEUE_URL: this.turnFlushQueue.queueUrl,
         NOTIFIER_FUNCTION_NAME: notifierName,
         ...debounce,
@@ -229,7 +229,7 @@ export class MessagingStack extends Stack {
     const param = (n: string) => `/suppliagent/${config.envName}/${n}`;
     const paramArn = (parameter: string) =>
       this.formatArn({ service: 'ssm', resource: 'parameter', resourceName: parameter.slice(1) });
-    const sesDomain = (this.node.tryGetContext('sesDomain') as string | undefined) ?? '*';
+    const sesDomain = channelValue(this.node, config, 'sesDomain') ?? '*';
     const notifier = new PythonLambda(this, 'Notifier', {
       config,
       key,
@@ -303,7 +303,7 @@ export class MessagingStack extends Stack {
     Validations.of(notifier).acknowledge({
       id: `AwsSolutions-IAM5[Resource::arn:aws:ses:${config.region}:<AWS::AccountId>:identity/*]`,
       reason:
-        'Without -c sesDomain (CI synth) the identity is not known; deployed with the domain it is exact.',
+        'Without a configured sesDomain (demo, until its domain exists) the identity is not known; with the domain it is exact.',
     });
     Validations.of(notifier).acknowledge({
       id: `AwsSolutions-IAM5[Resource::arn:aws:social-messaging:${config.region}:<AWS::AccountId>:phone-number-id/*]`,

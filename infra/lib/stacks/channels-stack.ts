@@ -7,7 +7,7 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import type { Construct } from 'constructs';
-import type { EnvConfig } from '../../config/environments.js';
+import { channelValue, type EnvConfig } from '../../config/environments.js';
 
 export interface ChannelsStackProps extends StackProps {
   readonly config: EnvConfig;
@@ -17,9 +17,9 @@ export interface ChannelsStackProps extends StackProps {
 
 /**
  * Channels (T-20, FN-01): SNS topics fed by AWS End User Messaging Social (WhatsApp) and SES, SES
- * configuration set, and, when `-c sesDomain=<domain>` is given, the SES identity and inbound rule set.
+ * configuration set, and, when the environment has a `sesDomain`, the SES identity and inbound rule set.
  * SMS/RCS (EUM SMS v2) arrive with T-27. Identifiers that only exist after manual steps (WhatsApp phone
- * number, domain) come from CDK context and are published to SSM, so connecting them needs no code change.
+ * number, domain) come from `infra/config/environments.ts` (`-c` overrides them) and are published to SSM.
  */
 export class ChannelsStack extends Stack {
   readonly waEventsTopic: sns.Topic;
@@ -31,7 +31,6 @@ export class ChannelsStack extends Stack {
     super(scope, id, props);
     const { config, key, inboundMailBucket } = props;
     const prefix = `suppliagent-${config.envName}`;
-    const context = (name: string) => this.node.tryGetContext(name) as string | undefined;
 
     const topic = (logicalId: string, name: string, publisher: string) => {
       const created = new sns.Topic(this, logicalId, {
@@ -71,7 +70,7 @@ export class ChannelsStack extends Stack {
       ],
     });
 
-    const sesDomain = context('sesDomain');
+    const sesDomain = channelValue(this.node, config, 'sesDomain');
     if (sesDomain) {
       new ses.EmailIdentity(this, 'Identity', {
         identity: ses.Identity.domain(sesDomain),
@@ -143,7 +142,7 @@ export class ChannelsStack extends Stack {
         parameterName: `/suppliagent/${config.envName}/${name}`,
         stringValue: value ?? 'UNSET',
       });
-    parameter('waPhoneNumberId', context('waPhoneNumberId'));
+    parameter('waPhoneNumberId', channelValue(this.node, config, 'waPhoneNumberId'));
     parameter('sesDomain', sesDomain);
     parameter('sesFromAddress', sesDomain ? `ordine@${sesDomain}` : undefined);
     parameter('waEventsTopicArn', this.waEventsTopic.topicArn);
