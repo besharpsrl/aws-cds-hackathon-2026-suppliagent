@@ -323,7 +323,7 @@ export class MessagingStack extends Stack {
     Validations.of(notifier).acknowledge({
       id: `AwsSolutions-IAM5[Resource::arn:aws:ses:${config.region}:<AWS::AccountId>:identity/*]`,
       reason:
-        'Without a configured sesDomain (demo, until its domain exists) the identity is not known; with the domain it is exact.',
+        'Without a configured sesDomain the identity is not known; with the domain it is exact.',
     });
     Validations.of(notifier).acknowledge({
       id: `AwsSolutions-IAM5[Resource::arn:aws:social-messaging:${config.region}:<AWS::AccountId>:phone-number-id/*]`,

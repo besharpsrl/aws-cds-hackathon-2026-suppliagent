@@ -75,7 +75,7 @@ SuppliAgent/
 │   ├── bin/suppliagent.ts
 │   ├── lib/stacks/              # un file per stack
 │   ├── lib/constructs/          # construct riutilizzabili (es. LambdaFunction con defaults)
-│   └── config/                  # config per ambiente (dev, demo)
+│   └── config/                  # config dell'ambiente (solo dev)
 ├── agent/                       # Strands agent (Python) per AgentCore Runtime
 │   ├── main.py                  # entrypoint dello zip (code deploy, niente container)
 │   ├── src/suppliagent_agent/   # app AgentCore, turno, tool per ruolo, SigV4 verso il Gateway
@@ -122,9 +122,8 @@ npm run synth          # cdk synth -c env=dev (cdk-nag v3: errori = synth fallit
 npm run format         # prettier --write + ruff format
 
 # Infra
-cd infra && npx cdk synth -c env=demo
-npx cdk diff -c env=dev
-npx cdk deploy --all -c env=dev                      # solo dev; demo = manuale (vedi §11)
+cd infra && npx cdk diff -c env=dev
+npx cdk deploy --all -c env=dev                      # unico ambiente; dopo il code freeze solo con conferma (§11)
 
 # Console (scaffold in T-61)
 npm run dev -w console | npm run build -w console | npm test -w console
@@ -206,7 +205,7 @@ Per l'agente: ogni modifica a prompt o tool va verificata con gli **eval** in `a
 
 ## 11. Cosa NON fare senza chiedere
 
-- Deploy sull'ambiente **`demo`** o modifiche a risorse condivise (numero WhatsApp, dominio SES, agente RCS, template Meta).
+- Deploy su `dev` **dopo il code freeze** (è l'ambiente dei giudici) o modifiche a risorse condivise (numero WhatsApp, dominio SES, agente RCS, template Meta).
 - Cambiare **region**, modello o inference profile (deve restare `eu.`).
 - Aggiungere servizi con **costo fisso** (OpenSearch, NAT Gateway, RDS, istanze sempre accese) o fuori dai crediti.
 - Usare client CDS non ammessi o rimuovere l'uso reale di quelli ammessi.

@@ -56,7 +56,7 @@ def resolve(dynamodb: Any, env: str, address: str) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--env", required=True, choices=["dev", "demo"])
+    parser.add_argument("--env", required=True, choices=["dev"])
     parser.add_argument("--address", required=True, help="CHANNEL#address, e.g. WHATSAPP#+39...")
     parser.add_argument("--text")
     parser.add_argument("--image", action="append", default=[], metavar="S3_URI")

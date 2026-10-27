@@ -71,7 +71,7 @@ def write(dynamodb: Any, env: str, data: dict[str, list[dict[str, Any]]]) -> Non
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--env", required=True, choices=["dev", "demo"])
+    parser.add_argument("--env", required=True, choices=["dev"])
     parser.add_argument("--profile")
     parser.add_argument("--region", default="eu-west-1")
     args = parser.parse_args()

@@ -21,7 +21,7 @@ inclusion: always
 ```bash
 npm ci && uv sync                      # dalla root (npm + uv workspaces)
 npm run check                          # lint + typecheck + test + cdk synth (cdk-nag)
-cd infra && npx cdk deploy --all -c env=dev   # mai su demo senza conferma
+cd infra && npx cdk deploy --all -c env=dev   # unico ambiente; dopo il code freeze solo con conferma
 uv run python seed/reset.py --env dev
 ```
 

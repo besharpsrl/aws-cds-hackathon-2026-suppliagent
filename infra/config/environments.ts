@@ -1,6 +1,7 @@
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
-export type EnvName = 'dev' | 'demo';
+// Single environment: development, demo and judging all run on `dev` (decision of 27/10/2026).
+export type EnvName = 'dev';
 
 /** Tags required on every resource of the account (AGENTS.md §7, decision of 24/10/2026). */
 export const MANDATORY_TAGS = {
@@ -61,7 +62,7 @@ const runtimeParameters: Record<string, string> = {
   identificationMaxAttempts: '3',
   // The Notifier records outgoing messages instead of sending them (T-24, T-14); read at runtime.
   notifierSandbox: 'true',
-  // The ERP mock answers as unavailable while `true` (E-08 demo); read at runtime, default `false` (T-07).
+  // The ERP mock answers as unavailable while `true` (to show E-08); read at runtime, default `false` (T-07).
   erpMockFailure: 'false',
 };
 
@@ -76,17 +77,6 @@ const environments: Record<EnvName, EnvConfig> = {
     parameters: runtimeParameters,
     model: novaPro,
   },
-  demo: {
-    envName: 'demo',
-    region: 'eu-west-1',
-    powertoolsLayerVersion: 40,
-    logRetention: RetentionDays.ONE_MONTH,
-    sesDomain: undefined, // shared resources of demo (AGENTS §11): set when the demo environment is created
-    waPhoneNumberId: undefined,
-    // Real sending on demo (WhatsApp number and SES identity are shared resources, AGENTS §11).
-    parameters: { ...runtimeParameters, notifierSandbox: 'false' },
-    model: novaPro,
-  },
 };
 
 /** Channel value of the environment; `-c <name>=…` stays as an override of the config. */
@@ -99,8 +89,8 @@ export function channelValue(
 }
 
 export function getConfig(envName: string | undefined): EnvConfig {
-  if (envName !== 'dev' && envName !== 'demo') {
-    throw new Error(`Unknown env "${envName}": pass -c env=dev or -c env=demo`);
+  if (envName !== 'dev') {
+    throw new Error(`Unknown env "${envName}": pass -c env=dev`);
   }
   return environments[envName];
 }

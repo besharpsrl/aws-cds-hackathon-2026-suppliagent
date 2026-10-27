@@ -17,9 +17,9 @@ const build = (env = 'dev') => {
 };
 
 describe('app', () => {
-  it.each(['dev', 'demo'])('synthesizes %s with no cdk-nag errors', (env) => {
+  it('synthesizes dev with no cdk-nag errors', () => {
     // cdk-nag v3 runs as a policy validation plugin and throws on unacknowledged errors.
-    expect(() => build(env).app.synth()).not.toThrow();
+    expect(() => build().app.synth()).not.toThrow();
   });
 
   it('fails synth when cdk-nag finds a violation', () => {

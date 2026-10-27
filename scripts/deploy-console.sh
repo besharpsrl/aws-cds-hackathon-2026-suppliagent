@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the console and publishes it to the site bucket of suppliagent-<env>-console.
-# Usage: scripts/deploy-console.sh [dev|demo]   (AWS credentials from the environment, e.g. AWS_PROFILE)
+# Usage: scripts/deploy-console.sh [dev]   (AWS credentials from the environment, e.g. AWS_PROFILE)
 # Needs the ConsoleStack already deployed; no secrets involved (Cognito/API ids come from stack outputs).
 set -euo pipefail
 

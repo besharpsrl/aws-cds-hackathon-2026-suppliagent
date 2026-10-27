@@ -51,8 +51,6 @@ jobs:
       - run: npm test -w infra
       # cdk-nag runs as a policy validation plugin: any unacknowledged error fails the synth.
       # No AWS credentials needed: stacks are account-agnostic and do no lookups.
-      - name: cdk synth (dev, demo)
+      - name: cdk synth (dev)
         working-directory: infra
-        run: |
-          npx cdk synth -q -c env=dev
-          npx cdk synth -q -c env=demo
+        run: npx cdk synth -q -c env=dev
