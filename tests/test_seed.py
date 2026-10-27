@@ -83,6 +83,8 @@ def test_demo_scenarios_are_covered() -> None:
     assert any(c["language"] == "en" for c in DATA["contacts"])  # FN-27
     assert any("privacyNoticeSentAt" not in c for c in DATA["contacts"])  # F-01 first contact
     assert any(ins["droppedProducts"] for ins in DATA["customer-insights"])
+    # T-71: judges identify with a test customer published in the README, verified at once
+    assert [c["customerCode"] for c in DATA["customers"] if c["autoVerifyContacts"]] == ["C90001"]
     assert any(
         r["dueAt"] < ins["updatedAt"]
         for ins in DATA["customer-insights"]

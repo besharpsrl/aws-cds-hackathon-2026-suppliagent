@@ -117,6 +117,35 @@ def test_unknown_not_matched_writes_nothing(
     assert events == []
 
 
+def test_demo_customer_contact_is_verified_at_once(events: list[Any], aws: Any) -> None:
+    result = identify(caller=UNKNOWN, customerCode="C90001", venueName="demo bistro")  # T-71
+    assert result["status"] == "MATCHED"
+    assert result["contact"]["status"] == "VERIFIED"
+    assert result["customers"] == [{"customerId": "cus_901", "venueName": "Demo Bistro"}]
+    contact_id = result["contact"]["contactId"]
+    identity = aws.Table("suppliagent-test-channel-identities").get_item(
+        Key={"channelAddress": NEW_PHONE}
+    )["Item"]
+    assert identity["verified"] is True
+    assert events == [
+        (
+            "contact.identified",
+            {"contactId": contact_id, "method": "CUSTOMER_CODE", "verified": True},
+        )
+    ]
+    # full access from the next call: order history included, other venues still denied
+    judge = caller("CUSTOMER_CONTACT", contact_id)
+    assert profile(judge, "cus_901")["lastOrders"]
+    with pytest.raises(AccessDeniedError):
+        profile(judge, "cus_001")
+
+
+def test_only_flagged_customers_verify_at_once(events: list[Any]) -> None:
+    result = identify(caller=UNKNOWN, customerCode="C10006", venueName="Osteria del Ponte")
+    assert result["contact"]["status"] == "PENDING_VERIFICATION"
+    assert events[0][1]["verified"] is False
+
+
 @pytest.mark.parametrize("args", [{}, {"customerCode": "C10001"}, {"venueName": "Bar Aurora"}])
 def test_unknown_needs_code_or_vat_and_venue(args: dict[str, str]) -> None:
     with pytest.raises(InvalidInputError):

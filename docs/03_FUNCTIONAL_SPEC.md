@@ -100,6 +100,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 #### FN-03 – Identificazione contatto e ruolo · **M** · AG
 - [ ] Numeri noti riconosciuti senza domande, con ruolo corretto.
 - [ ] Contatto nuovo identificato con nome locale + codice cliente/P.IVA; ordini di contatti non verificati restano in bozza fino alla verifica.
+- [ ] Cliente di prova dei giudici (`autoVerifyContacts`): chi si identifica col suo codice è verificato subito e può ordinare; per gli altri clienti il contatto resta da verificare (F-02.C7).
 - [ ] Contatto con più locali: l'agente chiede per quale locale.
 - [ ] Un agente di commercio vede solo i clienti del suo portafoglio (verificato nel tool).
 

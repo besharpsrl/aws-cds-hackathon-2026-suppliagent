@@ -95,5 +95,26 @@
     ],
     "repId": "rep_002",
     "priceListId": "LIST_STD"
+  },
+  {
+    "customerId": "cus_901",
+    "customerCode": "C90001",
+    "vatNumber": "IT90000000901",
+    "venueName": "Demo Bistro",
+    "legalName": "Demo Bistro S.r.l.",
+    "venueType": "bistro",
+    "city": "Milano",
+    "zone": "MI-SUD",
+    "deliveryDays": [
+      "MON",
+      "TUE",
+      "WED",
+      "THU",
+      "FRI",
+      "SAT"
+    ],
+    "repId": "rep_002",
+    "priceListId": "LIST_STD",
+    "autoVerifyContacts": true
   }
 ]

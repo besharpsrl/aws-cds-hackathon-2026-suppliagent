@@ -2134,5 +2134,83 @@
         "unit": "pz"
       }
     ]
+  },
+  {
+    "customerId": "cus_901",
+    "dateOrderId": "2026-10-09#ord_h9011",
+    "orderId": "ord_h9011",
+    "date": "2026-10-09",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 10,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "OLIO-EVO-5L",
+        "description": "Olio extravergine di oliva 5 L",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_901",
+    "dateOrderId": "2026-10-16#ord_h9012",
+    "orderId": "ord_h9012",
+    "date": "2026-10-16",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 10,
+        "unit": "pz"
+      },
+      {
+        "sku": "BURRATA-125",
+        "description": "Burrata 125 g",
+        "quantity": 6,
+        "unit": "pz"
+      },
+      {
+        "sku": "ACQUA-NAT-50CL",
+        "description": "Acqua naturale 50 cl (cassa da 24)",
+        "quantity": 2,
+        "unit": "cs"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_901",
+    "dateOrderId": "2026-10-23#ord_h9013",
+    "orderId": "ord_h9013",
+    "date": "2026-10-23",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 12,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
   }
 ]
