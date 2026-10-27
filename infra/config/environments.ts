@@ -14,6 +14,10 @@ export interface EnvConfig {
   /** Version of the public Powertools for AWS Lambda (Python) v3 layer, python3.12 arm64. */
   readonly powertoolsLayerVersion: number;
   readonly logRetention: RetentionDays;
+  /** SES domain for orders: creates identity and inbound rule set (T-15). Unset → no SES resources. */
+  readonly sesDomain?: string;
+  /** WhatsApp phone number ID on EUM Social (T-15). Unset → SSM parameter `UNSET`. */
+  readonly waPhoneNumberId?: string;
   /** Runtime parameters published to SSM under /suppliagent/<env>/<name> (02_TECHNICAL_FLOWS §7). */
   readonly parameters: Readonly<Record<string, string>>;
   /** Bedrock inference profile of the agent (always `eu.`, INFRASTRUCTURE_DESIGN §2). */
@@ -62,6 +66,8 @@ const environments: Record<EnvName, EnvConfig> = {
     region: 'eu-west-1',
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.TWO_WEEKS,
+    sesDomain: 'suppliagent.stonecutters.besharp.net',
+    waPhoneNumberId: undefined, // set once the WABA is linked (docs/WABA_SETUP.md)
     parameters: runtimeParameters,
     model: novaPro,
   },
@@ -70,11 +76,22 @@ const environments: Record<EnvName, EnvConfig> = {
     region: 'eu-west-1',
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.ONE_MONTH,
+    sesDomain: undefined, // shared resources of demo (AGENTS §11): set when the demo environment is created
+    waPhoneNumberId: undefined,
     // Real sending on demo (WhatsApp number and SES identity are shared resources, AGENTS §11).
     parameters: { ...runtimeParameters, notifierSandbox: 'false' },
     model: novaPro,
   },
 };
+
+/** Channel value of the environment; `-c <name>=…` stays as an override of the config. */
+export function channelValue(
+  node: { tryGetContext(key: string): unknown },
+  config: EnvConfig,
+  name: 'sesDomain' | 'waPhoneNumberId',
+): string | undefined {
+  return (node.tryGetContext(name) as string | undefined) || config[name];
+}
 
 export function getConfig(envName: string | undefined): EnvConfig {
   if (envName !== 'dev' && envName !== 'demo') {

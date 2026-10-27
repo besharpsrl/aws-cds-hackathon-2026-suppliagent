@@ -109,6 +109,15 @@ describe('MessagingStack – media (T-23, FN-05, FN-06)', () => {
     });
     expect(JSON.stringify(statements())).toContain('parameter/suppliagent/dev/waPhoneNumberId');
   });
+
+  it('takes the order domain and the SES identity from the environment config, without -c (T-15)', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({ ORDER_DOMAIN: 'suppliagent.stonecutters.besharp.net' }),
+      },
+    });
+    expect(JSON.stringify(statements())).toContain('identity/suppliagent.stonecutters.besharp.net');
+  });
 });
 
 describe('MessagingStack – debounce and Notifier (T-22, T-24 base, FN-26, FN-01)', () => {

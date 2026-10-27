@@ -416,10 +416,10 @@ SuppliAgent/
 | Parametro | Esempio |
 |---|---|
 | `env` / `region` | `demo` / `eu-west-1` |
-| `waPhoneNumberId` | ID numero WhatsApp su EUM Social (context CDK `-c waPhoneNumberId=…` → SSM; `UNSET` finché non c'è) |
-| `sesDomain` | `ordini.example.com` (context CDK `-c sesDomain=…`: crea identity e rule set inbound) |
+| `waPhoneNumberId` | ID numero WhatsApp su EUM Social (`infra/config/environments.ts` → SSM; `UNSET` finché non è valorizzato; `-c waPhoneNumberId=…` lo sovrascrive) |
+| `sesDomain` | `ordini.example.com` (`infra/config/environments.ts`, `-c sesDomain=…` lo sovrascrive: crea identity e rule set inbound; `dev` = `suppliagent.stonecutters.besharp.net`, `demo` non ancora valorizzato) |
 
-> **Attenzione**: `waPhoneNumberId` e `sesDomain` sono context CDK, non persistono. Ogni deploy che tocca `ChannelsStack` (anche indiretto, es. `messaging` senza `--exclusively`) deve ripassarli, altrimenti i parametri SSM tornano a `UNSET` e identity e rule set SES vengono rimossi. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
+> `waPhoneNumberId` e `sesDomain` stanno nella config per ambiente (T-15): un deploy di `ChannelsStack` (anche indiretto) non li perde. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
 | `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender |
 | `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |

@@ -58,7 +58,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 7 | T-10 | Ambiente `demo`, script reset, README sezione giudici, cliente/bigliettino di prova | FN-31 | P4 | tutti | MG | ☐ |
 | 8 | T-11 | Opportunità ACE, export PNG del diagramma (aggiornare prima `architecture.drawio`: coda `inbound` standard e niente Lambda Media Fetcher, decisioni T-21/T-23), testi submission (EN), paragrafo WhatsApp | – | P4 (avviabile subito) | – | MG | ☐ |
 | 9 | T-12 | Copione e registrazione video (≤ 3 min) | – | P4 (copione da P2) | T-10 | MG | ☐ |
-| 10 | T-15 | **Valori dei canali nella config per ambiente**: `sesDomain` e `waPhoneNumberId` in `infra/config/environments.ts` per `dev`/`demo` (i `-c` restano solo come override); test CDK che senza `-c` i parametri SSM non tornano `UNSET` e identity, configuration set e rule set SES restano nel template; tolta la regola "ripassare i `-c`" da README (Manual steps §3), INFRASTRUCTURE_DESIGN §11 e `docs/WABA_SETUP.md`. Da fare con i valori reali già configurati (dominio SES verificato, WABA collegata), verificando con `cdk diff` che il deploy non cambi nulla | FN-01, FN-32 | P2 | T-20, dominio SES, WABA collegata | MG | ☐ |
 
 ### CH – Canali CDS
 
