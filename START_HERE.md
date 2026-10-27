@@ -51,13 +51,13 @@ Deploy dopo il code freeze, modifiche a risorse condivise (numero WhatsApp, domi
 
 ### 1.5 Lavoro in parallelo
 
-**Corsie** (punto di partenza, non un vincolo: chi resta senza lavoro prende un'issue libera di un'altra corsia annunciandolo)
+**Corsie** (punto di partenza, non un vincolo: chi resta senza lavoro prende un'issue libera di un'altra corsia annunciandolo). Dentro la corsia l'ordine è: prima i `must`, poi `should`, poi `could` (un task che blocca un `must` conta come `must`); le dipendenze *blocked by* fanno saltare i task non ancora pronti.
 
 | Corsia | Chi | Stack di cui fa il deploy | Ordine |
 |---|---|---|---|
 | **A – Canali ed e2e** | MG | `messaging`, `channels` | T-68 → T-26 → T-25 → T-29 → T-26b → T-67 → *could*: T-24 → T-27 |
 | **B – Agente** | MM | `agent`, `catalog` | T-71 → T-49 → T-48 → T-54 → T-05/T-53 → *could*: T-50 → T-51 → T-44b → T-52 |
-| **C – Console e materiali** | FZ | `console`, `proactive` | T-62 → T-63 (dopo T-49) → T-11 → T-12 → *could*: T-06b, T-08, T-64 → dopo il freeze T-10, T-72 |
+| **C – Console e materiali** | FZ | `console`, `proactive` | T-62 → T-11 → T-12 → T-63 (dopo T-49) → *could*: T-06b, T-08, T-64 → dopo il freeze T-10, T-72 |
 
 Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08 (C); T-44b (B) aspetta T-06b (C). `foundation`, `data`, `seed/reset.py`, `notifierSandbox` e T-73 (security review): MG.
 

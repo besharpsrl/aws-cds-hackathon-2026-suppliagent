@@ -26,7 +26,8 @@ Sei una sessione di sviluppo di SuppliAgent. Argomenti dell'utente: `$ARGUMENTS`
   GH_PROMPT_DISABLED=1 GH_PAGER=cat gh issue list --state open --label corsia:<X> --limit 50 --json number,title,assignees,labels,blockedBy \
     --jq '.[] | {number, title, assignees: [.assignees[].login], labels: [.labels[].name], openBlockers: [.blockedBy.nodes[]? | select(.state=="OPEN") | .title]}'
   ```
-  Scarta le issue `manual` e `flusso`, quelle già assegnate ad altri e quelle con `openBlockers` non vuoto. Ordine: `must` > `should` > `could`, poi l'ordine della corsia in START_HERE §1.5. Un `could` solo se tutti i `must` aperti hanno un assegnatario (`gh issue list --state open --label must --json number,assignees`).
+  Scarta le issue `manual` e `flusso`, quelle già assegnate ad altri e quelle con `openBlockers` non vuoto.
+  **Priorità effettiva**: un'issue che blocca un `must` aperto (campo `blocking` di `gh issue view <n> --json blocking`) conta come `must`, anche se è etichettata `should` o `could`. Ordine: priorità effettiva (`must` > `should` > `could`), poi l'ordine della corsia in START_HERE §1.5. Un `could` solo se tutti i `must` aperti hanno un assegnatario (`gh issue list --state open --label must --json number,assignees`).
 - Nessuna libera nella corsia: proponi la prima libera di un'altra corsia e chiedi. Un'issue bloccata non si inizia: dillo e indica da cosa dipende.
 
 ## 3. Presa
