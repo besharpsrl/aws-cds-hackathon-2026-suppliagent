@@ -2,10 +2,12 @@
 email attachments, under `media/<owner>/<messageId>/` in the media bucket. Runs inside the router:
 a failed download fails the message, which SQS retries and then moves to the DLQ (E-02).
 
-Environment: `MEDIA_BUCKET`, `WA_PHONE_NUMBER_ID_PARAM` (SSM name of the EUM Social number id).
+Environment: `MEDIA_BUCKET`, `WA_PHONE_NUMBER_ID_PARAM` (SSM name of the EUM Social number id),
+`SANDBOX_PARAM` (SSM name of `notifierSandbox`: simulated media, see `_fetch_simulated`).
 """
 
 import os
+import re
 from functools import cache
 from typing import Any
 
@@ -32,6 +34,7 @@ MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_ATTACHMENTS = 10
 # Not processed: the agent asks for a photo or text (§3.4).
 NOT_FETCHED = {AttachmentType.VIDEO, AttachmentType.STICKER}
+SIMULATED_ID = re.compile(r"^sim_[0-9a-f]{32}$")  # `scripts/simulate_channel.py` (T-14)
 UNSET = "UNSET"  # SSM default until the WABA is connected (ChannelsStack)
 logger = Logger(service="inbound-router")
 
@@ -107,6 +110,8 @@ def _fetch(attachment: Attachment, bucket: str, prefix: str) -> Attachment:
         or _kind(_mime(attachment.mimeType)) is None
     ):
         return attachment
+    if SIMULATED_ID.fullmatch(attachment.mediaId) and _sandbox():
+        return _fetch_simulated(attachment, bucket, prefix)
     phone_number_id = _ssm().get_parameter(Name=os.environ["WA_PHONE_NUMBER_ID_PARAM"])[
         "Parameter"
     ]["Value"]
@@ -127,6 +132,31 @@ def _fetch(attachment: Attachment, bucket: str, prefix: str) -> Attachment:
     if not keys:
         raise SuppliAgentError("media not found after download")  # retried by SQS
     return attachment.model_copy(update={"s3Uri": f"s3://{bucket}/{keys[0]}"})
+
+
+def _sandbox() -> bool:
+    """Simulated media only while the Notifier is in sandbox, so never in `demo` (T-14). Unlike
+    the Notifier, a missing parameter means off."""
+    try:
+        value = _ssm().get_parameter(Name=os.environ["SANDBOX_PARAM"])["Parameter"]["Value"]
+    except _ssm().exceptions.ParameterNotFound:
+        return False
+    return str(value).lower() == "true"
+
+
+def _fetch_simulated(attachment: Attachment, bucket: str, prefix: str) -> Attachment:
+    """The simulator stores the file under `sim/<mediaId>/` instead of EUM Social: copy it to
+    where a real download would land (same key shape, so the rest of the flow is the real one)."""
+    found = _s3().list_objects_v2(Bucket=bucket, Prefix=f"sim/{attachment.mediaId}/")
+    objects = found.get("Contents", [])
+    if not objects:
+        raise SuppliAgentError("simulated media not found")  # retried by SQS
+    source = objects[0]
+    if source["Size"] > MAX_FILE_BYTES:
+        return attachment
+    key = f"{prefix}{attachment.mediaId}{os.path.splitext(source['Key'])[1]}"
+    _s3().copy_object(Bucket=bucket, Key=key, CopySource={"Bucket": bucket, "Key": source["Key"]})
+    return attachment.model_copy(update={"s3Uri": f"s3://{bucket}/{key}"})
 
 
 def _upload(file: EmailFile, key_stem: str, bucket: str, allowed: bool) -> Attachment:

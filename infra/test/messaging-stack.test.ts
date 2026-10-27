@@ -110,6 +110,27 @@ describe('MessagingStack – media (T-23, FN-05, FN-06)', () => {
     expect(JSON.stringify(statements())).toContain('parameter/suppliagent/dev/waPhoneNumberId');
   });
 
+  it('lets the router copy simulated media from sim/ only, gated by the sandbox parameter (T-14)', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({ SANDBOX_PARAM: '/suppliagent/dev/notifierSandbox' }),
+      },
+    });
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 's3:ListBucket',
+            Condition: { StringLike: { 's3:prefix': 'sim/*' } },
+          }),
+        ]),
+      },
+    });
+    const json = JSON.stringify(statements());
+    expect(json).toContain('/sim/*');
+    expect(json).toContain('parameter/suppliagent/dev/notifierSandbox');
+  });
+
   it('takes the order domain and the SES identity from the environment config, without -c (T-15)', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
