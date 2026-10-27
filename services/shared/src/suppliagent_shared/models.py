@@ -131,3 +131,48 @@ class CustomerInsights(Item):
     droppedProducts: list[str]
     suggestions: list[Suggestion]
     updatedAt: str
+
+
+class Product(Item):
+    sku: str
+    name: str
+    brand: str | None = None
+    category: str
+    format: str | None = None
+    unit: str
+    # sold only by this many units at a time (F-06.C4); 1 = no constraint
+    multiple: int = Field(1, ge=1)
+    synonyms: list[str] = []
+    description: str | None = None
+    active: bool = True
+
+
+class PriceListEntry(Item):
+    priceListId: str
+    sku: str
+    price: float = Field(ge=0)  # EUR per product unit, VAT excluded
+
+
+class Promotion(Item):
+    promoId: str
+    sku: str
+    description: str
+    promoPrice: float = Field(ge=0)
+    validFrom: str  # YYYY-MM-DD, inclusive
+    validTo: str
+
+
+class StockItem(Item):
+    sku: str
+    quantity: float = Field(ge=0)
+    nextArrival: str | None = None  # YYYY-MM-DD of the restock
+    substitutes: list[str] = []  # SKUs, best first
+
+
+class DeliveryCalendarEntry(Item):
+    """Exception to the customer's weekly delivery days: no delivery in the zone on that date."""
+
+    zone: str
+    date: str
+    closed: bool = True
+    reason: str | None = None

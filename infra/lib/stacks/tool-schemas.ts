@@ -1,6 +1,6 @@
 import * as agentcore from 'aws-cdk-lib/aws-bedrockagentcore';
 
-const { OBJECT, STRING } = agentcore.SchemaDefinitionType;
+const { ARRAY, NUMBER, OBJECT, STRING } = agentcore.SchemaDefinitionType;
 
 /**
  * Declared so the Gateway forwards it to the Lambda; the agent removes it from the schema the model
@@ -110,6 +110,220 @@ export const CATALOG_TOOLS: agentcore.ToolDefinition[] = [
         caller: CALLER,
       },
       required: ['query', 'caller'],
+    },
+  },
+];
+
+/** Mirrors the pydantic inputs in services/tools/inventory_pricing (T-45). */
+export const INVENTORY_PRICING_TOOLS: agentcore.ToolDefinition[] = [
+  {
+    name: 'check_availability',
+    description:
+      'Checks stock for order lines on a delivery date. Per line: status AVAILABLE, PARTIAL (availableQuantity), OUT_OF_STOCK (nextArrival), DISCONTINUED or UNKNOWN_SKU; roundedQuantity when the quantity is not a multiple of the pack (offer it, never apply it silently); substitutes that are available. Never states exact stock to customers.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        lines: {
+          type: ARRAY,
+          description: 'Lines to check.',
+          items: {
+            type: OBJECT,
+            properties: {
+              sku: { type: STRING, description: 'SKU from match_products or search_catalog.' },
+              quantity: { type: NUMBER, description: 'Quantity in the product unit.' },
+            },
+            required: ['sku', 'quantity'],
+          },
+        },
+        deliveryDate: { type: STRING, description: 'Delivery date, YYYY-MM-DD.' },
+        caller: CALLER,
+      },
+      required: ['lines', 'deliveryDate', 'caller'],
+    },
+  },
+  {
+    name: 'get_prices',
+    description:
+      "Prices of products for a venue, from the venue's price list, with the promotion valid today if any. Per SKU: unitPrice, promo, finalPrice (EUR, VAT excluded) or status NO_PRICE. Never quote a price that does not come from here.",
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        customerId: { type: STRING, description: 'customerId of the venue.' },
+        skus: { type: ARRAY, description: 'SKUs to price.', items: { type: STRING } },
+        caller: CALLER,
+      },
+      required: ['customerId', 'skus', 'caller'],
+    },
+  },
+  {
+    name: 'get_delivery_options',
+    description:
+      'Delivery dates for a venue: nextDeliveryDate and the next options (served days, closures), the cut-off, whether it is already past (afterCutoff, with the missedDeliveryDate the customer would have had) and the minimum order value. With requestedDate, requestedDateServed says if that day works.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        customerId: { type: STRING, description: 'customerId of the venue.' },
+        requestedDate: {
+          type: STRING,
+          description: 'Delivery date the customer asked for, YYYY-MM-DD.',
+        },
+        caller: CALLER,
+      },
+      required: ['customerId', 'caller'],
+    },
+  },
+];
+
+const LINE_FIELDS: Record<string, agentcore.SchemaDefinition> = {
+  rawText: { type: STRING, description: 'The line as the customer wrote it.' },
+  rawUnit: { type: STRING, description: 'The unit as written, if any.' },
+  sku: { type: STRING, description: 'SKU chosen with match_products. Never invent one.' },
+  quantity: { type: NUMBER, description: 'Quantity in the unit of the product.' },
+  status: {
+    type: STRING,
+    description:
+      'Only to say AMBIGUOUS, UNMATCHED or OUT_OF_STOCK (still to resolve), SUBSTITUTED (the customer accepted a substitute) or ADJUSTED (accepted the rounding to the pack). Default: MATCHED with sku and quantity.',
+  },
+  candidates: {
+    type: ARRAY,
+    description: 'For an AMBIGUOUS line: up to 3 SKUs offered to the customer.',
+    items: { type: STRING },
+  },
+  note: { type: STRING, description: 'A note on the line, if the customer gave one.' },
+};
+
+/** Mirrors the pydantic inputs in services/tools/orders (T-46). */
+export const ORDERS_TOOLS: agentcore.ToolDefinition[] = [
+  {
+    name: 'create_order_draft',
+    description:
+      'Creates the draft order of the conversation for a venue, with the lines read and matched so far (also the ones still to clarify). Names, prices and the total are computed by the system. If the conversation already has an open draft it is returned unchanged (existing: true): change it with update_order_draft. Status DRAFT, or NEEDS_CLARIFICATION while some line is unresolved.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        customerId: { type: STRING, description: 'customerId of the venue the order is for.' },
+        lines: {
+          type: ARRAY,
+          description: 'Order lines.',
+          items: { type: OBJECT, properties: LINE_FIELDS },
+        },
+        source: {
+          type: STRING,
+          description: 'How the order arrived: photo, voice, text or email.',
+        },
+        deliveryDate: { type: STRING, description: 'Agreed delivery date, YYYY-MM-DD.' },
+        deliveryNotes: { type: STRING, description: 'Delivery notes from the customer.' },
+        caller: CALLER,
+      },
+      required: ['customerId', 'lines', 'caller'],
+    },
+  },
+  {
+    name: 'update_order_draft',
+    description:
+      'Changes an order: ops add, update or remove lines (update changes only the fields given; set status SUBSTITUTED or ADJUSTED when the customer accepted a substitute or a rounding) and sets the delivery date and notes. Editing a summary waiting for confirmation puts it back to draft. A confirmed order can still be changed until the cut-off (status UPDATED); after it you get ORDER_LOCKED: hand over to the back office. NEEDS_FIXES lists what is wrong and saves nothing.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        orderId: { type: STRING, description: 'orderId of the order.' },
+        ops: {
+          type: ARRAY,
+          description: 'Line changes.',
+          items: {
+            type: OBJECT,
+            properties: {
+              op: { type: STRING, description: 'add, update or remove.' },
+              lineId: { type: STRING, description: 'Line to update or remove (l1, l2...).' },
+              ...LINE_FIELDS,
+            },
+            required: ['op'],
+          },
+        },
+        deliveryDate: { type: STRING, description: 'New delivery date, YYYY-MM-DD.' },
+        deliveryNotes: { type: STRING, description: 'Delivery notes.' },
+        caller: CALLER,
+      },
+      required: ['orderId', 'caller'],
+    },
+  },
+  {
+    name: 'request_order_confirmation',
+    description:
+      'Call when the order is complete, before asking the customer to confirm. Checks it (unresolved lines, packs, delivery date and cut-off, minimum) and returns either NEEDS_FIXES with the issues, or status PENDING_CONFIRMATION with the summary to show: lines, prices, total, delivery date, notes. Without this call the order cannot be confirmed.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        orderId: { type: STRING, description: 'orderId of the order.' },
+        caller: CALLER,
+      },
+      required: ['orderId', 'caller'],
+    },
+  },
+  {
+    name: 'confirm_order',
+    description:
+      'Confirms the order ONLY after the customer explicitly said so (tap on Confirm or an unambiguous yes) in answer to the summary. Idempotent: a repeat answers ALREADY_CONFIRMED. NOT_CONFIRMABLE means no summary was shown yet (draft) or the order expired or was cancelled. Returns the confirmed order.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        orderId: { type: STRING, description: 'orderId of the order.' },
+        interactiveReply: {
+          type: OBJECT,
+          description: 'Only when the answer is a button tap: the contextId of the message.',
+          properties: { contextId: { type: STRING } },
+          required: ['contextId'],
+        },
+        caller: CALLER,
+      },
+      required: ['orderId', 'caller'],
+    },
+  },
+  {
+    name: 'cancel_order',
+    description:
+      'Cancels an order at the customer request: freely until confirmation, until the cut-off after it; later ORDER_LOCKED (hand over to the back office).',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        orderId: { type: STRING, description: 'orderId of the order.' },
+        caller: CALLER,
+      },
+      required: ['orderId', 'caller'],
+    },
+  },
+  {
+    name: 'get_order_status',
+    description:
+      'Status, delivery date and window of orders. Pass the customerId for the latest orders of a venue (newest first), or the orderId for one order, never both.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        customerId: { type: STRING, description: 'customerId of the venue.' },
+        orderId: { type: STRING, description: 'orderId of one order.' },
+        caller: CALLER,
+      },
+      required: ['caller'],
+    },
+  },
+  {
+    name: 'report_delivery_issue',
+    description:
+      'Records a delivery problem for an order that is out for delivery or delivered, with the lines involved and photos (s3Uri exactly as given). Type: MISSING, DAMAGED, WRONG or EXPIRED.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        orderId: { type: STRING, description: 'orderId of the order.' },
+        type: { type: STRING, description: 'MISSING, DAMAGED, WRONG or EXPIRED.' },
+        lineIds: {
+          type: ARRAY,
+          description: 'Lines involved (l1, l2...).',
+          items: { type: STRING },
+        },
+        note: { type: STRING, description: 'What the customer said.' },
+        s3Uris: { type: ARRAY, description: 'Photos of the problem.', items: { type: STRING } },
+        caller: CALLER,
+      },
+      required: ['orderId', 'type', 'caller'],
     },
   },
 ];

@@ -1,6 +1,6 @@
 # seed – demo data
 
-Only **anonymized or synthetic** data is committed here, plus `seed.py` (and later `reset.py`).
+Only **anonymized or synthetic** data is committed here, plus `seed.py` and `reset.py`.
 Raw customer exports go to `seed/private/` or `seed/raw/`: both are git-ignored and not readable by Claude Code.
 Backlog: T-04.
 
@@ -15,14 +15,19 @@ One JSON file per DynamoDB table; the file name is the table suffix (`suppliagen
 | `channel-identities.json` | WhatsApp/email → contact or rep | fictitious numbers `+3933300000xx`, `example.com` emails |
 | `sales-reps.json` | 2 reps | portfolio = customers with that `repId` |
 | `order-history.json` | 8 weeks of orders | weekly/biweekly reorder patterns |
+| `products.json` | 26 products | synonyms, `multiple` (butter in packs of 8), a retired SKU (`BURRO-PAN-500`); contains every SKU of the history |
+| `price-lists.json` | `LIST_STD` and `LIST_BEVERAGE` | one price per SKU and list |
+| `promotions.json` | 3 promotions valid 19/10–15/11/2026 | e.g. Parmigiano Reggiano, fior di latte 2 kg |
+| `stock.json` | stock per SKU | out of stock with substitutes (`MOZZ-BUF-250`, restock 03/11), partial stock (`GRANA-GRAT-1KG`: 6) |
+| `delivery-calendar.json` | closures 08/12 and 25/12 per zone | exceptions to `Customers.deliveryDays` only |
 | `customer-insights.json` | expected reorders, dropped products, ≤ 1 suggestion | e.g. `cus_001` flour overdue, `cus_002` stopped buying ham |
 
-Still to come (T-04 rest): catalog, price lists, promotions, stock, delivery calendar, `reset.py`. The catalog must contain every SKU used in the order history.
 
 ## Usage
 
 ```bash
 uv run python seed/seed.py --env dev [--profile NAME]   # idempotent PutItem, does not delete items
+uv run python seed/reset.py --env dev [--profile NAME]  # clears Orders/Deliveries/Issues, reseeds, rebuilds the product index
 ```
 
 To map a real phone to a demo contact (e.g. for WhatsApp tests), add items to `seed/private/channel-identities.json` (git-ignored), same shape as `data/channel-identities.json`.

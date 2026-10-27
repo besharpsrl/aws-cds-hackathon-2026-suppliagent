@@ -1,0 +1,169 @@
+[
+  {
+    "sku": "FDL-PIZZA-1KG",
+    "quantity": 400,
+    "substitutes": [
+      "FDL-PIZZA-2KG"
+    ]
+  },
+  {
+    "sku": "FDL-PIZZA-2KG",
+    "quantity": 120,
+    "substitutes": [
+      "FDL-PIZZA-1KG"
+    ]
+  },
+  {
+    "sku": "FDL-JULIENNE-3KG",
+    "quantity": 60,
+    "substitutes": [
+      "FDL-PIZZA-2KG"
+    ]
+  },
+  {
+    "sku": "MOZZ-BUF-250",
+    "quantity": 0,
+    "substitutes": [
+      "MOZZ-BUF-125",
+      "BURRATA-125"
+    ],
+    "nextArrival": "2026-11-03"
+  },
+  {
+    "sku": "MOZZ-BUF-125",
+    "quantity": 90,
+    "substitutes": [
+      "MOZZ-BUF-250"
+    ]
+  },
+  {
+    "sku": "BURRATA-125",
+    "quantity": 150,
+    "substitutes": [
+      "MOZZ-BUF-125"
+    ]
+  },
+  {
+    "sku": "GRANA-GRAT-1KG",
+    "quantity": 6,
+    "substitutes": [
+      "PARM-REGG-KG"
+    ],
+    "nextArrival": "2026-11-05"
+  },
+  {
+    "sku": "PARM-REGG-KG",
+    "quantity": 80,
+    "substitutes": [
+      "GRANA-GRAT-1KG"
+    ]
+  },
+  {
+    "sku": "BURRO-PAN-1KG",
+    "quantity": 64,
+    "substitutes": []
+  },
+  {
+    "sku": "BURRO-PAN-500",
+    "quantity": 0,
+    "substitutes": [
+      "BURRO-PAN-1KG"
+    ]
+  },
+  {
+    "sku": "LATTE-INT-1L",
+    "quantity": 90,
+    "substitutes": []
+  },
+  {
+    "sku": "FARINA-00-25KG",
+    "quantity": 200,
+    "substitutes": [
+      "FARINA-0-25KG"
+    ]
+  },
+  {
+    "sku": "FARINA-0-25KG",
+    "quantity": 150,
+    "substitutes": [
+      "FARINA-00-25KG"
+    ]
+  },
+  {
+    "sku": "POM-PELATI-2500",
+    "quantity": 100,
+    "substitutes": []
+  },
+  {
+    "sku": "OLIO-EVO-5L",
+    "quantity": 70,
+    "substitutes": [
+      "OLIO-EVO-1L"
+    ]
+  },
+  {
+    "sku": "OLIO-EVO-1L",
+    "quantity": 25,
+    "substitutes": [
+      "OLIO-EVO-5L"
+    ]
+  },
+  {
+    "sku": "PROSC-COTTO-KG",
+    "quantity": 45,
+    "substitutes": []
+  },
+  {
+    "sku": "PROSC-CRUDO-KG",
+    "quantity": 30,
+    "substitutes": []
+  },
+  {
+    "sku": "SALAME-PICC-KG",
+    "quantity": 35,
+    "substitutes": []
+  },
+  {
+    "sku": "PATATINE-SURG-2500",
+    "quantity": 180,
+    "substitutes": []
+  },
+  {
+    "sku": "CAFFE-GRANI-1KG",
+    "quantity": 95,
+    "substitutes": []
+  },
+  {
+    "sku": "ACQUA-NAT-50CL",
+    "quantity": 300,
+    "substitutes": [
+      "ACQUA-FRIZ-50CL"
+    ]
+  },
+  {
+    "sku": "ACQUA-FRIZ-50CL",
+    "quantity": 260,
+    "substitutes": [
+      "ACQUA-NAT-50CL"
+    ]
+  },
+  {
+    "sku": "BIRRA-FUSTO-20L",
+    "quantity": 40,
+    "substitutes": [
+      "BIRRA-FUSTO-30L"
+    ]
+  },
+  {
+    "sku": "BIRRA-FUSTO-30L",
+    "quantity": 15,
+    "substitutes": [
+      "BIRRA-FUSTO-20L"
+    ]
+  },
+  {
+    "sku": "BIRRA-BOT-33CL",
+    "quantity": 110,
+    "substitutes": []
+  }
+]

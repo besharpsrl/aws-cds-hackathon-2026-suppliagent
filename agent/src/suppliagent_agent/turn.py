@@ -26,10 +26,27 @@ PROFILE = "customers___get_customer_profile"
 EXTRACT = "order-intake___extract_order_lines"
 MATCH = "catalog___match_products"
 SEARCH = "catalog___search_catalog"
+# Stock, prices, delivery dates (T-45) and the order lifecycle (T-46); the tools check the caller's
+# own customers (or the rep's portfolio) themselves.
+ORDER_TOOLS = frozenset(
+    {
+        "inventory-pricing___check_availability",
+        "inventory-pricing___get_prices",
+        "inventory-pricing___get_delivery_options",
+        "orders___create_order_draft",
+        "orders___update_order_draft",
+        "orders___request_order_confirmation",
+        "orders___confirm_order",
+        "orders___cancel_order",
+        "orders___get_order_status",
+        "orders___report_delivery_issue",
+    }
+)
+KNOWN_TOOLS = frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH}) | ORDER_TOOLS
 ROLE_TOOLS: dict[Role, frozenset[str]] = {
     "UNKNOWN": frozenset({IDENTIFY}),
-    "CUSTOMER_CONTACT": frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH}),
-    "SALES_REP": frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH}),
+    "CUSTOMER_CONTACT": KNOWN_TOOLS,
+    "SALES_REP": KNOWN_TOOLS,
 }
 ROLE_PROMPTS: dict[Role, str] = {
     "UNKNOWN": "customer.md",

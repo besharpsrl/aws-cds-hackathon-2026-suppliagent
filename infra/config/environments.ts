@@ -55,6 +55,9 @@ const runtimeParameters: Record<string, string> = {
   reorderCooldownDays: '7',
   quietHours: '21:00-07:00',
   deliveryAutoConfirm: 'true',
+  // Orders placed after the cut-off (Europe/Rome) are delivered one day later; below the minimum value (EUR) an order is not confirmed (FN-09, FN-10).
+  deliveryCutoff: '18:00',
+  minOrderValue: '80',
   identificationMaxAttempts: '3',
   // The Notifier records outgoing messages instead of sending them (T-24, T-14); read at runtime.
   notifierSandbox: 'true',

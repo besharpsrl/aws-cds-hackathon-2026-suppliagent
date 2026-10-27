@@ -1,0 +1,326 @@
+[
+  {
+    "sku": "FDL-PIZZA-1KG",
+    "name": "Fior di latte per pizza 1 kg",
+    "brand": "Caseificio Sole",
+    "category": "latticini",
+    "format": "1 kg",
+    "unit": "pz",
+    "synonyms": [
+      "mozzarella",
+      "fior di latte",
+      "mozz fdl",
+      "fdl"
+    ]
+  },
+  {
+    "sku": "FDL-PIZZA-2KG",
+    "name": "Fior di latte per pizza 2 kg",
+    "brand": "Caseificio Sole",
+    "category": "latticini",
+    "format": "2 kg",
+    "unit": "pz",
+    "synonyms": [
+      "mozzarella grande",
+      "fior di latte 2 kg"
+    ]
+  },
+  {
+    "sku": "FDL-JULIENNE-3KG",
+    "name": "Fior di latte julienne 3 kg",
+    "brand": "Caseificio Sole",
+    "category": "latticini",
+    "format": "3 kg",
+    "unit": "pz",
+    "synonyms": [
+      "julienne",
+      "mozzarella julienne"
+    ]
+  },
+  {
+    "sku": "MOZZ-BUF-250",
+    "name": "Mozzarella di bufala 250 g",
+    "brand": "Bufalina",
+    "category": "latticini",
+    "format": "250 g",
+    "unit": "pz",
+    "synonyms": [
+      "bufala",
+      "mozzarella di bufala",
+      "mozz bufala"
+    ]
+  },
+  {
+    "sku": "MOZZ-BUF-125",
+    "name": "Mozzarella di bufala 125 g",
+    "brand": "Bufalina",
+    "category": "latticini",
+    "format": "125 g",
+    "unit": "pz",
+    "synonyms": [
+      "bufalina",
+      "bufala piccola"
+    ],
+    "multiple": 2
+  },
+  {
+    "sku": "BURRATA-125",
+    "name": "Burrata 125 g",
+    "brand": "Caseificio Sole",
+    "category": "latticini",
+    "format": "125 g",
+    "unit": "pz",
+    "synonyms": [
+      "burrata"
+    ]
+  },
+  {
+    "sku": "GRANA-GRAT-1KG",
+    "name": "Formaggio grana grattugiato 1 kg",
+    "brand": "Valpadana",
+    "category": "latticini",
+    "format": "1 kg",
+    "unit": "pz",
+    "synonyms": [
+      "grana",
+      "grana grattugiato",
+      "parmigiano grattugiato"
+    ]
+  },
+  {
+    "sku": "PARM-REGG-KG",
+    "name": "Parmigiano Reggiano 24 mesi",
+    "brand": "Valpadana",
+    "category": "latticini",
+    "format": "pezzo a peso",
+    "unit": "kg",
+    "synonyms": [
+      "parmigiano",
+      "parmigiano reggiano",
+      "parmigiano a pezzi"
+    ]
+  },
+  {
+    "sku": "BURRO-PAN-1KG",
+    "name": "Burro in panetti 1 kg (cartone da 8)",
+    "brand": "Latteria Alpina",
+    "category": "latticini",
+    "format": "cartone 8 x 1 kg",
+    "unit": "pz",
+    "synonyms": [
+      "burro",
+      "burro panetti"
+    ],
+    "multiple": 8
+  },
+  {
+    "sku": "BURRO-PAN-500",
+    "name": "Burro in panetti 500 g",
+    "brand": "Latteria Alpina",
+    "category": "latticini",
+    "format": "500 g",
+    "unit": "pz",
+    "synonyms": [
+      "burro 500"
+    ],
+    "active": false
+  },
+  {
+    "sku": "LATTE-INT-1L",
+    "name": "Latte intero 1 L (cartone da 12)",
+    "brand": "Latteria Alpina",
+    "category": "latticini",
+    "format": "cartone 12 x 1 L",
+    "unit": "ct",
+    "synonyms": [
+      "latte",
+      "latte intero"
+    ]
+  },
+  {
+    "sku": "FARINA-00-25KG",
+    "name": "Farina tipo 00 sacco 25 kg",
+    "brand": "Molino Rossi",
+    "category": "secco",
+    "format": "25 kg",
+    "unit": "pz",
+    "synonyms": [
+      "farina",
+      "farina 00",
+      "farina per pizza"
+    ]
+  },
+  {
+    "sku": "FARINA-0-25KG",
+    "name": "Farina tipo 0 sacco 25 kg",
+    "brand": "Molino Rossi",
+    "category": "secco",
+    "format": "25 kg",
+    "unit": "pz",
+    "synonyms": [
+      "farina 0"
+    ]
+  },
+  {
+    "sku": "POM-PELATI-2500",
+    "name": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+    "brand": "Campo Verde",
+    "category": "secco",
+    "format": "cartone 6 x 2,5 kg",
+    "unit": "ct",
+    "synonyms": [
+      "pelati",
+      "pomodori pelati",
+      "pomodoro"
+    ]
+  },
+  {
+    "sku": "OLIO-EVO-5L",
+    "name": "Olio extravergine di oliva 5 L",
+    "brand": "Frantoio Colli",
+    "category": "secco",
+    "format": "5 L",
+    "unit": "pz",
+    "synonyms": [
+      "olio",
+      "olio evo",
+      "olio extravergine"
+    ]
+  },
+  {
+    "sku": "OLIO-EVO-1L",
+    "name": "Olio extravergine di oliva 1 L (cartone da 12)",
+    "brand": "Frantoio Colli",
+    "category": "secco",
+    "format": "cartone 12 x 1 L",
+    "unit": "ct",
+    "synonyms": [
+      "olio 1 litro"
+    ]
+  },
+  {
+    "sku": "PROSC-COTTO-KG",
+    "name": "Prosciutto cotto",
+    "brand": "Salumificio Bruni",
+    "category": "salumi",
+    "format": "a peso",
+    "unit": "kg",
+    "synonyms": [
+      "cotto",
+      "prosciutto cotto",
+      "prosciutto"
+    ]
+  },
+  {
+    "sku": "PROSC-CRUDO-KG",
+    "name": "Prosciutto crudo di Parma",
+    "brand": "Salumificio Bruni",
+    "category": "salumi",
+    "format": "a peso",
+    "unit": "kg",
+    "synonyms": [
+      "crudo",
+      "prosciutto crudo"
+    ]
+  },
+  {
+    "sku": "SALAME-PICC-KG",
+    "name": "Salame piccante",
+    "brand": "Salumificio Bruni",
+    "category": "salumi",
+    "format": "a peso",
+    "unit": "kg",
+    "synonyms": [
+      "salame",
+      "salamino",
+      "salame piccante",
+      "spianata"
+    ]
+  },
+  {
+    "sku": "PATATINE-SURG-2500",
+    "name": "Patate fritte surgelate 2,5 kg",
+    "brand": "FreddoGold",
+    "category": "surgelati",
+    "format": "2,5 kg",
+    "unit": "pz",
+    "synonyms": [
+      "patatine",
+      "patate fritte",
+      "patatine surgelate"
+    ]
+  },
+  {
+    "sku": "CAFFE-GRANI-1KG",
+    "name": "Caffe in grani 1 kg",
+    "brand": "Torrefazione Moka",
+    "category": "bevande",
+    "format": "1 kg",
+    "unit": "pz",
+    "synonyms": [
+      "caffe",
+      "caffe in grani"
+    ]
+  },
+  {
+    "sku": "ACQUA-NAT-50CL",
+    "name": "Acqua naturale 50 cl (cassa da 24)",
+    "brand": "Fonte Alba",
+    "category": "bevande",
+    "format": "cassa 24 x 50 cl",
+    "unit": "cs",
+    "synonyms": [
+      "acqua",
+      "acqua naturale",
+      "acqua 50"
+    ]
+  },
+  {
+    "sku": "ACQUA-FRIZ-50CL",
+    "name": "Acqua frizzante 50 cl (cassa da 24)",
+    "brand": "Fonte Alba",
+    "category": "bevande",
+    "format": "cassa 24 x 50 cl",
+    "unit": "cs",
+    "synonyms": [
+      "acqua frizzante",
+      "acqua gassata"
+    ]
+  },
+  {
+    "sku": "BIRRA-FUSTO-20L",
+    "name": "Birra chiara fusto 20 L",
+    "brand": "Birrificio Nord",
+    "category": "bevande",
+    "format": "fusto 20 L",
+    "unit": "pz",
+    "synonyms": [
+      "birra",
+      "fusto",
+      "birra alla spina"
+    ]
+  },
+  {
+    "sku": "BIRRA-FUSTO-30L",
+    "name": "Birra chiara fusto 30 L",
+    "brand": "Birrificio Nord",
+    "category": "bevande",
+    "format": "fusto 30 L",
+    "unit": "pz",
+    "synonyms": [
+      "fusto grande"
+    ]
+  },
+  {
+    "sku": "BIRRA-BOT-33CL",
+    "name": "Birra chiara bottiglia 33 cl (cartone da 24)",
+    "brand": "Birrificio Nord",
+    "category": "bevande",
+    "format": "cartone 24 x 33 cl",
+    "unit": "ct",
+    "synonyms": [
+      "birra in bottiglia",
+      "birrette"
+    ]
+  }
+]
