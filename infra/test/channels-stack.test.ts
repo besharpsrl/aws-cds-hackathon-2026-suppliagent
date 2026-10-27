@@ -1,21 +1,21 @@
 import { App } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { describe, expect, it } from 'vitest';
-import { getConfig } from '../config/environments.js';
+import { type EnvConfig, getConfig } from '../config/environments.js';
 import { buildApp } from '../lib/app.js';
 import { context } from './context.js';
 
-const channels = (extraContext: Record<string, string> = {}, env = 'dev') => {
+const channels = (extraContext: Record<string, string> = {}, config: Partial<EnvConfig> = {}) => {
   const app = new App({ context: { ...context, ...extraContext } });
-  const stacks = buildApp(app, getConfig(env));
+  const stacks = buildApp(app, { ...getConfig('dev'), ...config });
   return { app, stacks, template: Template.fromStack(stacks.channels) };
 };
 
-const ssmIn = (template: Template, env: string, name: string) =>
+const ssm = (template: Template, name: string) =>
   Object.values(template.findResources('AWS::SSM::Parameter')).find(
-    (r) => r.Properties.Name === `/suppliagent/${env}/${name}`,
+    (r) => r.Properties.Name === `/suppliagent/dev/${name}`,
   )?.Properties.Value;
-const ssm = (template: Template, name: string) => ssmIn(template, 'dev', name);
+const noChannels = { sesDomain: undefined, waPhoneNumberId: undefined };
 
 describe('ChannelsStack (T-20, FN-01)', () => {
   it('creates encrypted SNS topics for WhatsApp events, inbound mail and email events', () => {
@@ -59,13 +59,13 @@ describe('ChannelsStack (T-20, FN-01)', () => {
     });
   });
 
-  it('without sesDomain (demo) creates no identity nor receipt rules, and publishes UNSET parameters', () => {
-    const { template } = channels({}, 'demo');
+  it('without sesDomain creates no identity nor receipt rules, and publishes UNSET parameters', () => {
+    const { template } = channels({}, noChannels);
     template.resourceCountIs('AWS::SES::EmailIdentity', 0);
     template.resourceCountIs('AWS::SES::ReceiptRuleSet', 0);
     template.resourceCountIs('AWS::SES::ReceiptRule', 0);
     for (const name of ['waPhoneNumberId', 'sesDomain', 'sesFromAddress']) {
-      expect(ssmIn(template, 'demo', name)).toBe('UNSET');
+      expect(ssm(template, name)).toBe('UNSET');
     }
   });
 
@@ -128,11 +128,12 @@ describe('ChannelsStack (T-20, FN-01)', () => {
     });
   });
 
-  it('synthesizes dev and demo with no cdk-nag errors, with and without sesDomain', () => {
-    for (const env of ['dev', 'demo']) {
-      expect(() => channels({}, env).app.synth()).not.toThrow();
-      expect(() => channels({ sesDomain: 'ordini.example.com' }, env).app.synth()).not.toThrow();
-    }
+  it('synthesizes with no cdk-nag errors, with and without sesDomain', () => {
+    expect(() => channels().app.synth()).not.toThrow();
+    expect(() => channels({}, noChannels).app.synth()).not.toThrow();
+    expect(() =>
+      channels({ sesDomain: 'ordini.example.com' }, noChannels).app.synth(),
+    ).not.toThrow();
   });
 });
 

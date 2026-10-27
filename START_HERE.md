@@ -28,11 +28,11 @@
 - **Prendere**: un task del perimetro (§4.2) con stato ☐ e tutte le dipendenze **bloccanti** ✅. Crea il branch (`feat/FN-xx-…`), come primo commit metti la tua sigla in *Owner* e ◐ in *Stato* nella riga del task, fai push e apri subito la **PR in draft**; avvisa il team. Le dipendenze ↺ (di integrazione) non bloccano: si lavora con mock/stub dichiarati nella PR.
 - **Chiudere** (nella stessa PR): togli la riga da §4.2 e aggiungi una riga in §7 (data, task, cosa, PR). Se il lavoro crea o rinvia task, aggiorna §4.
 - **Git**: un task = una PR (salvo task accoppiati, §4.4). Merge su `main` solo da chi revisiona, con CI verde e *Create a merge commit*. Mai push o force push su `main`. `git pull --rebase origin main` prima di iniziare e prima di ogni deploy.
-- **Deploy** solo da `main` aggiornato, solo su `dev`, solo gli stack toccati: `cd infra && npx cdk deploy suppliagent-dev-<stack> --exclusively -c env=dev`. `demo` solo dopo conferma di MG (§6).
+- **Deploy** solo da `main` aggiornato, solo gli stack toccati: `cd infra && npx cdk deploy suppliagent-dev-<stack> --exclusively -c env=dev`. `dev` è l'**unico ambiente** (sviluppo, video e giudici): dopo il code freeze si fa deploy solo con conferma di MG.
 
 ### 1.3 Cosa non fare senza chiedere
 
-Deploy su `demo`, modifiche a risorse condivise (numero WhatsApp, dominio SES, template Meta), cambio di region/modello, servizi a costo fisso, cancellazione di dati o bucket, dati reali del cliente. Elenco completo: [AGENTS.md §11](./agent-context/AGENTS.md).
+Deploy dopo il code freeze, modifiche a risorse condivise (numero WhatsApp, dominio SES, template Meta), cambio di region/modello, servizi a costo fisso, cancellazione di dati o bucket, dati reali del cliente. Elenco completo: [AGENTS.md §11](./agent-context/AGENTS.md).
 
 ### 1.4 Note operative (problemi già incontrati)
 
@@ -40,7 +40,7 @@ Deploy su `demo`, modifiche a risorse condivise (numero WhatsApp, dominio SES, t
 - Se dopo un deploy una Lambda ha `CodeSize` di poche centinaia di byte, l'asset è stato pubblicato vuoto (sintesi concorrente tra worktree): ripubblicare lo zip corretto con la stessa chiave e aggiornare il codice.
 - Dopo un deploy di `agent`, le sessioni AgentCore già aperte restano sul codice vecchio: provare con una conversazione nuova.
 - `cdk synth` a volte fallisce senza motivo riproducibile: rilanciare.
-- Su `dev` il **Notifier è in sandbox** (`notifierSandbox = true`): le risposte sono registrate ma non inviate. Il simulatore (`scripts/simulate_channel.py`) funziona solo così.
+- Su `dev` il **Notifier è in sandbox** (`notifierSandbox = true` in `infra/config/environments.ts`): le risposte sono registrate ma non inviate. Il simulatore (`scripts/simulate_channel.py`) funziona solo così. T-68 passa a invio reale: da quel momento il simulatore non si usa più (o si riaccende il sandbox per una prova e lo si rispegne). Il valore va cambiato nella config, non solo in SSM: ogni deploy sovrascrive il parametro.
 
 ### 1.5 Mappa dei documenti
 
@@ -72,7 +72,7 @@ Deploy su `demo`, modifiche a risorse condivise (numero WhatsApp, dominio SES, t
 | ERP mock + PDF ordine | ✅ | |
 | Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Online su `dev` ma con **dati mock** (T-62); live e handoff da fare (T-49, T-63) |
 | Copilota agenti, proattività, KPI | ⬜ | Fuori perimetro |
-| Ambiente per i giudici, README giudici | ☐ | T-10, decisione D-01 |
+| `dev` pronto per i giudici, README giudici | ☐ | T-10 |
 | Materiali (diagramma, testi, video, ACE, Devpost) | ☐ | T-11, T-12, §5 |
 
 **Limiti noti** (da tenere presenti nella demo):
@@ -88,10 +88,10 @@ Deploy su `demo`, modifiche a risorse condivise (numero WhatsApp, dominio SES, t
 | Quando | Sviluppo (MG, MM, FZ) | Azioni manuali (§5) |
 |---|---|---|
 | ✅ 12/10–26/10 | Concept, documenti, P0, pipeline, agente, ordini, console su mock | Devpost, account AWS, SES, WABA |
-| **Mar 27/10 sera** | **T-68 per primo** (e2e da telefono); in parallelo T-26, T-62, T-25, T-49, T-48, T-54, T-11, T-12 | M-01 foto bigliettini, M-02 numeri tester, M-05 ACE, D-01 |
+| **Mar 27/10 sera** | **T-68 per primo** (e2e da telefono); in parallelo T-26, T-62, T-25, T-49, T-48, T-54, T-11, T-12 | M-01 foto bigliettini, M-02 numeri tester, M-05 ACE |
 | **Mer 28/10 08:00–12:00** | T-63, T-67, T-05 + T-53, T-29; correzioni da T-68 | M-06 utente `judge` |
 | **Mer 28/10 ore 12:00** | **Code freeze**: dopo, solo bugfix bloccanti | |
-| 12:00–13:00 | T-10: deploy ambiente giudici, reset, prova S1 | |
+| 12:00–13:00 | T-10: ultimo deploy di `dev` da `main`, reset, prova S1 | |
 | 13:00–14:00 | Supporto | M-07 registrazione e upload video |
 | 14:00–15:00 | Supporto | M-08 Devpost compilato e **inviato** (PS), M-09 controllo link |
 | 28/10 ore 21:00 | | Scadenza Devpost |
@@ -125,8 +125,7 @@ flowchart LR
   T68 --> FZ{{Code freeze 28/10 12:00}}
   T26[T-26 email PDF] --> FZ
   T62[T-62 console API] --> FZ
-  FZ --> T10[T-10 ambiente giudici]
-  D01([D-01]) --> T10
+  FZ --> T10[T-10 dev per i giudici]
   M06([M-06 utente judge]) --> T10
   T10 --> M07([M-07 video])
   T12[T-12 copione] --> M07
@@ -168,12 +167,12 @@ flowchart LR
 |---|---|---|---|---|---|---|---|
 | T-11 | Diagramma aggiornato + PNG, testi submission (EN), paragrafo WhatsApp | – | IN | Must | – | | ☐ |
 | T-12 | Copione del video (≤ 3 min) | – | IN | Must | – | | ☐ |
-| T-10 | Ambiente per i giudici, reset, README giudici | FN-31 | IN | Must | code freeze, D-01, M-06 | | ☐ |
+| T-10 | `dev` pronto per i giudici, reset, README giudici | FN-31 | IN | Must | code freeze, M-06 | | ☐ |
 
 <details>
 <summary><b>Dettaglio dei task del perimetro</b></summary>
 
-- **T-68 – S1 end-to-end su WhatsApp reale** (nuovo, 27/10). Su `dev`: numeri dei tester registrati come contatti (M-02), `notifierSandbox = false`, deploy di `messaging`. Dal telefono: foto del bigliettino (+ eventuale vocale) → righe lette → chiarimento → riepilogo → *Confermo* → `CONFIRMED` → ERP mock → PDF. Annotare nella PR tempi, numero di scambi e problemi; correggere quelli bloccanti (es. i limiti noti di §2). Uscita: S1 riuscito da telefono, ripetibile dopo `seed/reset.py`.
+- **T-68 – S1 end-to-end su WhatsApp reale** (nuovo, 27/10). Su `dev`: numeri dei tester registrati come contatti (M-02), `notifierSandbox: 'false'` in `infra/config/environments.ts` (invio reale; resta così anche per i giudici), deploy di `foundation` (parametri SSM) e `messaging`. Dal telefono: foto del bigliettino (+ eventuale vocale) → righe lette → chiarimento → riepilogo → *Confermo* → `CONFIRMED` → ERP mock → PDF. Annotare nella PR tempi, numero di scambi e problemi; correggere quelli bloccanti (es. i limiti noti di §2). Uscita: S1 riuscito da telefono, ripetibile dopo `seed/reset.py`.
 - **T-26 – Email di conferma con PDF**. Template HTML (IT/EN) di conferma d'ordine con il PDF di `order_pdf` allegato, inviato dal Notifier con `sesv2:SendEmail` dopo `order.confirmed`, al contatto con email. Il resto del vecchio T-26 è in T-26b (§4.3).
 - **T-25 – Messaggi interattivi WhatsApp**. Button/list e parsing delle risposte; riepilogo d'ordine con *Confermo / Modifica* come messaggio interattivo: il Notifier registra l'id del messaggio in `Orders.summaryMessageId` (il tool `orders` accetta il tap solo se `interactiveReply.contextId` lo uguaglia); l'agente passa `interactiveReply` a `confirm_order`. Senza T-25 le risposte restano testuali.
 - **T-48 – Primo contatto**. Informativa e richiesta di consenso proattivo al primo messaggio di un contatto (F-01); preferenza salvata.
@@ -187,11 +186,13 @@ flowchart LR
 - **T-53 – Eval**. Runner e metriche (lettura righe, matching, intento, n. scambi) anche con AgentCore Evaluations; eval della conversazione d'ordine (da bigliettino a `CONFIRMED` con sostituto, arrotondamento, cut-off, *Modifica*, doppia conferma); miglioramento della lettura del corsivo (oggi 62% con Nova Pro). Report in `agent/evals/README.md`.
 - **T-11 – Materiali**. Aggiornare `docs/architecture.drawio` (coda `inbound` standard, niente Lambda Media Fetcher) ed esportarlo in PNG; testi Devpost in inglese (problema, soluzione, servizi AWS, impatto misurabile) e paragrafo sull'uso di EUM Social / WhatsApp (premio Meta); bozza in `docs/SUBMISSION_TEXT.md`.
 - **T-12 – Copione del video**. ≤ 3 minuti, in inglese o con sottotitoli: telefono del ristoratore + console affiancati; S1 completo, momento "wow" foto → ordine verificato; checklist di registrazione (reset dati, nessun marchio o musica senza licenza).
-- **T-10 – Ambiente per i giudici**. Ambiente scelto in D-01, deploy e `seed/reset.py`, prova S1; README "Try it (for judges)": URL della console, credenziali `judge` (M-06), cliente e bigliettino di prova; se si usa `demo`, spostare la destinazione eventi WhatsApp sul suo topic ([WABA_SETUP §4](./docs/WABA_SETUP.md)).
+- **T-10 – `dev` pronto per i giudici**. Dopo il freeze: ultimo deploy di tutti gli stack da `main`, console ripubblicata con `VITE_ORDERS_SOURCE=api` (`scripts/deploy-console.sh dev`), `seed/reset.py --env dev`, prova S1 da telefono; README "Try it (for judges)": URL della console, credenziali `judge` (M-06), cliente e bigliettino di prova. Da lì `dev` resta congelato fino al 12/11.
 
 </details>
 
 ### 4.3 Fuori perimetro (dopo la submission; nella demo solo come video/slide)
+
+Qui ci sono **tutti** i task tolti dal perimetro, con la descrizione completa nel blocco sotto la tabella (es. lo stack analytics è T-09, la dashboard KPI che lo usa T-65).
 
 | ID | Task | FN | Stream | Dipende da |
 |---|---|---|---|---|
@@ -210,13 +211,27 @@ flowchart LR
 | T-70 | Hardening dai rilievi di revisione di T-40/T-41 (PR #15), dettaglio sotto | FN-32 | IN + AG | – |
 
 <details>
-<summary><b>Dettaglio T-70 – hardening</b></summary>
+<summary><b>Dettaglio dei task fuori perimetro</b></summary>
+
+- **T-24 – Completamento del Notifier** (la base — risposte su WhatsApp ed email, sandbox, idempotenza, read receipt — è fatta). Template fuori dalla finestra 24h (F-11.C2), compreso `order_pending_reminder` inviato da `order-sweeper` (oggi il promemoria esce solo a testo libero entro 24h); fallback di canale e RCS→SMS; fasce orarie; opt-out. Dal Router (T-21/T-23): richiesta di reinvio per media non scaricati (E-02) e avviso per allegati rifiutati senza `s3Uri` (E-13). Fallimenti di invio: retry ×3 e fallback (E-09).
+- **T-26b – Resto dell'email**. Conferma aggiornata dopo una modifica entro il cut-off (evento `order.updated`, FN-16); ordini via email (corpo, foto, PDF, Excel; l'ingresso è già nel Router, T-23); F-02.C3: un indirizzo sconosciuto che risponde a `ordine+<id>@` → contatto dall'ordine, associazione in attesa di conferma.
+- **T-27 – RCS/SMS**. Infra EUM SMS v2 (configuration set, event destinations, opt-out list, topic `sms-inbound`, rimasta fuori da T-20); sottoscrizione del topic alla coda `inbound` e normalizzazione SMS/RCS nel Router (rimaste fuori da T-21); rich card di conferma e di consegna con suggested replies; fallback SMS. Richiede registrazione del mittente e dei telefoni tester RCS.
+- **T-06b – Knowledge Base schede tecniche** (resto di T-06; indice `products` e `catalog_indexer` sono fatti). `CfnKnowledgeBase` (L1), vector store S3 Vectors, indice `product-sheets`, data source `catalog-assets/sheets/`.
+- **T-44b – Tool `ask_product_sheets`** (target Gateway `catalog`, stessa Lambda `tool-catalog` di T-44). Risposte dalle schede tecniche con citazione, o dichiarazione esplicita che l'informazione non c'è; per tutti i ruoli, senza dati interni.
+- **T-08 – `ProactiveStack`**. `insights_analyzer` (riordini scaduti, prodotti smessi, gap rispetto a clienti simili), `proactive_trigger`, scheduler notturno.
+- **T-50 – Tool `reco`**. Politica dei suggerimenti: max 1 per ordine, solo con consenso, con motivazione (FN-11).
+- **T-51 – Tool `sales`**. Briefing del cliente, agenda, ordine per conto del cliente; solo clienti del portafoglio dell'agente.
+- **T-52 – Turno proattivo di riordino**. Template `reorder_suggestion`, pulsanti, cooldown di 7 giorni, mai in fascia notturna (FN-19).
+- **T-64 – Chat web agenti di commercio**. Lambda `rep_chat` + UI con streaming; `NormalizedMessage` con `channel = WEB`.
+- **T-09 – `AnalyticsStack`**. Firehose → S3 Parquet → Glue → viste Athena dei KPI; dashboard e allarmi CloudWatch, incluso il target di notifica dell'allarme `suppliagent-<env>-inbound-dlq` creato in T-21.
+- **T-65 – Dashboard KPI** in console (viste Athena di T-09) con confronto con la baseline (D-03).
+
+**T-70 – hardening**
 
 - IAM Runtime: statement separato per i `foundation-model` con condizione `bedrock:InferenceProfileArn` (oggi Nova Pro è invocabile anche senza il profilo `eu.`, sempre in UE).
 - IAM tool: togliere `kms:Encrypt` e aggiungere `kms:ViaService` (`dynamodb.<region>.amazonaws.com`, `events.<region>.amazonaws.com`).
 - Il ruolo del Runtime legge l'intero bucket degli asset CDK (grant dell'L2 `fromCodeAsset`): restringere alla chiave dell'asset o accettare (oggi accettato e motivato in cdk-nag); test che gli unici statement `Resource: "*"` del Runtime siano X-Ray e metriche.
 - `TurnRequest`: `max_length` su `messages`, `attachments`, `customerIds`; `Literal` per `channel` e tipo di allegato.
-- `scripts/invoke_agent.py`: limitare a `dev` o chiedere conferma esplicita per `demo` (scrive `Contacts`/`ChannelIdentities`).
 - Limite ai cicli dell'agente per turno (E-12).
 - I rischi accettati della revisione T-21/T-23 sono in [INFRASTRUCTURE_DESIGN §12](./docs/INFRASTRUCTURE_DESIGN.md).
 
@@ -239,7 +254,7 @@ Quello che gli agenti di sviluppo non possono fare: accessi, Meta, AWS Partner C
 | M-03 | Tag `Project`, `Owner`, `Env` sulla risorsa del numero `phone-number-id-79f9…` (il WABA li ha già) | MG | 28/10 | – | ☐ |
 | M-04 | Attivare `Project` ed `Env` come *cost allocation tags* in Billing | MG | 28/10 | M-10 | ☐ |
 | M-05 | **Opportunità ACE** su Partner Central (dettagli sotto) → annotare l'ID | PS | 28/10 12:00 | M-08 | ☐ |
-| M-06 | Utente Cognito `judge` nell'ambiente dei giudici (README, *Manual steps* §4) | | 28/10 12:00 | T-10 | ☐ |
+| M-06 | Utente Cognito `judge` su `dev` (README, *Manual steps* §4) | | 28/10 12:00 | T-10 | ☐ |
 | M-07 | Registrare il video (copione T-12) e caricarlo **pubblico** su YouTube o Vimeo | | 28/10 14:00 | M-08 | ☐ |
 | M-08 | Compilare e **inviare** Devpost (dettagli sotto) | PS | 28/10 15:00 | – | ☐ |
 | M-09 | Controllo finale: repo pubblico con licenza visibile, video pubblico, console raggiungibile, WhatsApp che risponde | | 28/10 15:00 | – | ☐ |
@@ -255,9 +270,7 @@ Quello che gli agenti di sviluppo non possono fare: accessi, Meta, AWS Partner C
 
 **Aperte**
 
-| ID | Decisione | Owner | Entro |
-|---|---|---|---|
-| D-01 | Ambiente per i giudici: nuovo `demo` (WABA da spostare sul suo topic, `dev` non riceve più) o `dev` stabilizzato dopo il freeze | MG | 27/10 sera |
+Nessuna per la gara.
 
 **Aperte, dopo la submission** (servono al cliente reale, non alla gara)
 
@@ -274,6 +287,7 @@ Quello che gli agenti di sviluppo non possono fare: accessi, Meta, AWS Partner C
 
 | Data | Decisione |
 |---|---|
+| 27/10 | Un solo ambiente, `dev`, per sviluppo, video e giudici: l'ambiente `demo` è stato tolto da codice e documenti; dopo il code freeze `dev` è congelato |
 | 27/10 | Code freeze spostato al 28/10 ore 12:00; perimetro = §4.2, il resto dopo la submission |
 | 27/10 | Prezzi mostrati al ristoratore (riepilogo con totale stimato) |
 | 27/10 | Repo pubblico (già pubblico, licenza MIT) |

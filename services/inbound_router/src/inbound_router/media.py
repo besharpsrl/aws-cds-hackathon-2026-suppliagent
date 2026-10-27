@@ -136,7 +136,7 @@ def _fetch(attachment: Attachment, bucket: str, prefix: str) -> Attachment:
 
 
 def _sandbox() -> bool:
-    """Simulated media only while the Notifier is in sandbox, so never in `demo` (T-14). Unlike
+    """Simulated media only while the Notifier is in sandbox, never with real sending (T-14). Unlike
     the Notifier, a missing parameter means off."""
     try:
         value = _ssm().get_parameter(Name=os.environ["SANDBOX_PARAM"])["Parameter"]["Value"]

@@ -75,7 +75,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-28 | Console back office in tempo reale | M | CO | DP, VI | – | ◐ T-62, T-63 |
 | FN-29 | Chat web per agenti di commercio | S | CO | TE | F-10 | ⬜ |
 | FN-30 | Dashboard KPI di impatto | S | CO | VI, DP | – | ⬜ |
-| FN-31 | Accesso giudici e ambiente demo | M | IN + CO | FU | – | ◐ T-10 |
+| FN-31 | Accesso giudici e ambiente della demo (`dev`) | M | IN + CO | FU | – | ◐ T-10 |
 | FN-32 | Sicurezza, privacy e autorizzazione per ruolo | M | IN + AG | TE | – | ✅ |
 | FN-33 | Osservabilità ed eventi | S | IN + CO | TE | §6.4 | ⬜ |
 | FN-34 | Integrazione con l'ERP reale | W | – | – | – | – |
@@ -228,7 +228,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [ ] Tempo foto→conferma, % righe auto-abbinate, accuratezza, % ordini senza intervento, valore suggerimenti accettati, conversione riordini, delivery/read rate per canale, problemi di consegna.
 - [ ] Confronto con la baseline del processo attuale fornita dal cliente (o stima dichiarata).
 
-#### FN-31 – Accesso giudici e ambiente demo · **M** · IN + CO
+#### FN-31 – Accesso giudici e ambiente della demo (`dev`) · **M** · IN + CO
 - [ ] README con numero WhatsApp, email ordini, credenziali console `judge`, **cliente di prova e bigliettino di esempio** scaricabile.
 - [ ] Script di reset dei dati demo.
 - [ ] Ambiente attivo e gratuito per i giudici fino al 12/11/2026.

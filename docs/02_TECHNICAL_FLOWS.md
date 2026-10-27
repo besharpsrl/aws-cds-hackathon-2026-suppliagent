@@ -520,7 +520,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `quietHours` | 21:00–07:00 |
 | `deliveryAutoConfirm` | true (fine giornata) |
 | `identificationMaxAttempts` | 3 |
-| `notifierSandbox` | `true` in `dev`, `false` in `demo` (il Notifier registra le uscite invece di inviarle) |
+| `notifierSandbox` | `true` = il Notifier registra le uscite invece di inviarle (simulatore); `false` = invio reale, necessario per i giudici (T-68). Il valore sta in `infra/config/environments.ts`: un deploy sovrascrive il parametro SSM |
 | `erpMockFailure` | `false` (con `true` l'ERP mock risponde "non disponibile": ordine resta `CONFIRMED`, retry e poi DLQ, E-08; letto a runtime, cache 60 s) |
 
 ## 8. Tracciabilità e logging

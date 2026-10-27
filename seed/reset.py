@@ -37,7 +37,7 @@ def clear(dynamodb: Any, env: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--env", required=True, choices=["dev", "demo"])
+    parser.add_argument("--env", required=True, choices=["dev"])
     parser.add_argument("--profile")
     parser.add_argument("--region", default="eu-west-1")
     parser.add_argument("--skip-index", action="store_true")

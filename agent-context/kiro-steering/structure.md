@@ -35,6 +35,6 @@ SuppliAgent/
 Criteri di accettazione FN soddisfatti · casi F-xx.Cn ed errori E-xx gestiti · unit test + test di autorizzazione negativa · lint/type/test/`cdk synth` verdi · eventi emessi · documentazione aggiornata.
 
 ## Non fare senza chiedere
-Deploy su `demo` · cambio region/modello · servizi a costo fisso · client CDS non ammessi · cancellare dati/risorse · dati reali del cliente o marchi di terzi.
+Deploy dopo il code freeze (`dev` è l'ambiente dei giudici) · cambio region/modello · servizi a costo fisso · client CDS non ammessi · cancellare dati/risorse · dati reali del cliente o marchi di terzi.
 
 Contesto completo: #[[file:agent-context/AGENTS.md]]
