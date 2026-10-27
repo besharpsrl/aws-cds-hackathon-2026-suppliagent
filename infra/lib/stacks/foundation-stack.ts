@@ -73,6 +73,22 @@ export class FoundationStack extends Stack {
       }),
     );
 
+    // S3 Vectors (T-06) maintains the index in the background with the CMK of the vector bucket.
+    this.key.addToResourcePolicy(
+      new iam.PolicyStatement({
+        principals: [new iam.ServicePrincipal('indexing.s3vectors.amazonaws.com')],
+        actions: ['kms:Decrypt'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: { 'aws:SourceAccount': this.account },
+          ArnLike: { 'aws:SourceArn': `arn:aws:s3vectors:${this.region}:${this.account}:bucket/*` },
+          'ForAnyValue:StringEquals': {
+            'kms:EncryptionContextKeys': ['aws:s3vectors:arn', 'aws:s3vectors:resource-id'],
+          },
+        },
+      }),
+    );
+
     // S3 server access logs do not support SSE-KMS on the target bucket: SSE-S3 is the only exception to the CMK.
     const accessLogsBucket = new s3.Bucket(this, 'AccessLogsBucket', {
       bucketName: `${prefix}-access-logs-${this.account}`,

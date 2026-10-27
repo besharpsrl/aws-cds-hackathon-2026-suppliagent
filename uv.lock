@@ -6,6 +6,7 @@ requires-python = "==3.12.*"
 members = [
     "suppliagent",
     "suppliagent-agent",
+    "suppliagent-catalog-indexer",
     "suppliagent-console-api",
     "suppliagent-inbound-router",
     "suppliagent-notifier",
@@ -1076,6 +1077,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "suppliagent-agent" },
+    { name = "suppliagent-catalog-indexer" },
     { name = "suppliagent-console-api" },
     { name = "suppliagent-inbound-router" },
     { name = "suppliagent-notifier" },
@@ -1097,6 +1099,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "suppliagent-agent", editable = "agent" },
+    { name = "suppliagent-catalog-indexer", editable = "services/catalog_indexer" },
     { name = "suppliagent-console-api", editable = "services/console_api" },
     { name = "suppliagent-inbound-router", editable = "services/inbound_router" },
     { name = "suppliagent-notifier", editable = "services/notifier" },
@@ -1135,6 +1138,17 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.14.1" },
     { name = "strands-agents", specifier = ">=1.62.0" },
 ]
+
+[[package]]
+name = "suppliagent-catalog-indexer"
+version = "0.1.0"
+source = { editable = "services/catalog_indexer" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
 name = "suppliagent-console-api"
