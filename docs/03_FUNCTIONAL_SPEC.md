@@ -41,43 +41,45 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 
 ### 4.1 Tabella riassuntiva
 
-| ID | Funzionalità | Priorità | Stream | Criteri | Flusso |
-|---|---|---|---|---|---|
-| FN-01 | Messaggistica multicanale bidirezionale (WhatsApp, email, RCS/SMS) | M | CH | TE, FU, WA | §3, F-11 |
-| FN-02 | Primo contatto, informativa e consenso proattivo | M | AG | VI | F-01 |
-| FN-03 | Identificazione contatto e ruolo (cliente / agente di commercio) | M | AG | FU | F-02 |
-| FN-04 | Comprensione dell'intento | M | AG | FU | F-03 |
-| FN-05 | **Ordine da foto di bigliettino scritto a mano** | M | AG | CR, DP, WA | F-04 |
-| FN-06 | Ordine da vocale, testo ed email | M | AG + CH | TE, FU | F-04 |
-| FN-07 | Abbinamento al catalogo con storico del cliente | M | AG | TE, VI | F-05 |
-| FN-08 | Chiarimenti con pulsanti interattivi | M | AG + CH | DP, WA | F-05 |
-| FN-09 | Disponibilità, sostituti, multipli e minimi | M | AG | VI | F-06 |
-| FN-10 | Data di consegna e cut-off | M | AG | FU | F-06 |
-| FN-11 | Suggerimento contestuale (max 1 per ordine) | S | AG | VI, CR | F-07 |
-| FN-12 | Riepilogo e conferma esplicita | M | AG | FU | F-07 |
-| FN-13 | ERP adapter (mock) e numero d'ordine | M | IN | TE | F-07 |
-| FN-14 | Email di conferma con PDF | M | CH | TE | F-07, F-11 |
-| FN-15 | Conferma SMS/RCS | M | CH | TE | F-07, F-11 |
-| FN-16 | Modifica e annullamento ordine | S | AG | FU | F-08 |
-| FN-17 | Stato ordine e consegna | S | AG | VI | F-09 |
-| FN-18 | Avvisi di consegna RCS e segnalazione problemi | S | CH + AG | TE, CR | F-11, F-12 |
-| FN-19 | **Riordino proattivo** | M | AG + IN | CR, VI, DP | F-13 |
-| FN-20 | Copilota: consigli e briefing cliente | M | AG | VI, CR | F-10.A |
-| FN-21 | Copilota: catalogo e schede tecniche (Knowledge Base) | M | AG + IN | TE | F-10.B |
-| FN-22 | Copilota: ordine per conto del cliente | S | AG | VI | F-10.D |
-| FN-23 | Copilota: agenda e briefing giornaliero | C | AG + CH | VI | F-10.C, F-10.E |
-| FN-24 | Handoff verso back office | M | AG + CO | VI, FU | F-14 |
-| FN-25 | Continuità cross-canale | M | AG | CR, TE | F-15 |
-| FN-26 | Raggruppamento messaggi ravvicinati (risposta unica) | M | CH | FU, DP | §3.3 |
-| FN-27 | Multilingua (IT/EN) | M | AG | FU, DP | – |
-| FN-28 | Console back office in tempo reale | M | CO | DP, VI | – |
-| FN-29 | Chat web per agenti di commercio | S | CO | TE | F-10 |
-| FN-30 | Dashboard KPI di impatto | S | CO | VI, DP | – |
-| FN-31 | Accesso giudici e ambiente demo | M | IN + CO | FU | – |
-| FN-32 | Sicurezza, privacy e autorizzazione per ruolo | M | IN + AG | TE | – |
-| FN-33 | Osservabilità ed eventi | S | IN + CO | TE | §6.4 |
-| FN-34 | Integrazione con l'ERP reale | W | – | – | – |
-| FN-35 | Pagamenti, fatturazione, fidi | W | – | – | – |
+> **Gara**: stato nel perimetro dell'hackathon (✅ fatto · ◐ nel perimetro, task aperto · ⬜ fuori perimetro, solo nel video). Le priorità restano la visione di prodotto; perimetro e task in [`START_HERE.md`](../START_HERE.md) §4.
+
+| ID | Funzionalità | Priorità | Stream | Criteri | Flusso | Gara |
+|---|---|---|---|---|---|---|
+| FN-01 | Messaggistica multicanale bidirezionale (WhatsApp, email, RCS/SMS) | M | CH | TE, FU, WA | §3, F-11 | ◐ T-68, T-26 |
+| FN-02 | Primo contatto, informativa e consenso proattivo | M | AG | VI | F-01 | ◐ T-48 |
+| FN-03 | Identificazione contatto e ruolo (cliente / agente di commercio) | M | AG | FU | F-02 | ✅ |
+| FN-04 | Comprensione dell'intento | M | AG | FU | F-03 | ✅ |
+| FN-05 | **Ordine da foto di bigliettino scritto a mano** | M | AG | CR, DP, WA | F-04 | ✅ |
+| FN-06 | Ordine da vocale, testo ed email | M | AG + CH | TE, FU | F-04 | ◐ email: T-26b ⬜ |
+| FN-07 | Abbinamento al catalogo con storico del cliente | M | AG | TE, VI | F-05 | ✅ |
+| FN-08 | Chiarimenti con pulsanti interattivi | M | AG + CH | DP, WA | F-05 | ◐ T-25 |
+| FN-09 | Disponibilità, sostituti, multipli e minimi | M | AG | VI | F-06 | ✅ |
+| FN-10 | Data di consegna e cut-off | M | AG | FU | F-06 | ✅ |
+| FN-11 | Suggerimento contestuale (max 1 per ordine) | S | AG | VI, CR | F-07 | ⬜ |
+| FN-12 | Riepilogo e conferma esplicita | M | AG | FU | F-07 | ✅ |
+| FN-13 | ERP adapter (mock) e numero d'ordine | M | IN | TE | F-07 | ✅ |
+| FN-14 | Email di conferma con PDF | M | CH | TE | F-07, F-11 | ◐ T-26 |
+| FN-15 | Conferma SMS/RCS | M | CH | TE | F-07, F-11 | ⬜ |
+| FN-16 | Modifica e annullamento ordine | S | AG | FU | F-08 | ✅ |
+| FN-17 | Stato ordine e consegna | S | AG | VI | F-09 | ✅ |
+| FN-18 | Avvisi di consegna RCS e segnalazione problemi | S | CH + AG | TE, CR | F-11, F-12 | ⬜ |
+| FN-19 | **Riordino proattivo** | M | AG + IN | CR, VI, DP | F-13 | ⬜ |
+| FN-20 | Copilota: consigli e briefing cliente | M | AG | VI, CR | F-10.A | ⬜ |
+| FN-21 | Copilota: catalogo e schede tecniche (Knowledge Base) | M | AG + IN | TE | F-10.B | ⬜ |
+| FN-22 | Copilota: ordine per conto del cliente | S | AG | VI | F-10.D | ⬜ |
+| FN-23 | Copilota: agenda e briefing giornaliero | C | AG + CH | VI | F-10.C, F-10.E | ⬜ |
+| FN-24 | Handoff verso back office | M | AG + CO | VI, FU | F-14 | ◐ T-49, T-63 |
+| FN-25 | Continuità cross-canale | M | AG | CR, TE | F-15 | ◐ T-54 |
+| FN-26 | Raggruppamento messaggi ravvicinati (risposta unica) | M | CH | FU, DP | §3.3 | ✅ |
+| FN-27 | Multilingua (IT/EN) | M | AG | FU, DP | – | ◐ T-54 |
+| FN-28 | Console back office in tempo reale | M | CO | DP, VI | – | ◐ T-62, T-63 |
+| FN-29 | Chat web per agenti di commercio | S | CO | TE | F-10 | ⬜ |
+| FN-30 | Dashboard KPI di impatto | S | CO | VI, DP | – | ⬜ |
+| FN-31 | Accesso giudici e ambiente demo | M | IN + CO | FU | – | ◐ T-10 |
+| FN-32 | Sicurezza, privacy e autorizzazione per ruolo | M | IN + AG | TE | – | ✅ |
+| FN-33 | Osservabilità ed eventi | S | IN + CO | TE | §6.4 | ⬜ |
+| FN-34 | Integrazione con l'ERP reale | W | – | – | – | – |
+| FN-35 | Pagamenti, fatturazione, fidi | W | – | – | – | – |
 
 ### 4.2 Schede di dettaglio
 

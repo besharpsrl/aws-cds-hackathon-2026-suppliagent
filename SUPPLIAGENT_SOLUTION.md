@@ -45,6 +45,8 @@
 | 10 | WhatsApp | Una settimana dopo: "Di solito riordinate l'olio ogni 10 giorni: vuole lo stesso ordine?" → **riordino con un tap** |
 | 11 | Console | Il back office vede ordini, righe corrette, eccezioni e KPI in tempo reale |
 
+> Perimetro della gara: passi 1–6 e 11 (senza KPI); i passi 7–10 (SMS/RCS, copilota, consegna, riordino proattivo) sono dopo la submission e compaiono nel video come prossimi passi. Dettaglio in [`START_HERE.md`](./START_HERE.md) §4.
+
 ### 3.2 Funzionalità principali
 
 **Per il ristoratore**
@@ -135,10 +137,10 @@ Dettagli: [Infrastructure Design](./docs/INFRASTRUCTURE_DESIGN.md) · [Diagramma
 
 | Criterio | Peso | Come lo copriamo |
 |---|---|---|
-| Esecuzione tecnica | 40% | 3 servizi CDS bidirezionali (WhatsApp, SES in/out, RCS/SMS) + AgentCore (Runtime, Memory, Gateway, Identity, Observability) + Knowledge Base, vision, ricerca ibrida; CDK riproducibile |
+| Esecuzione tecnica | 40% | 2 servizi CDS bidirezionali chiamati nel codice (WhatsApp, SES in/out; SMS/RCS dopo la gara) + AgentCore Runtime e Gateway (Memory e Observability con T-54), vision, ricerca ibrida su S3 Vectors; CDK riproducibile |
 | Valore e impatto | 20% | **Cliente reale**, processo quotidiano ad alto volume, KPI misurabili |
-| Demo | 20% | Foto del bigliettino → ordine verificato in pochi secondi; riordino con un tap; consegna con RCS |
-| Creatività | 10% | Ordine da scrittura a mano, doppia persona (cliente + agente di commercio) sullo stesso agente, proattività |
+| Demo | 20% | Foto del bigliettino → ordine verificato in pochi secondi, conferma con email e PDF; riordino con un tap e consegna con RCS come prossimi passi nel video |
+| Creatività | 10% | Ordine da scrittura a mano, ruoli diversi (cliente, agente di commercio) sullo stesso agente; copilota e proattività come prossimi passi |
 | Funzionalità | 10% | Serverless, scalabile; i giudici possono ordinare da soli via WhatsApp |
 | **Premio WhatsApp (Meta)** | $10k | Commercio conversazionale su WhatsApp: esattamente lo scenario che Meta promuove |
 
