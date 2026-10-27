@@ -6,6 +6,13 @@
 
 ---
 
+## 27/10/2026
+
+### Uscita dalla sandbox SES · FN-01
+- **Fatto**: AWS ha portato l'account `471112860008` fuori dalla sandbox SES in `eu-west-1` (richiesta del 26/10). Quota: 50.000 invii/24 h, 14/s. Invio verso destinatari non verificati ora ammesso.
+- **Suppression list** di account già attiva su `BOUNCE` e `COMPLAINT` (default SES, nessuna modifica): SES blocca i reinvii a indirizzi con bounce permanente o complaint. Gli eventi bounce/complaint arrivano anche sul topic SNS `email-events` (nessun subscriber: per il cliente reale serve una Lambda che alimenti la lista).
+- **Verifica**: `sesv2 GetAccount` → `ProductionAccessEnabled: true`; `SendEmail` di prova da `ordine@suppliagent.stonecutters.besharp.net` (configuration set `suppliagent-dev-cs`) a un indirizzo non verificato, accettato da SES (invio diretto una tantum, non dal Notifier).
+
 ## 26/10/2026
 
 ### T-22 + T-24 base – Debounce, Turn Dispatcher e Notifier con sandbox · FN-26, FN-01, FN-24, FN-14
@@ -31,7 +38,7 @@
 ### Email SES su `dev`: dominio, DNS, ricezione · FN-01, FN-06
 - **Cosa**: `cdk deploy suppliagent-dev-channels --exclusively -c env=dev -c sesDomain=suppliagent.stonecutters.besharp.net` (identity SES, rule set di ricezione attivato, parametri SSM `sesDomain` e `sesFromAddress` = `ordine@…`). Nella zona Route 53 condivisa `stonecutters.besharp.net` aggiunti **solo** 5 record con `CREATE` (mai sovrascritture; da 20 a 25 record): 3 CNAME DKIM, `MX 10 inbound-smtp.eu-west-1.amazonaws.com` e `_dmarc` TXT `p=none` su `suppliagent.stonecutters.besharp.net`.
 - **Verifica**: DKIM `SUCCESS`, identity verificata; mail di prova da `test@` a `ordini@` del dominio (ammessa in sandbox) → oggetto in `inbound-mail/mail/…`, router `message stored` canale `EMAIL`.
-- **Uscita dalla sandbox SES** richiesta il 26/10 (`put-account-details`, transazionale, contatto `matteo.goretti@besharp.it`): stato `PENDING`; vale per tutto l'account in `eu-west-1`.
+- **Uscita dalla sandbox SES** richiesta il 26/10 (`put-account-details`, transazionale, contatto `matteo.goretti@besharp.it`): poi approvata il 27/10; vale per tutto l'account in `eu-west-1`.
 - **Da ricordare**: ogni deploy che tocca `channels` deve ripassare `-c sesDomain=suppliagent.stonecutters.besharp.net` finché T-15 non porta il valore nella config.
 
 ### Deploy `dev` allineato a `main` (`a9225ec`: PR #13, #15, #16) · FN-32
