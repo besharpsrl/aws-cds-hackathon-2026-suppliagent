@@ -103,7 +103,7 @@ class FakeSocial:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
         self.fail = False
-        self.file_size_kb = 1
+        self.file_size = 1
 
     def get_whatsapp_message_media(self, **request: Any) -> dict[str, Any]:
         self.calls.append(request)
@@ -111,9 +111,12 @@ class FakeSocial:
             raise RuntimeError("ResourceNotFoundException")
         target = request["destinationS3File"]
         boto3.client("s3").put_object(
-            Bucket=target["bucketName"], Key=f"{target['key']}{request['mediaId']}.jpeg", Body=b"x"
+            Bucket=target["bucketName"],
+            Key=f"{target['key']}{request['mediaId']}.jpeg",
+            Body=b"x" * self.file_size,
         )
-        return {"mimeType": "image/jpeg", "fileSize": self.file_size_kb}
+        # `fileSize` in bytes, as observed on the real service (27/10).
+        return {"mimeType": "image/jpeg", "fileSize": self.file_size}
 
 
 @pytest.fixture(autouse=True)
