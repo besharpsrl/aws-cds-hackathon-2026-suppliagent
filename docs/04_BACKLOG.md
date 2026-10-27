@@ -68,7 +68,6 @@ Legenda stato: ☐ da fare · ◐ in corso · ⛔ bloccato (i task fatti sono in
 | 6b | T-67 | Errori del turno nel Dispatcher (E-05, E-12): messaggio di cortesia al cliente al primo errore del Runtime, secondo errore → `handoff_to_human` `LOW_CONFIDENCE` (oggi: solo retry SQS ×3, poi DLQ con i messaggi lasciati nel buffer e nessun avviso); tetto alla lunghezza di `pending` | FN-26, 24 | P2 | T-49 | MG | ☐ |
 | 7 | T-25 | Messaggi interattivi WhatsApp (button/list) e parsing delle risposte | FN-08, 12 | P2 | T-24 | MG | ☐ |
 | 8 | T-26 | Email: template HTML conferma con PDF allegato; ordini via email (corpo, foto, PDF, Excel; ingresso già nel Router, T-23); F-02.C3 (indirizzo sconosciuto che risponde a `ordine+<id>@`: contatto dall'ordine, associazione in attesa di conferma) | FN-06, 14 | P2 | T-24, T-07 | MG | ☐ |
-| 8b | T-14 | **Simulatore canali + test end-to-end**: script che pubblica eventi WhatsApp sintetici (testo, foto, vocale) sul topic SNS di EUM Social e modalità `sandbox` del Notifier che registra le uscite invece di inviarle; permette di testare S1 senza numero WhatsApp e riusarlo per eval e reset demo | FN-31 | P1 | T-21, T-24 | MG | ☐ |
 | 9 | T-27 | RCS: **infra EUM SMS v2** (configuration set, event destinations, opt-out list, topic `sms-inbound`, rimasta fuori da T-20) + sottoscrizione del topic alla coda `inbound` e normalizzazione SMS/RCS nel Router (rimaste fuori da T-21) + rich card conferma e consegna con suggested replies; fallback SMS | FN-15, 18 | P2–P3 | T-24 | MG | ☐ |
 
 ### AG – Agent & AgentCore

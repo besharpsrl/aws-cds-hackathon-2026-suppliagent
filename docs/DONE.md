@@ -8,6 +8,13 @@
 
 ## 27/10/2026
 
+### T-14 – Simulatore canali · FN-31
+- **Fatto**: `scripts/simulate_channel.py` pubblica un evento EUM Social sintetico (testo, foto con didascalia, vocale) su `wa-events` come contatto del seed; `--wait` stampa le risposte registrate dal Notifier in `Messages` (`SANDBOX`). Rifiuta di girare se `notifierSandbox` non è `true`, e se il numero non è in `ChannelIdentities` (sarebbe `UNKNOWN`). La modalità sandbox del Notifier era già in T-24 base.
+- **Media**: con `waPhoneNumberId = UNSET` il Router non scarica nulla, quindi il simulatore carica il file in `sim/<mediaId>/` (`mediaId = sim_<32 hex>`) e il Router lo copia in `media/…` (`media._fetch_simulated`), solo se SSM `notifierSandbox` è `true` (assente = no). CDK: `SANDBOX_PARAM` e `ssm:GetParameter` sul parametro, `s3:GetObject`/`ListBucket` su `sim/*` (acknowledge cdk-nag motivato).
+- **Test**: `services/inbound_router/tests/test_media.py` (+5: copia in sandbox, nessuna copia con sandbox spenta o parametro assente, id fuori formato trattato come id reale, file mancante → retry), `tests/test_simulate_channel.py` (gli eventi del simulatore sono letti dal Router), `infra/test/messaging-stack.test.ts` (+1). `npm run check` verde (pytest 247, vitest 84 + 48, `cdk synth -c env=dev` con cdk-nag).
+- **Non fatto**: `cdk deploy` di `messaging` su `dev` (il Router deve avere il nuovo env e l'IAM prima di provare foto e vocali) e quindi la prova end-to-end contro l'account; `synth -c env=demo`; riuso del simulatore per eval e reset demo (previsto dal testo originale del task, non necessario a S1).
+- **Come provarlo**: dopo il deploy, `uv run python scripts/simulate_channel.py --env dev --from +393330000001 --image note.jpg --wait`.
+
 ### T-15 – Valori dei canali nella config per ambiente · FN-01, FN-32
 - **Fatto**: `sesDomain` e `waPhoneNumberId` opzionali in `EnvConfig` (`infra/config/environments.ts`), letti da `ChannelsStack` e `MessagingStack` con `channelValue()` (il context `-c` resta solo override). `dev.sesDomain = suppliagent.stonecutters.besharp.net`; `waPhoneNumberId` dichiarato ma non valorizzato in `dev` e `demo`; `demo.sesDomain` non valorizzato (risorse condivise, AGENTS §11).
 - **Scelte**: nessun valore inventato per `demo`; `ORDER_DOMAIN` del router e l'identity SES del Notifier usano lo stesso valore della config.

@@ -113,6 +113,7 @@ export class MessagingStack extends Stack {
         INBOUND_MAIL_BUCKET: props.inboundMailBucket.bucketName,
         MEDIA_BUCKET: props.mediaBucket.bucketName,
         WA_PHONE_NUMBER_ID_PARAM: phoneNumberParam,
+        SANDBOX_PARAM: `/suppliagent/${config.envName}/notifierSandbox`,
         // `ordine+<orderId>@` is trusted only on our own domain (same value as ChannelsStack).
         ORDER_DOMAIN: channelValue(this.node, props.config, 'sesDomain') ?? '',
         TURN_FLUSH_QUEUE_URL: this.turnFlushQueue.queueUrl,
@@ -184,15 +185,20 @@ export class MessagingStack extends Stack {
         conditions: { StringLike: { 's3:prefix': 'media/*' } },
       }),
     );
+    // Simulated media (T-14): copied from `sim/` to `media/`, only while `notifierSandbox` is true.
+    allow(['s3:GetObject'], [props.mediaBucket.arnForObjects('sim/*')]);
+    router.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:ListBucket'],
+        resources: [props.mediaBucket.bucketArn],
+        conditions: { StringLike: { 's3:prefix': 'sim/*' } },
+      }),
+    );
     allow(
       ['ssm:GetParameter'],
-      [
-        this.formatArn({
-          service: 'ssm',
-          resource: 'parameter',
-          resourceName: phoneNumberParam.slice(1),
-        }),
-      ],
+      [phoneNumberParam, `/suppliagent/${config.envName}/notifierSandbox`].map((name) =>
+        this.formatArn({ service: 'ssm', resource: 'parameter', resourceName: name.slice(1) }),
+      ),
     );
     allow(
       ['social-messaging:GetWhatsAppMessageMedia'],
@@ -214,6 +220,11 @@ export class MessagingStack extends Stack {
     Validations.of(router).acknowledge({
       id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttMediaBucketBCBB02BAArnB94B784B/media/*]`,
       reason: 'One object per inbound media under media/<owner>/<messageId>/; write-only.',
+    });
+    Validations.of(router).acknowledge({
+      id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttMediaBucketBCBB02BAArnB94B784B/sim/*]`,
+      reason:
+        'Files uploaded by scripts/simulate_channel.py under sim/<mediaId>/; read-only, and used only while notifierSandbox is true (T-14).',
     });
     Validations.of(router).acknowledge({
       id: `AwsSolutions-IAM5[Resource::arn:aws:social-messaging:${config.region}:<AWS::AccountId>:phone-number-id/*]`,

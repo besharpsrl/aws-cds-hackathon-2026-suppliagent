@@ -85,6 +85,13 @@ npx cdk deploy --all -c env=dev
 uv run python seed/seed.py --env dev
 ```
 
+Without a WhatsApp number, test the whole pipeline with the channel simulator (`dev` only: it refuses to run unless the Notifier sandbox is on, so nothing is sent):
+
+```bash
+uv run python scripts/simulate_channel.py --env dev --from +393330000001 --text "ciao" --wait
+uv run python scripts/simulate_channel.py --env dev --from +393330000001 --image note.jpg --wait
+```
+
 ## Try it (for judges)
 
 The console has a read-only `judge` role: judges can browse orders and see each handwritten ticket next to the lines the agent read, but cannot change anything (enforced by the API, not only by the UI). After signing in, the **Try the demo** page walks through ordering and offers a sample handwritten order to download.

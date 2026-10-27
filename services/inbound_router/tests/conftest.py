@@ -70,6 +70,7 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     monkeypatch.setenv("INBOUND_MAIL_BUCKET", BUCKET)
     monkeypatch.setenv("MEDIA_BUCKET", MEDIA_BUCKET)
     monkeypatch.setenv("WA_PHONE_NUMBER_ID_PARAM", PHONE_PARAM)
+    monkeypatch.setenv("SANDBOX_PARAM", "/suppliagent/test/notifierSandbox")
     monkeypatch.setenv("ORDER_DOMAIN", "ordini.example.com")
     monkeypatch.setenv("TURN_FLUSH_QUEUE_URL", "https://sqs.test/turn-flush")
     monkeypatch.setenv("NOTIFIER_FUNCTION_NAME", "suppliagent-test-notifier")

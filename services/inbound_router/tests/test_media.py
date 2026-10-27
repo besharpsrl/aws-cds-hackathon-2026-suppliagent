@@ -8,6 +8,7 @@ import boto3
 import pytest
 from boto3.dynamodb.conditions import Key
 from inbound_router import handler as router
+from suppliagent_shared.errors import SuppliAgentError
 
 Builder = Callable[..., Any]
 MEDIA = "suppliagent-test-media"
@@ -207,3 +208,82 @@ def test_oversized_whatsapp_media_is_not_handed_to_the_agent(
     router.handler(sqs_event(wa_media("image", "image/jpeg")), None)
 
     assert "s3Uri" not in stored("conv_con001")[0]["attachments"][0]
+
+
+SIM_ID = "sim_" + "ab" * 16
+
+
+def simulated_photo(wa_event: Builder, media_id: str = SIM_ID) -> dict[str, Any]:
+    message = {
+        "from": "393330000001",
+        "id": "wamid.sim1",
+        "type": "image",
+        "image": {"id": media_id, "mime_type": "image/jpeg"},
+    }
+    return dict(wa_event([message]))
+
+
+def set_sandbox(value: str) -> None:
+    boto3.client("ssm").put_parameter(
+        Name="/suppliagent/test/notifierSandbox", Value=value, Type="String", Overwrite=True
+    )
+
+
+def upload_simulated(media_id: str = SIM_ID, key_name: str = "file.jpg") -> None:
+    boto3.client("s3").put_object(
+        Bucket=MEDIA,
+        Key=f"sim/{media_id}/{key_name}",
+        Body=b"\xff\xd8\xff",
+        ContentType="image/jpeg",
+    )
+
+
+def test_simulated_media_is_copied_under_the_contacts_prefix_in_sandbox(
+    wa_event: Builder, social: Any
+) -> None:
+    set_sandbox("true")
+    upload_simulated()
+
+    router.handler(sqs_event(simulated_photo(wa_event)), None)
+
+    assert social.calls == []  # EUM Social is not involved
+    [item] = stored("conv_con001")
+    key = f"media/con_001/{item['messageId']}/{SIM_ID}.jpg"
+    assert item["attachments"][0]["s3Uri"] == f"s3://{MEDIA}/{key}"
+    assert key in media_keys()
+
+
+@pytest.mark.parametrize("sandbox", [None, "false"])
+def test_simulated_media_is_ignored_outside_the_sandbox(
+    wa_event: Builder, social: Any, sandbox: str | None
+) -> None:
+    if sandbox:
+        set_sandbox(sandbox)
+    upload_simulated()
+
+    router.handler(sqs_event(simulated_photo(wa_event)), None)
+
+    assert len(social.calls) == 1  # a real download (the fake): nothing copied from `sim/`
+    assert not any(k.startswith("media/") and k.endswith(".jpg") for k in media_keys())
+
+
+def test_media_id_outside_the_simulator_format_is_not_a_bucket_path(
+    wa_event: Builder, social: Any
+) -> None:
+    set_sandbox("true")
+    boto3.client("s3").put_object(Bucket=MEDIA, Key="sim/../secret/file.jpg", Body=b"x")
+
+    router.handler(sqs_event(simulated_photo(wa_event, media_id="sim_../secret")), None)
+
+    # Not the simulator's shape: handled as a real media id (phone number set, EUM Social fake).
+    assert len(social.calls) == 1
+    assert not any(k.startswith("media/") and k.endswith(".jpg") for k in media_keys())
+
+
+def test_simulated_media_missing_from_the_bucket_fails_so_sqs_retries(
+    wa_event: Builder, social: Any
+) -> None:
+    set_sandbox("true")
+
+    with pytest.raises(SuppliAgentError):
+        router.handler(sqs_event(simulated_photo(wa_event)), None)
