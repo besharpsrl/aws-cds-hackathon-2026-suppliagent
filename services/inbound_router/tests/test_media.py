@@ -8,6 +8,7 @@ import boto3
 import pytest
 from boto3.dynamodb.conditions import Key
 from inbound_router import handler as router
+from inbound_router import media
 from suppliagent_shared.errors import SuppliAgentError
 
 Builder = Callable[..., Any]
@@ -201,13 +202,22 @@ def test_at_most_ten_attachments_per_mail_are_stored(mail: Builder) -> None:
 
 
 def test_oversized_whatsapp_media_is_not_handed_to_the_agent(
-    wa_media: Builder, social: Any
+    wa_media: Builder, social: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    social.file_size_kb = 20 * 1024  # e.g. a 20 MB document
+    monkeypatch.setattr(media, "MAX_FILE_BYTES", 1000)
+    social.file_size = 1001
 
     router.handler(sqs_event(wa_media("image", "image/jpeg")), None)
 
     assert "s3Uri" not in stored("conv_con001")[0]["attachments"][0]
+
+
+def test_a_typical_whatsapp_photo_is_handed_to_the_agent(wa_media: Builder, social: Any) -> None:
+    social.file_size = 157_299  # real photo of 27/10, dropped when `fileSize` was read as KB
+
+    router.handler(sqs_event(wa_media("image", "image/jpeg")), None)
+
+    assert stored("conv_con001")[0]["attachments"][0]["s3Uri"].endswith(".jpeg")
 
 
 SIM_ID = "sim_" + "ab" * 16

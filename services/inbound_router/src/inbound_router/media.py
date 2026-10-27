@@ -118,20 +118,21 @@ def _fetch(attachment: Attachment, bucket: str, prefix: str) -> Attachment:
     if phone_number_id == UNSET:
         logger.warning("media not fetched: WhatsApp phone number not configured")
         return attachment
-    response = _social().get_whatsapp_message_media(
+    _social().get_whatsapp_message_media(
         mediaId=attachment.mediaId,
         originationPhoneNumberId=phone_number_id,
         destinationS3File={"bucketName": bucket, "key": prefix},
     )
-    if response.get("fileSize", 0) * 1024 > MAX_FILE_BYTES:  # fileSize is in KB
-        logger.info("media dropped: too large", mimeType=attachment.mimeType)
-        return attachment  # left to the bucket lifecycle, never handed to the agent
     # The service appends `<mediaId>.<extension>` to the key prefix.
     found = _s3().list_objects_v2(Bucket=bucket, Prefix=prefix + attachment.mediaId)
-    keys = [o["Key"] for o in found.get("Contents", [])]
-    if not keys:
+    objects = found.get("Contents", [])
+    if not objects:
         raise SuppliAgentError("media not found after download")  # retried by SQS
-    return attachment.model_copy(update={"s3Uri": f"s3://{bucket}/{keys[0]}"})
+    # Size of the stored object: the unit of the response's `fileSize` is not reliable.
+    if objects[0]["Size"] > MAX_FILE_BYTES:
+        logger.info("media dropped: too large", mimeType=attachment.mimeType)
+        return attachment  # left to the bucket lifecycle, never handed to the agent
+    return attachment.model_copy(update={"s3Uri": f"s3://{bucket}/{objects[0]['Key']}"})
 
 
 def _sandbox() -> bool:
