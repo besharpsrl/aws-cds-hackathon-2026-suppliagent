@@ -8,8 +8,10 @@ dependencies = [
   "suppliagent-agent",
   "suppliagent-catalog-indexer",
   "suppliagent-console-api",
+  "suppliagent-erp-adapter",
   "suppliagent-inbound-router",
   "suppliagent-notifier",
+  "suppliagent-order-pdf",
   "suppliagent-turn-dispatcher",
   "suppliagent-tool-catalog",
   "suppliagent-tool-customers",
@@ -24,8 +26,10 @@ suppliagent-shared = { workspace = true }
 suppliagent-agent = { workspace = true }
 suppliagent-catalog-indexer = { workspace = true }
 suppliagent-console-api = { workspace = true }
+suppliagent-erp-adapter = { workspace = true }
 suppliagent-inbound-router = { workspace = true }
 suppliagent-notifier = { workspace = true }
+suppliagent-order-pdf = { workspace = true }
 suppliagent-turn-dispatcher = { workspace = true }
 suppliagent-tool-catalog = { workspace = true }
 suppliagent-tool-customers = { workspace = true }
@@ -60,7 +64,7 @@ python_version = "3.12"
 strict = true
 explicit_package_bases = true
 # Package roots, so files under services/ map to their import names (e.g. suppliagent_shared).
-mypy_path = "services/shared/src:services/catalog_indexer/src:services/console_api/src:services/inbound_router/src:services/notifier/src:services/turn_dispatcher/src:services/tools/catalog/src:services/tools/catalog/tests/support:services/tools/customers/src:agent/src:services/tools/order_intake/src:services/tools/order_intake/tests"
+mypy_path = "services/shared/src:services/catalog_indexer/src:services/console_api/src:services/erp_adapter/src:services/inbound_router/src:services/notifier/src:services/order_pdf/src:services/turn_dispatcher/src:services/tools/catalog/src:services/tools/catalog/tests/support:services/tools/customers/src:agent/src:services/tools/order_intake/src:services/tools/order_intake/tests"
 exclude = ["(^|/)(node_modules|cdk\\.out|\\.venv)/"]
 
 [tool.pytest.ini_options]

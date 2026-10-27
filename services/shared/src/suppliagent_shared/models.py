@@ -5,12 +5,25 @@
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, ValidationError
+
+from suppliagent_shared.errors import InvalidInputError
 
 CustomerId = Annotated[str, StringConstraints(pattern=r"^cus_\w+$")]
 ContactId = Annotated[str, StringConstraints(pattern=r"^con_\w+$")]
 RepId = Annotated[str, StringConstraints(pattern=r"^rep_\w+$")]
 OrderId = Annotated[str, StringConstraints(pattern=r"^ord_\w+$")]
+_ORDER_ID = TypeAdapter(OrderId)
+
+
+def parse_order_id(value: object) -> str:
+    """An `ord_` id from an untrusted request, or `InvalidInputError`."""
+    try:
+        return _ORDER_ID.validate_python(value)
+    except ValidationError as exc:
+        raise InvalidInputError from exc
+
+
 Weekday = Annotated[str, StringConstraints(pattern=r"^(MON|TUE|WED|THU|FRI|SAT|SUN)$")]
 
 

@@ -65,6 +65,7 @@ export function buildApp(app: App, config: EnvConfig) {
       eventBus: foundation.eventBus,
       inboundMailBucket: foundation.inboundMailBucket,
       mediaBucket: foundation.mediaBucket,
+      documentsBucket: foundation.documentsBucket,
       inboundTopics: [channels.waEventsTopic, channels.mailInboundTopic],
       agentRuntimeArn: agent.runtime.agentRuntimeArn,
       tables: {
@@ -75,6 +76,8 @@ export function buildApp(app: App, config: EnvConfig) {
         conversations: data.tables.Conversations,
         messages: data.tables.Messages,
         turnBuffer: data.tables.TurnBuffer,
+        orders: data.tables.Orders,
+        deliveries: data.tables.Deliveries,
       },
     }),
     channels,

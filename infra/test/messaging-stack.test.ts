@@ -24,6 +24,19 @@ const routerStatements = (): Statement[] => {
     .flatMap((p) => p.Properties.PolicyDocument.Statement);
 };
 
+const functionProps = (name: string) =>
+  Object.values(template.findResources('AWS::Lambda::Function')).find(
+    (f) => f.Properties.FunctionName === `suppliagent-dev-${name}`,
+  )?.Properties;
+const rolePolicy = (name: string): string => {
+  const role = functionProps(name)?.Role['Fn::GetAtt'][0];
+  return JSON.stringify(
+    Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
+      JSON.stringify(p.Properties.Roles).includes(role),
+    ),
+  );
+};
+
 describe('MessagingStack – ingestion (T-21, FN-01)', () => {
   it('creates a KMS-encrypted inbound queue with a DLQ after 3 receives', () => {
     template.hasResourceProperties('AWS::SQS::Queue', {
@@ -142,19 +155,6 @@ describe('MessagingStack – media (T-23, FN-05, FN-06)', () => {
 });
 
 describe('MessagingStack – debounce and Notifier (T-22, T-24 base, FN-26, FN-01)', () => {
-  const functionProps = (name: string) =>
-    Object.values(template.findResources('AWS::Lambda::Function')).find(
-      (f) => f.Properties.FunctionName === `suppliagent-dev-${name}`,
-    )?.Properties;
-  const rolePolicy = (name: string): string => {
-    const role = functionProps(name)?.Role['Fn::GetAtt'][0];
-    return JSON.stringify(
-      Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
-        JSON.stringify(p.Properties.Roles).includes(role),
-      ),
-    );
-  };
-
   it('creates a KMS-encrypted turn-flush queue with a DLQ, alarmed, retried after a whole turn', () => {
     template.hasResourceProperties('AWS::SQS::Queue', {
       QueueName: 'suppliagent-dev-turn-flush',
@@ -210,5 +210,48 @@ describe('MessagingStack – debounce and Notifier (T-22, T-24 base, FN-26, FN-0
     expect(policy).toContain('sqs:SendMessage');
     expect(policy).toContain('lambda:InvokeFunction');
     expect(policy).toContain('suppliagent-dev-notifier');
+  });
+});
+
+describe('MessagingStack – order pipeline (T-07, FN-13, FN-14)', () => {
+  it('routes order.confirmed to the ERP adapter and the order PDF generator', () => {
+    const rule = Object.values(template.findResources('AWS::Events::Rule')).find(
+      (r) => r.Properties.Name === 'suppliagent-dev-order-confirmed',
+    );
+    expect(rule?.Properties.EventPattern).toEqual({ 'detail-type': ['order.confirmed'] });
+    expect(rule?.Properties.Targets).toHaveLength(2);
+  });
+
+  it('retries the ERP adapter, then parks the event in a DLQ with alarms (E-08)', () => {
+    template.hasResourceProperties('AWS::Lambda::EventInvokeConfig', {
+      MaximumRetryAttempts: 2,
+      MaximumEventAgeInSeconds: 3600,
+    });
+    expect(functionProps('erp-adapter')?.DeadLetterConfig).toBeDefined();
+    for (const name of ['erp-adapter-errors', 'erp-adapter-dlq', 'order-pdf-dlq']) {
+      template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+        AlarmName: `suppliagent-dev-${name}`,
+      });
+    }
+  });
+
+  it('reads the mock failure switch from SSM and publishes it (default false)', () => {
+    expect(functionProps('erp-adapter')?.Environment.Variables).toMatchObject({
+      ERP_FAILURE_PARAM: '/suppliagent/dev/erpMockFailure',
+    });
+    expect(rolePolicy('erp-adapter')).toContain('parameter/suppliagent/dev/erpMockFailure');
+  });
+
+  it('gives each function only what it needs and no CDS send permission', () => {
+    const erp = rolePolicy('erp-adapter');
+    expect(erp).toContain('dynamodb:UpdateItem');
+    expect(erp).toContain('events:PutEvents');
+    expect(rolePolicy('order-pdf')).toContain('s3:PutObject');
+    expect(rolePolicy('order-pdf')).toContain('/orders/*');
+    for (const name of ['erp-adapter', 'order-pdf']) {
+      expect(rolePolicy(name)).not.toMatch(/social-messaging|ses:Send|sms-voice|sns:Publish/);
+      expect(rolePolicy(name)).not.toMatch(/"(dynamodb|s3|events|ssm|kms|sqs):\*"/);
+    }
+    expect(rolePolicy('order-pdf')).not.toContain('dynamodb:UpdateItem');
   });
 });

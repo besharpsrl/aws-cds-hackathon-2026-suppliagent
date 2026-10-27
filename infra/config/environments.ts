@@ -58,6 +58,8 @@ const runtimeParameters: Record<string, string> = {
   identificationMaxAttempts: '3',
   // The Notifier records outgoing messages instead of sending them (T-24, T-14); read at runtime.
   notifierSandbox: 'true',
+  // The ERP mock answers as unavailable while `true` (E-08 demo); read at runtime, default `false` (T-07).
+  erpMockFailure: 'false',
 };
 
 const environments: Record<EnvName, EnvConfig> = {
