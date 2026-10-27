@@ -27,7 +27,15 @@ export function buildApp(app: App, config: EnvConfig) {
 
   const foundation = new FoundationStack(app, name('foundation'), common);
   const data = new DataStack(app, name('data'), { ...common, key: foundation.key });
-  const catalog = after(new CatalogStack(app, name('catalog'), common), foundation, data);
+  const catalog = after(
+    new CatalogStack(app, name('catalog'), {
+      ...common,
+      key: foundation.key,
+      productsTable: data.tables.Products,
+    }),
+    foundation,
+    data,
+  );
   const channels = after(
     new ChannelsStack(app, name('channels'), {
       ...common,

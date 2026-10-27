@@ -1,0 +1,13 @@
+[project]
+name = "suppliagent-catalog-indexer"
+version = "0.1.0"
+description = "Catalog indexer (T-06): embeds Products and writes them to the S3 Vectors index `products`"
+requires-python = ">=3.12,<3.13"
+dependencies = ["suppliagent-shared"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "catalog_indexer"
