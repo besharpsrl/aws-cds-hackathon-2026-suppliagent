@@ -21,7 +21,7 @@
    npm run check                          # lint + typecheck + test + cdk synth (come la CI)
    aws sts get-caller-identity            # account 471112860008, region eu-west-1 (profilo usato finora: default)
    ```
-3. Apri una sessione del tuo agente di sviluppo in un worktree (§1.5) e lancia **`/sa-next-task`** (Copilot e Claude Code): sceglie il prossimo task libero della tua corsia, lo prende, lo implementa e apre la PR. Per un task preciso: `/sa-next-task T-xx`.
+3. Apri una sessione del tuo agente di sviluppo in un worktree (§1.5) e lancia **`/sa-next-task B`** (con la lettera della tua corsia; Copilot e Claude Code): sceglie il prossimo task libero della corsia, lo prende, lo implementa e apre la PR. Per un task preciso: `/sa-next-task T-xx`; per più task di fila: `/sa-next-task B loop`.
 4. Per capire **cosa** costruire: scheda `FN-xx` in [03](./docs/03_FUNCTIONAL_SPEC.md) e flussi `F-xx` in [02](./docs/02_TECHNICAL_FLOWS.md); architettura in [INFRASTRUCTURE_DESIGN](./docs/INFRASTRUCTURE_DESIGN.md).
 
 ### 1.2 Come prendere e chiudere un task
@@ -31,9 +31,10 @@
   gh issue list --label corsia:B --state open --json number,title,assignees,labels   # i task della corsia
   gh issue view <n>                                                                   # descrizione, dipendenze, madre
   ```
+  Vista ad albero (madre → task) e board: [GitHub Project](https://github.com/orgs/besharpsrl/projects/1); le issue nuove vanno aggiunte con `--project "SuppliAgent – backlog hackathon"`.
 - **Prendere**: un'issue senza assegnatario e senza *blocked by* aperti → `gh issue edit <n> --add-assignee @me`, branch `feat/FN-xx-…`, push e **PR in draft** con `Closes #<n>` nel corpo e il piano. Nessuna modifica a questo file. Le dipendenze di integrazione (scritte nell'issue) non bloccano: si lavora con mock/stub dichiarati nella PR.
 - **Chiudere**: PR pronta con la Definition of Done e la sezione **Deploy** compilata (stack, comandi completi, script prima e dopo, oppure "nessun deploy"); al merge l'issue si chiude da sola. Se il lavoro crea o rinvia task, si apre o si modifica un'issue (`gh issue create --parent <madre> --blocked-by …`).
-- **Git**: un task = una PR (salvo task accoppiati, §4.5). Merge su `main` solo da chi revisiona, con CI verde e *Create a merge commit*. Mai push o force push su `main`. `git pull --rebase origin main` prima di iniziare e prima della PR.
+- **Git**: un task = una PR (salvo task accoppiati, §4.5). CI e review automatica di Copilot partono quando la PR esce dalla bozza (`gh pr ready`). Merge su `main` con CI verde e *Create a merge commit*: PR **a basso rischio** (solo `docs/` o file `.md`, solo `console/`, solo test o `agent/evals/`) con CI verde e review automatica di Copilot senza rilievi aperti: chi l'ha aperta può fare merge da solo. Tutte le altre (infra, `services/`, prompt e codice dell'agente, `seed/`, `.github/workflows/`, `agent-context/`): review di un'altra persona del team. Mai push o force push su `main`. `git pull --rebase origin main` prima di iniziare e prima della PR.
 - **Deploy**: regole in §1.5. `dev` è l'**unico ambiente** (sviluppo, video e giudici): dopo il code freeze si fa deploy solo con conferma di MG.
 
 ### 1.3 Cosa non fare senza chiedere
@@ -80,7 +81,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 
 **Subagent** (Copilot e Claude Code, definiti in `agent-context/claude/agents/`): `test-runner` per lint/test/synth con il solo riassunto degli errori; `aws-docs-researcher` prima di API nuove (Memory, Guardrail, messaggi interattivi, RCS, Knowledge Base); `code-reviewer` a fine task. `security-reviewer` solo in T-73, non a ogni task.
 
-**Comandi** (`.github/prompts/` per Copilot, `agent-context/claude/commands/` per Claude Code): `/sa-next-task [T-xx]` · `/sa-dod-check` (Definition of Done prima della PR) · `/sa-cds-check` (requisiti CDS, prima della submission).
+**Comandi** (`.github/prompts/` per Copilot, `agent-context/claude/commands/` per Claude Code): `/sa-next-task [A|B|C] [T-xx] [loop]` (ciclo completo, con un solo controllo completo per task) · `/sa-dod-check` (Definition of Done, solo per lavoro fatto senza `/sa-next-task`) · `/sa-cds-check` (requisiti CDS, prima della submission; le regole sui client e sugli invii sono anche in CI, `tests/test_cds_usage.py`).
 
 ### 1.6 Mappa dei documenti
 
@@ -220,6 +221,7 @@ Nessuna per la gara.
 | 27/10 | Lavoro in parallelo su tre corsie (§1.5), max 2 sessioni per persona in worktree separati; comandi `/sa-next-task`, `/sa-dod-check`, `/sa-cds-check` nel repo |
 | 27/10 | Gli agenti non attendono conferma sul piano se l'issue ha criteri chiari; ogni fine task riporta deploy e script con i comandi completi |
 | 27/10 | Security review una sola volta a fine iterazione (T-73, 28/10 ~10:00), non a ogni task |
+| 28/10 | CI solo su PR pronte e su `main`; review automatica di Copilot sulle PR; merge da soli per le PR a basso rischio (§1.2); un solo controllo completo per task |
 | 27/10 | Un solo ambiente, `dev`, per sviluppo, video e giudici: l'ambiente `demo` è stato tolto da codice e documenti; dopo il code freeze `dev` è congelato |
 | 27/10 | Il repo serve solo alla gara: niente task o domande per il cliente reale; tolti T-09, T-65 (analytics/KPI) e T-70 (hardening) |
 | 27/10 | Perimetro = flussi utente 1–9 (§4.3), con priorità Must/Should/Could; i flussi 6–8 sono Could |

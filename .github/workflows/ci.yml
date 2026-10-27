@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  # Draft PRs are skipped: CI runs when a PR is opened or marked ready for review, and on every later push.
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -17,6 +19,7 @@ concurrency:
 
 jobs:
   python:
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -32,6 +35,7 @@ jobs:
       - run: uv run pytest
 
   typescript:
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

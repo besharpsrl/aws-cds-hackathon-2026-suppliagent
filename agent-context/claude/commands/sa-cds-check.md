@@ -2,7 +2,7 @@
 description: "SuppliAgent: verifica la conformità ai requisiti di gara sull'uso dei servizi AWS CDS (prima della submission)"
 ---
 
-Controlla il repository rispetto ai requisiti del hackathon sull'uso di AWS CDS e riporta un esito chiaro.
+Controlla il repository rispetto ai requisiti dell'hackathon sull'uso di AWS CDS e riporta un esito chiaro. Da lanciare **prima della submission**: i punti 1–3 li verifica già a ogni PR `tests/test_cds_usage.py` (lancialo e riportane l'esito, poi controlla a mano solo che le chiamate siano raggiungibili da un flusso reale).
 
 1. Cerca nel codice runtime (non nei documenti) le chiamate effettive ai client ammessi:
    - `socialmessaging` → `send_whatsapp_message` / `SendWhatsAppMessage`

@@ -1,9 +1,9 @@
 ---
 description: "SuppliAgent: prende il prossimo task libero (GitHub Issues) e lo porta fino alla PR, con le istruzioni di deploy"
-argument-hint: "[T-xx] [loop] [note]"
+argument-hint: "[A|B|C] [T-xx] [loop] [note]"
 ---
 
-Sei una sessione di sviluppo di SuppliAgent. Argomenti dell'utente: `$ARGUMENTS` (in Copilot: il testo scritto dopo il comando). Un `T-xx` o delle note hanno la precedenza sulla scelta automatica; `loop` = a fine task passa al successivo senza fermarti (punto 9).
+Sei una sessione di sviluppo di SuppliAgent. Argomenti dell'utente: `$ARGUMENTS` (in Copilot: il testo scritto dopo il comando). `A`, `B` o `C` = corsia di questa sessione; un `T-xx` o delle note hanno la precedenza sulla scelta automatica; `loop` = a fine task passa al successivo senza fermarti (punto 9).
 
 ## Regole
 
@@ -21,7 +21,7 @@ Sei una sessione di sviluppo di SuppliAgent. Argomenti dell'utente: `$ARGUMENTS`
 ## 2. Scelta del task
 
 - **Con `T-xx`**: `gh issue list --state open --search "T-xx in:title" --json number,title,assignees,labels`.
-- **Senza**: corsia di questa sessione = quella dell'utente in `START_HERE.md` §1.5 (se non la sai, chiedila una volta: A, B o C). Poi:
+- **Senza**: corsia = la lettera negli argomenti, altrimenti quella dell'utente in `START_HERE.md` §1.5 (se non la sai, chiedila una volta: A, B o C). Poi:
   ```bash
   GH_PROMPT_DISABLED=1 GH_PAGER=cat gh issue list --state open --label corsia:<X> --limit 50 --json number,title,assignees,labels,blockedBy \
     --jq '.[] | {number, title, assignees: [.assignees[].login], labels: [.labels[].name], openBlockers: [.blockedBy.nodes[]? | select(.state=="OPEN") | .title]}'
@@ -48,19 +48,21 @@ Sei una sessione di sviluppo di SuppliAgent. Argomenti dell'utente: `$ARGUMENTS`
 ## 5. Implementazione
 
 - Prima i test dai criteri di accettazione (per i tool anche **autorizzazione negativa**), poi il codice. Commit piccoli in Conventional Commits con `(FN-xx)`.
+- Durante lo sviluppo lancia **solo i controlli mirati** sui file toccati: `uv run pytest services/<pacchetto>` (o `agent`), `uv run ruff check <path>`, `uv run mypy <path>`, `npx vitest run <file>` nel workspace, `npx cdk synth -q -c env=dev` solo se tocchi `infra/`. Il controllo completo si fa **una volta** al punto 6.
 - File caldi di un'altra corsia: cambia solo il pezzo che ti serve e scrivilo nella PR.
 - Se il comportamento differisce dai documenti in `docs/`, aggiornali. Se cambia lo stato di un'area, aggiorna la riga in `START_HERE.md` §2. Non toccare il backlog in START_HERE (è sulle issue).
-- Lavoro nuovo o rinviato: `gh issue create --title "T-xx: …" --parent <madre> --label <priorità> --label stream:<…> --label corsia:<…> --milestone "Code freeze 28/10 12:00" [--blocked-by <n>]`.
+- Lavoro nuovo o rinviato: `gh issue create --title "T-xx: …" --parent <madre> --label <priorità> --label stream:<…> --label corsia:<…> --milestone "Code freeze 28/10 12:00" --project "SuppliAgent – backlog hackathon" [--blocked-by <n>]`.
 
 ## 6. Verifica
 
-- `git pull --rebase origin main`, poi lint, type check, test e `cdk synth` (AGENTS.md §6) con il subagent `test-runner` (o `npm run check`); correggi finché è verde.
-- Subagent `code-reviewer` sul diff rispetto a `origin/main`; correggi i rilievi gravi.
+- `git pull --rebase origin main`, poi **un solo** controllo completo (lint, type check, test, `cdk synth`: AGENTS.md §6) con il subagent `test-runner` (o `npm run check`); correggi e rilancia solo le parti fallite, poi il completo una volta sola alla fine.
+- Subagent `code-reviewer` sul diff rispetto a `origin/main` (legge e basta, non rilancia i controlli); correggi i rilievi gravi.
+- Non serve `/sa-dod-check`: questo punto e il 7 lo coprono. In CI girano di nuovo tutti i controlli e il test CDS (`tests/test_cds_usage.py`) quando la PR esce dalla bozza.
 - Per prompt o tool dell'agente: eval in `agent/evals/` se esistono per l'area, con i risultati nella PR.
 
 ## 7. PR pronta
 
-Completa il corpo della PR secondo il template (FN, come testare con i comandi e l'esito, Definition of Done, **Deploy**, assunzioni), push, poi `gh pr ready`. Mai merge.
+Completa il corpo della PR secondo il template (FN, come testare con i comandi e l'esito, Definition of Done, **Deploy**, assunzioni), push, poi `gh pr ready` (parte la CI e la review automatica di Copilot). Mai merge: se la PR è a basso rischio (START_HERE §1.2) dillo nel rapporto, così l'autore può fare merge da solo con CI verde.
 
 ## 8. Rapporto finale (sempre, in quest'ordine)
 
