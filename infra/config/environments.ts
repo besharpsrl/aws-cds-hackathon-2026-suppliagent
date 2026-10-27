@@ -72,7 +72,7 @@ const environments: Record<EnvName, EnvConfig> = {
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.TWO_WEEKS,
     sesDomain: 'suppliagent.stonecutters.besharp.net',
-    waPhoneNumberId: undefined, // set once the WABA is linked (docs/WABA_SETUP.md)
+    waPhoneNumberId: 'phone-number-id-79f96a1ea97d47aabfce52eb7b8cf23c', // set once the WABA is linked (docs/WABA_SETUP.md)
     parameters: runtimeParameters,
     model: novaPro,
   },
