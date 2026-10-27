@@ -76,7 +76,8 @@ Full design: [`docs/INFRASTRUCTURE_DESIGN.md`](docs/INFRASTRUCTURE_DESIGN.md) (I
 2. *Email*: set `sesDomain` for the environment in `infra/config/environments.ts` (`-c sesDomain=<domain>` only overrides it) and deploy, add the DKIM CNAME records shown by the SES identity and an `MX 10 inbound-smtp.eu-west-1.amazonaws.com` record, request SES production access (sandbox: verified recipients only; in production the account-level suppression list for bounces and complaints is on by default). With the zone on Route 53, `scripts/ses-dns-records.sh` and `scripts/ses-production-access.sh` do both. Only one SES receipt rule set can be active per region; the stack activates its own.
 3. *Later deploys*: `sesDomain` and `waPhoneNumberId` live in `infra/config/environments.ts`, so no `-c` is needed and the SSM parameters, SES identity and receipt rule set do not change. Current values: `aws ssm get-parameters --names /suppliagent/<env>/sesDomain /suppliagent/<env>/waPhoneNumberId`.
 4. *Console users*: self sign-up is off. Create each user in the Cognito user pool of `suppliagent-<env>-console` (`admin-create-user` with `--desired-delivery-mediums EMAIL`, Cognito emails a temporary password) and add it to one group: `backoffice`, `sales_rep` or `judge`.
-5. *Demo page*: once the WhatsApp number and the order mailbox exist, republish the console with `VITE_DEMO_WHATSAPP="+39…" VITE_DEMO_ORDER_EMAIL="ordini@<sesDomain>" scripts/deploy-console.sh <env>`.
+5. *WhatsApp templates*: submit the 8 definitions in `services/notifier/whatsapp_templates/` to Meta (command in [docs/09_CONTENT_AND_TEMPLATES.md](docs/09_CONTENT_AND_TEMPLATES.md) §1) and wait for approval (up to 24 h; `list-whatsapp-message-templates` shows the status). Needed only to write outside the 24-hour window.
+6. *Demo page*: once the WhatsApp number and the order mailbox exist, republish the console with `VITE_DEMO_WHATSAPP="+39…" VITE_DEMO_ORDER_EMAIL="ordini@<sesDomain>" scripts/deploy-console.sh <env>`. For `dev` the values are in `console/.env.example`; the deploy script takes them from the environment variables above, not from `.env` files.
 
 ```bash
 uv sync
@@ -96,7 +97,12 @@ uv run python scripts/simulate_channel.py --env dev --from +393330000001 --image
 
 The console has a read-only `judge` role: judges can browse orders and see each handwritten ticket next to the lines the agent read, but cannot change anything (enforced by the API, not only by the UI). After signing in, the **Try the demo** page walks through ordering and offers a sample handwritten order to download.
 
-_Coming soon_: console URL and `judge` credentials, WhatsApp number, test customer and order email address.
+**Order channels (`dev`)**
+- **WhatsApp**: send a message, a photo of a handwritten list or a voice note to **+39 345 246 0472** (display name "SuppliAgent"). Replies within 24 hours of your message are free-form; outside that window the agent uses Meta-approved templates.
+- **Email**: send the order (text or attached photo) to **ordini@suppliagent.stonecutters.besharp.net**.
+- The agent identifies you by your phone number or email address, so a test customer has to be registered first (see `seed/`).
+
+_Coming soon_: console URL and `judge` credentials, test customer.
 
 ## Pre-existing code
 
