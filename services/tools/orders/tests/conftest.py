@@ -28,6 +28,7 @@ TABLES: dict[str, tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]] = {
         (("customerId", "createdAt"), ("status", "updatedAt"), ("repId",)),
     ),
     "deliveries": (("orderId",), ()),
+    "messages": (("conversationId", "tsMessageId"), ()),
     "issues": (("issueId",), (("orderId",),)),
 }
 

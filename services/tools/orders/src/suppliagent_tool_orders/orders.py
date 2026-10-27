@@ -19,7 +19,7 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 
 from aws_lambda_powertools import Logger
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
 from pydantic import BaseModel, ConfigDict, Field
 from suppliagent_shared.auth import CallerContext, require_customer_access
@@ -385,6 +385,8 @@ def _issues(order: dict[str, Any], customer: dict[str, Any], now: datetime) -> l
         issues.append({"code": "UNRESOLVED_LINES", "lineIds": unresolved})
     if not active:
         issues.append({"code": "NO_LINES"})
+    if unpriced := [ln["lineId"] for ln in active if "unitPrice" not in ln]:
+        issues.append({"code": "NO_PRICE", "lineIds": unpriced})  # never confirm a price-less line
     for line in active:
         pack = int(_product(line["sku"]).get("multiple", 1))
         if line["quantity"] % pack:
@@ -524,6 +526,14 @@ def confirm_order(args: ConfirmOrderInput) -> dict[str, Any]:
     ):
         raise ConfirmationMismatchError
     if order["status"] == "PENDING_CONFIRMATION":
+        if not _customer_replied(args.caller, order):
+            # The model cannot confirm in the turn that produced the summary (or on an old message):
+            # a message of this conversation must have arrived after the summary was shown.
+            return {
+                "status": "NOT_CONFIRMABLE",
+                "orderStatus": "PENDING_CONFIRMATION",
+                "reason": "NEEDS_CUSTOMER_REPLY",
+            }
         now = _now()
         if issues := _issues(order, _customer(order["customerId"]), now):
             return {"status": "NEEDS_FIXES", "issues": issues, "order": _view(order)}
@@ -551,6 +561,20 @@ def confirm_order(args: ConfirmOrderInput) -> dict[str, Any]:
         return _announce(order, duplicate=True)
     # DRAFT: no summary shown yet; EXPIRED, CANCELLED: gone. The agent explains and goes on.
     return {"status": "NOT_CONFIRMABLE", "orderStatus": order["status"]}
+
+
+def _customer_replied(caller: CallerContext, order: dict[str, Any]) -> bool:
+    """An inbound message of the caller's conversation stored after the summary (server-side
+    evidence from `Messages`, written by the Inbound Router, not by the model)."""
+    if not caller.conversationId:
+        return False
+    since = order.get("pendingSince") or order["updatedAt"]
+    found = table("messages").query(
+        KeyConditionExpression=Key("conversationId").eq(caller.conversationId)
+        & Key("tsMessageId").gt(since),
+        FilterExpression=Attr("direction").eq("INBOUND"),
+    )
+    return bool(found["Items"])
 
 
 def _announce(order: dict[str, Any], *, duplicate: bool) -> dict[str, Any]:

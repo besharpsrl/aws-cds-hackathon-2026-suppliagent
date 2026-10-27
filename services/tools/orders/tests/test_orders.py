@@ -6,6 +6,7 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
+import boto3
 import pytest
 import suppliagent_tool_orders.orders as orders
 from pydantic import BaseModel
@@ -88,7 +89,20 @@ def pending(who: CallerContext = CUSTOMER) -> str:
     return str(order["orderId"])
 
 
+def reply(aws: Any, conversation: str = "conv_1", direction: str = "INBOUND") -> None:
+    """A message of the conversation stored after the summary (NOW is when it was shown)."""
+    aws.Table("suppliagent-test-messages").put_item(
+        Item={
+            "conversationId": conversation,
+            "tsMessageId": "2026-10-28T09:00:05.000Z#m_" + direction + conversation,
+            "direction": direction,
+        }
+    )
+
+
 def confirm(order_id: str, who: CallerContext = CUSTOMER, **extra: Any) -> dict[str, Any]:
+    """The customer answered the summary, then the agent confirms (the normal case)."""
+    reply(boto3.resource("dynamodb"), who.conversationId or "conv_1")
     return confirm_order(make(ConfirmOrderInput, caller=who, orderId=order_id, **extra))
 
 
@@ -635,3 +649,54 @@ def test_issue_on_unknown_line_or_foreign_order(aws: Any) -> None:
         issue(order_id, OTHER_CUSTOMER)
     with pytest.raises(AccessDeniedError):
         issue(order_id, STRANGER)
+
+
+def test_nothing_is_confirmed_in_the_turn_that_produced_the_summary(
+    aws: Any, events: Events
+) -> None:
+    order_id = pending()
+    direct = make(ConfirmOrderInput, caller=CUSTOMER, orderId=order_id)
+    expected = {
+        "status": "NOT_CONFIRMABLE",
+        "orderStatus": "PENDING_CONFIRMATION",
+        "reason": "NEEDS_CUSTOMER_REPLY",
+    }
+    assert confirm_order(direct) == expected  # no message after the summary
+    reply(aws, direction="OUTBOUND")  # the agent's own messages are not the customer's answer
+    reply(aws, conversation="conv_other")  # nor is another conversation
+    assert confirm_order(direct) == expected
+    assert stored(aws, order_id)["status"] == "PENDING_CONFIRMATION"
+    assert "order.confirmed" not in kinds(events)
+    reply(aws)
+    assert confirm_order(direct)["status"] == "CONFIRMED"
+
+
+def test_a_message_from_before_the_summary_is_not_an_answer(aws: Any) -> None:
+    aws.Table("suppliagent-test-messages").put_item(
+        Item={
+            "conversationId": "conv_1",
+            "tsMessageId": "2026-10-28T08:59:00.000Z#m0",
+            "direction": "INBOUND",
+        }
+    )
+    order_id = pending()
+    out = confirm_order(make(ConfirmOrderInput, caller=CUSTOMER, orderId=order_id))
+    assert out["reason"] == "NEEDS_CUSTOMER_REPLY"
+
+
+def test_a_line_without_a_price_blocks_the_summary(aws: Any) -> None:
+    aws.Table("suppliagent-test-price-lists").delete_item(
+        Key={"priceListId": "LIST_STD", "sku": "FARINA-00-25KG"}
+    )
+    order = draft()
+    assert [ln.get("unitPrice") for ln in order["lines"]][1] is None
+    issue = issues_of(order["orderId"])["NO_PRICE"]
+    assert issue["lineIds"] == ["l2"]
+    update(
+        order["orderId"],
+        ops=[{"op": "remove", "lineId": "l2"}, {"op": "add", "sku": "OLIO-EVO-5L", "quantity": 4}],
+    )
+    out = request_order_confirmation(
+        make(RequestConfirmationInput, caller=CUSTOMER, orderId=order["orderId"])
+    )
+    assert out["status"] == "PENDING_CONFIRMATION"

@@ -276,6 +276,8 @@ export class AgentStack extends Stack {
     );
     allowOrders(['dynamodb:Query'], `${tables.Orders.tableArn}/index/by-customerId`);
     allowOrders(['dynamodb:PutItem'], tables.Issues.tableArn);
+    // Evidence that the customer answered after the summary (confirm_order): read-only.
+    allowOrders(['dynamodb:Query'], tables.Messages.tableArn);
     eventBus.grantPutEventsTo(ordersTool);
 
     const gateway = new agentcore.Gateway(this, 'Gateway', {
