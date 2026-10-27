@@ -1,8 +1,9 @@
 # SuppliAgent – Da dove partire
 
-> **Fonte unica** per: punto di partenza, stato del progetto, timeline, backlog dei task (con dipendenze), azioni manuali, decisioni e registro del fatto.
+> **Punto di partenza** del progetto: stato, timeline, lavoro in parallelo, flussi utente, decisioni e registro del fatto.
+> **Backlog e azioni manuali: [GitHub Issues](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues)** (fonte unica dei task: sotto-issue per flusso, dipendenze, priorità, assegnatario).
 > Comportamento e requisiti: [`docs/`](./docs/README.md) · Regole per gli agenti di sviluppo: [`AGENTS.md`](./agent-context/AGENTS.md).
-> Aggiornato al **27/10/2026 ore 18:00** · Code freeze **28/10 ore 12:00** · Submission interna **28/10 ore 15:00** · Scadenza Devpost **28/10 ore 21:00** (ora italiana)
+> Aggiornato al **27/10/2026 ore 20:00** · Code freeze **28/10 ore 12:00** · Submission interna **28/10 ore 15:00** · Scadenza Devpost **28/10 ore 21:00** (ora italiana)
 
 **Team**: MG, MM, FZ (sviluppo) · PS (Team Representative su Devpost: invia la submission).
 
@@ -20,15 +21,20 @@
    npm run check                          # lint + typecheck + test + cdk synth (come la CI)
    aws sts get-caller-identity            # account 471112860008, region eu-west-1 (profilo usato finora: default)
    ```
-3. Scegli un task dal backlog (§4) con la regola di §1.2 e lavoralo con il tuo agente di sviluppo (Claude Code, Copilot, Kiro: tutti leggono `AGENTS.md`). Con Claude Code: `/implement-fn FN-xx`, poi `/dod-check` (+ `/cds-check` sui canali).
+3. Apri una sessione del tuo agente di sviluppo in un worktree (§1.5) e lancia **`/sa-next-task`** (Copilot e Claude Code): sceglie il prossimo task libero della tua corsia, lo prende, lo implementa e apre la PR. Per un task preciso: `/sa-next-task T-xx`.
 4. Per capire **cosa** costruire: scheda `FN-xx` in [03](./docs/03_FUNCTIONAL_SPEC.md) e flussi `F-xx` in [02](./docs/02_TECHNICAL_FLOWS.md); architettura in [INFRASTRUCTURE_DESIGN](./docs/INFRASTRUCTURE_DESIGN.md).
 
 ### 1.2 Come prendere e chiudere un task
 
-- **Prendere**: un task del perimetro (§4.2) con stato ☐ e tutte le dipendenze **bloccanti** ✅. Crea il branch (`feat/FN-xx-…`), come primo commit metti la tua sigla in *Owner* e ◐ in *Stato* nella riga del task, fai push e apri subito la **PR in draft**; avvisa il team. Le dipendenze ↺ (di integrazione) non bloccano: si lavora con mock/stub dichiarati nella PR.
-- **Chiudere** (nella stessa PR): togli la riga da §4.2 e aggiungi una riga in §7 (data, task, cosa, PR). Se il lavoro crea o rinvia task, aggiorna §4.
-- **Git**: un task = una PR (salvo task accoppiati, §4.5). Merge su `main` solo da chi revisiona, con CI verde e *Create a merge commit*. Mai push o force push su `main`. `git pull --rebase origin main` prima di iniziare e prima di ogni deploy.
-- **Deploy** solo da `main` aggiornato, solo gli stack toccati: `cd infra && npx cdk deploy suppliagent-dev-<stack> --exclusively -c env=dev`. `dev` è l'**unico ambiente** (sviluppo, video e giudici): dopo il code freeze si fa deploy solo con conferma di MG.
+- **Backlog**: [issue aperte](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues) con etichette `must` / `should` / `could`, `stream:*`, `corsia:A|B|C`, `manual`; issue madri (etichetta `flusso`) con i task come sotto-issue; dipendenze come *blocked by*; milestone `Code freeze 28/10 12:00`.
+  ```bash
+  gh issue list --label corsia:B --state open --json number,title,assignees,labels   # i task della corsia
+  gh issue view <n>                                                                   # descrizione, dipendenze, madre
+  ```
+- **Prendere**: un'issue senza assegnatario e senza *blocked by* aperti → `gh issue edit <n> --add-assignee @me`, branch `feat/FN-xx-…`, push e **PR in draft** con `Closes #<n>` nel corpo e il piano. Nessuna modifica a questo file. Le dipendenze di integrazione (scritte nell'issue) non bloccano: si lavora con mock/stub dichiarati nella PR.
+- **Chiudere**: PR pronta con la Definition of Done e la sezione **Deploy** compilata (stack, comandi completi, script prima e dopo, oppure "nessun deploy"); al merge l'issue si chiude da sola. Se il lavoro crea o rinvia task, si apre o si modifica un'issue (`gh issue create --parent <madre> --blocked-by …`).
+- **Git**: un task = una PR (salvo task accoppiati, §4.5). Merge su `main` solo da chi revisiona, con CI verde e *Create a merge commit*. Mai push o force push su `main`. `git pull --rebase origin main` prima di iniziare e prima della PR.
+- **Deploy**: regole in §1.5. `dev` è l'**unico ambiente** (sviluppo, video e giudici): dopo il code freeze si fa deploy solo con conferma di MG.
 
 ### 1.3 Cosa non fare senza chiedere
 
@@ -42,7 +48,41 @@ Deploy dopo il code freeze, modifiche a risorse condivise (numero WhatsApp, domi
 - `cdk synth` a volte fallisce senza motivo riproducibile: rilanciare.
 - Su `dev` il **Notifier è in sandbox** (`notifierSandbox = true` in `infra/config/environments.ts`): le risposte sono registrate ma non inviate. Il simulatore (`scripts/simulate_channel.py`) funziona solo così. T-68 passa a invio reale: da quel momento il simulatore non si usa più (o si riaccende il sandbox per una prova e lo si rispegne). Il valore va cambiato nella config, non solo in SSM: ogni deploy sovrascrive il parametro.
 
-### 1.5 Mappa dei documenti
+### 1.5 Lavoro in parallelo
+
+**Corsie** (punto di partenza, non un vincolo: chi resta senza lavoro prende un'issue libera di un'altra corsia annunciandolo)
+
+| Corsia | Chi | Stack di cui fa il deploy | Ordine |
+|---|---|---|---|
+| **A – Canali ed e2e** | MG | `messaging`, `channels` | T-68 → T-26 → T-25 → T-29 → T-26b → T-67 → *could*: T-24 → T-27 |
+| **B – Agente** | MM | `agent`, `catalog` | T-71 → T-49 → T-48 → T-54 → T-05/T-53 → *could*: T-50 → T-51 → T-44b → T-52 |
+| **C – Console e materiali** | FZ | `console`, `proactive` | T-62 → T-63 (dopo T-49) → T-11 → T-12 → *could*: T-06b, T-08, T-64 → dopo il freeze T-10, T-72 |
+
+Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08 (C); T-44b (B) aspetta T-06b (C). `foundation`, `data`, `seed/reset.py`, `notifierSandbox` e T-73 (security review): MG.
+
+**Sessioni**
+- Al massimo **2 sessioni agente per persona**, ognuna in un **git worktree** proprio, aperto in una finestra VS Code separata (o `claude -w <nome>`):
+  ```bash
+  git fetch origin && git worktree add ../sa-<task> -b feat/FN-xx-<breve> origin/main
+  code ../sa-<task>                       # poi nella chat: /sa-next-task T-xx
+  git worktree remove ../sa-<task>        # dopo il merge
+  ```
+- Un task per chat: dopo la PR si apre una **chat nuova** (fa le veci di `/clear`).
+- L'agente lavora senza fermarsi sul piano quando l'issue ha criteri chiari (il piano va nella PR in draft); chiede solo per ambiguità, deploy, comandi `aws` che modificano risorse, `rm`, push. I comandi sicuri sono approvati in automatico (`.vscode/settings.json`, `agent-context/claude/settings.json`).
+- A fine task la sessione apre la PR, riporta **cosa deployare e con quali comandi**, e può passare all'issue successiva libera e non bloccata, su un branch nuovo da `main` (mai sopra lavoro non mergiato).
+
+**File caldi** (più task li toccano): prompt dell'agente e `agent/src/suppliagent_agent/turn.py` (corsia B ne è il riferimento), `infra/lib/stacks/agent-stack.ts` e `tool-schemas.ts` (B), `infra/lib/stacks/messaging-stack.ts` e `services/notifier` (A), `seed/data/*` (chi lo tocca lo dice). Regola: PR piccole, merge rapidi, rebase spesso; chi tocca un file caldo di un'altra corsia cambia solo il pezzo che gli serve e lo scrive nella PR.
+
+**Deploy su `dev`** (un solo ambiente)
+- Ognuno fa deploy **solo degli stack della propria corsia**, anche dal proprio branch per provarlo, **uno alla volta in tutto il team**: annuncio in chat ("deploy `agent` da `feat/…`"), poi `cd infra && npx cdk deploy suppliagent-dev-<stack> --exclusively -c env=dev`. Dopo il merge si rifà il deploy da `main`.
+- Dopo il deploy: `CodeSize` delle Lambda non di poche centinaia di byte (§1.4); dopo `agent`, conversazione nuova.
+- Prove: ognuno dal **proprio telefono** registrato (M-02); nessuno lancia `seed/reset.py` tranne MG, su richiesta.
+
+**Subagent** (Copilot e Claude Code, definiti in `agent-context/claude/agents/`): `test-runner` per lint/test/synth con il solo riassunto degli errori; `aws-docs-researcher` prima di API nuove (Memory, Guardrail, messaggi interattivi, RCS, Knowledge Base); `code-reviewer` a fine task. `security-reviewer` solo in T-73, non a ogni task.
+
+**Comandi** (`.github/prompts/` per Copilot, `agent-context/claude/commands/` per Claude Code): `/sa-next-task [T-xx]` · `/sa-dod-check` (Definition of Done prima della PR) · `/sa-cds-check` (requisiti CDS, prima della submission).
+
+### 1.6 Mappa dei documenti
 
 | File | Contenuto |
 |---|---|
@@ -91,7 +131,7 @@ Deploy dopo il code freeze, modifiche a risorse condivise (numero WhatsApp, domi
 |---|---|---|
 | ✅ 12/10–26/10 | Concept, documenti, P0, pipeline, agente, ordini, console su mock | Devpost, account AWS, SES, WABA |
 | **Mar 27/10 sera** | Must: **T-68 per primo** (e2e da telefono), T-71, T-26, T-62, T-11, T-12; poi Should: T-25, T-48, T-49, T-54 | M-01 foto bigliettini, M-02 numeri tester, M-05 ACE, M-11 registrazioni SMS/RCS |
-| **Mer 28/10 08:00–12:00** | Should: T-63, T-67, T-26b, T-05 + T-53, T-29; correzioni da T-68. Could (flussi 6–8) solo con i Must chiusi | M-06 utente `judge` |
+| **Mer 28/10 08:00–12:00** | Should: T-63, T-67, T-26b, T-05 + T-53, T-29; correzioni da T-68; **~10:00 T-73 security review** su `main`. Could (flussi 6–8) solo con i Must chiusi | M-06 utente `judge` |
 | **Mer 28/10 ore 12:00** | **Code freeze**: dopo, solo bugfix bloccanti | |
 | 12:00–13:00 | T-10: ultimo deploy di `dev` da `main`, reset, prova del flusso 9 | |
 | 13:00–14:00 | T-72 (documenti) | M-07 registrazione e upload video |
@@ -106,171 +146,29 @@ Se T-68 non è verde entro le 08:00 del 28/10: si ferma tutto il resto e si lavo
 
 ## 4. Backlog
 
-### 4.1 Legenda
+Il backlog è su **[GitHub Issues](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues)**: ogni task `T-xx` e ogni azione manuale `M-xx` è un'issue (il titolo inizia con l'ID), sotto-issue della madre del suo flusso, con le dipendenze come *blocked by*.
 
-- **Stato**: ☐ da fare · ◐ in corso (branch/PR draft) · ⏸ in attesa · ✅ fatto (va in §7).
-- **Dipende da**: `T-xx` = bloccante (si inizia solo quando è ✅ su `main`); `↺ T-xx` = integrazione (si procede con mock); `M-xx` = azione manuale (§5).
-- **Stream** (area, non persona): **IN** infra, dati e materiali · **CH** canali CDS · **AG** agente e AgentCore · **CO** console.
-- **Priorità**:
-  - **Must**: senza, la demo o la submission non stanno in piedi (flussi 1, 2, 5a, 9 e materiali).
-  - **Should**: completa i flussi 2–5 e la qualità tecnica.
-  - **Could**: flussi 6–8. Si iniziano solo quando tutti i Must sono presi; quello che non è pronto al code freeze va nel video come "prossimi passi".
-- **Owner**: chi ha preso il task (vuoto = libero). Chiunque può prendere qualsiasi task libero.
+### 4.1 Etichette e priorità
 
-### 4.2 Backlog per flusso utente
+- **`must`**: senza, la demo o la submission non stanno in piedi (flussi 1, 2, 5a, 9 e materiali) · **`should`**: completa i flussi 2–5 e la qualità tecnica · **`could`**: flussi 6–8, si iniziano solo quando tutti i `must` sono presi; quello che non è pronto al code freeze va nel video come "prossimi passi".
+- **`stream:CH|AG|CO|IN`**: area (canali, agente, console, infra/dati/materiali) · **`corsia:A|B|C`**: corsia di default (§1.5) · **`manual`**: azione manuale · **`flusso`**: issue madre.
+- **Stato**: aperta senza assegnatario = libera · assegnata con PR draft = in corso · chiusa = fatta (PR mergiata).
+- **Milestone**: `Code freeze 28/10 12:00` · `Submission 28/10 15:00` · `Judging fino al 12/11`.
 
-I flussi sono quelli dell'applicazione (utenti: ristoratore, agente di commercio, back office, giudice): §4.3 li descrive passo per passo.
+### 4.2 Issue madri
 
-```mermaid
-flowchart LR
-  M02([M-02 numeri tester]) --> T68[T-68 e2e WhatsApp]
-  T71[T-71 codice giudici] -.-> T68
-  T68 --> T53[T-53 eval]
-  M01([M-01 foto]) --> T05[T-05 dataset] -.-> T53
-  T26[T-26 email PDF] --> T26b[T-26b email completa]
-  T49[T-49 handoff] --> T63[T-63 console live]
-  T49 -.-> T67[T-67 errori turno]
-  T48[T-48 consenso] --> T52
-  T08[T-08 ProactiveStack] --> T52[T-52 riordino]
-  T24[T-24 Notifier completo] --> T52
-  T29[T-29 template approvati] --> T24
-  T08 --> T50[T-50 reco] --> T51[T-51 copilota]
-  T06b[T-06b KB schede] --> T44b[T-44b schede tecniche]
-  M11([M-11 registrazioni SMS/RCS]) --> T27[T-27 SMS/RCS]
-  T24 --> T27
-  T68 --> FZ{{Code freeze 28/10 12:00}}
-  T62[T-62 console API] --> FZ
-  T71 --> FZ
-  FZ --> T10[T-10 dev per i giudici]
-  M06([M-06 utente judge]) --> T10
-  T10 --> M07([M-07 video])
-  T12[T-12 copione] --> M07
-  T11[T-11 testi e diagramma] --> M08([M-08 Devpost])
-  M05([M-05 ACE]) --> M08
-  M07 --> M08
-```
-
-**Flusso 1 – Primo contatto e identificazione (ristoratore)** e **Flusso 9 – Prova dei giudici**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-71 | Cliente di prova per i giudici: chi si identifica con il suo codice è verificato subito | FN-03, 31 | AG | Must | – | | ☐ |
-| T-48 | Informativa e consenso proattivo al primo contatto | FN-02 | AG | Should | – | | ☐ |
-
-**Flusso 2 – Ordine da foto (ristoratore)** e **Flusso 3 – Dopo l'ordine**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-68 | Flussi 2 e 3 end-to-end da WhatsApp reale, in italiano e in inglese | FN-01, 05–17, 27 | CH + AG | Must | M-02, ↺ T-71 | | ☐ |
-| T-26 | Email di conferma con PDF (l'assistente chiede l'email se manca) | FN-14 | CH + AG | Must | – | | ☐ |
-| T-25 | Pulsanti WhatsApp per chiarimenti e *Confermo / Modifica* | FN-08, 12 | CH | Should | – | | ☐ |
-| T-29 | Approvazione dei template WhatsApp | FN-12, 19 | CH | Should | – | | ☐ |
-
-**Flusso 4 – Ordine via email (ristoratore)**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-26b | Ordine via email end-to-end e conferma aggiornata dopo una modifica | FN-06, 14, 16 | CH | Should | T-26 | | ☐ |
-
-**Flusso 5 – Supervisione in console (back office)**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-62 | 5a/5b: elenco e dettaglio ordine su API reali, correzione riga | FN-28 | CO | Must | – | | ☐ |
-| T-49 | 5c: `handoff_to_human` e `mode = HUMAN` / release | FN-24 | AG | Should | – | | ☐ |
-| T-63 | 5c: conversazioni live + *Take over / Reply / Release* | FN-24, 28 | CO | Should | T-49 | | ☐ |
-| T-67 | Messaggi di cortesia e handoff sugli errori del turno | FN-26, 24 | CH | Should | ↺ T-49 | | ☐ |
-
-**Flusso 6 – Copilota per l'agente di commercio**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-08 | `ProactiveStack`: insight per cliente (anche per T-50 e T-52) | FN-19, 20 | IN | Could | – | | ☐ |
-| T-50 | Tool `reco`: suggerimenti motivati | FN-11, 20 | AG | Could | T-08 | | ☐ |
-| T-51 | Tool `sales`: briefing, agenda, ordine per conto del cliente | FN-20, 22, 23 | AG | Could | T-50 | | ☐ |
-| T-06b | Knowledge Base delle schede tecniche | FN-21 | IN | Could | – | | ☐ |
-| T-44b | Tool `ask_product_sheets` | FN-21 | AG | Could | T-06b | | ☐ |
-| T-64 | Chat web per gli agenti di commercio in console | FN-29 | CO | Could | – | | ☐ |
-
-**Flusso 7 – Riordino proattivo**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-24 | Notifier completo: template fuori finestra 24h, fallback, opt-out, errori di invio | FN-01, 14, 15 | CH | Could | T-29 | | ☐ |
-| T-52 | Turno proattivo di riordino | FN-19 | AG | Could | T-08, T-24, T-48 | | ☐ |
-
-**Flusso 8 – Consegna (SMS/RCS)**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-27 | SMS/RCS: conferma e avviso di consegna con *Ricevuto / Segnala problema* | FN-15, 18 | CH | Could | M-11, T-24 | | ☐ |
-
-**Qualità tecnica**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-54 | AgentCore Memory, Guardrail, Observability, prompt `sales_rep` | FN-03, 04, 25, 27, 32 | AG | Should | – | | ☐ |
-| T-05 | Dataset eval (≥ 15 bigliettini, vocali, email) | FN-05, 07 | IN | Should | M-01 | | ☐ |
-| T-53 | Eval: lettura, matching, conversazione d'ordine | FN-04, 05, 07 | AG | Should | T-68, ↺ T-05 | | ☐ |
-
-**Demo e submission**
-
-| ID | Task | FN | Stream | Priorità | Dipende da | Owner | Stato |
-|---|---|---|---|---|---|---|---|
-| T-11 | Diagramma aggiornato + PNG, testi submission (EN), paragrafo WhatsApp | – | IN | Must | – | | ☐ |
-| T-12 | Copione del video (≤ 3 min) | – | IN | Must | – | | ☐ |
-| T-10 | `dev` pronto per i giudici, README di deploy e per i giudici | FN-31 | IN | Must | code freeze, M-06 | | ☐ |
-| T-72 | Documenti di design (01, 02, 03, INFRA) ridotti alle funzionalità della gara | – | IN | Should | code freeze | | ☐ |
-
-<details>
-<summary><b>Dettaglio dei task</b></summary>
-
-**Flussi 1 e 9**
-- **T-71 – Cliente di prova per i giudici** (nuovo, 27/10). Oggi un numero sconosciuto che si identifica (nome del locale + codice cliente) diventa contatto `PENDING_VERIFICATION` e non può ordinare. Nel seed, uno o più clienti di prova con un flag (es. `autoVerifyContacts: true`) e un codice pubblicato nel README; `identify_contact` per quei clienti crea il contatto già verificato, per tutti gli altri resta `PENDING_VERIFICATION` (test negativo). Aggiornare `customer_unknown.md`. Nota: i giudici che usano lo stesso codice condividono il locale di prova (storico e ordini); valutare un codice per giudice o un reset periodico.
-- **T-48 – Primo contatto**. Informativa e richiesta di consenso proattivo al primo messaggio di un contatto (F-01); preferenza salvata (serve a T-52).
-
-**Flussi 2 e 3**
-- **T-68 – Flussi 2 e 3 da WhatsApp reale** (nuovo, 27/10). Su `dev`: numeri dei tester registrati come contatti (M-02), `notifierSandbox: 'false'` in `infra/config/environments.ts` (invio reale; resta così anche per i giudici), deploy di `foundation` (parametri SSM) e `messaging`. Dal telefono: foto del bigliettino (+ vocale) → righe lette → chiarimento → sostituto, consegna e cut-off → riepilogo → *Confermo* → `CONFIRMED` → ERP mock → PDF; poi stato dell'ordine, modifica e annullo prima del cut-off. Ripetere in inglese. Con T-71 pronto, ripetere da un numero sconosciuto con il codice di prova. Annotare nella PR tempi, numero di scambi e problemi; correggere quelli bloccanti (es. i limiti noti di §2). Uscita: flussi ripetibili dopo `seed/reset.py`.
-- **T-26 – Email di conferma con PDF**. Template HTML (IT/EN) con il PDF di `order_pdf` allegato, inviato dal Notifier con `sesv2:SendEmail` dopo `order.confirmed`. Se il contatto non ha un'email registrata (es. un giudice da WhatsApp), l'assistente la chiede prima della conferma e la salva sul contatto, usata solo per le conferme d'ordine.
-- **T-25 – Pulsanti WhatsApp**. Button/list e parsing delle risposte; riepilogo d'ordine con *Confermo / Modifica* come messaggio interattivo: il Notifier registra l'id del messaggio in `Orders.summaryMessageId` (il tool `orders` accetta il tap solo se `interactiveReply.contextId` lo uguaglia); l'agente passa `interactiveReply` a `confirm_order`.
-- **T-29 – Template WhatsApp**. Gli 8 JSON di `services/notifier/whatsapp_templates/` sono stati inviati il 27/10, `PENDING`. Controllare con `aws socialmessaging list-whatsapp-message-templates --id <WABA_ID>` (comando in [09 §1](./docs/09_CONTENT_AND_TEMPLATES.md)) fino ad `APPROVED`; se Meta rifiuta o cambia categoria, correggere il JSON (test verde) e reinviare; annotare l'esito in 09. Servono a T-24 e T-52.
-
-**Flusso 4**
-- **T-26b – Ordine via email**. Ordine per email (testo e foto; l'ingresso è già nel Router, T-23) fino alla conferma con PDF; conferma aggiornata dopo una modifica entro il cut-off (evento `order.updated`, FN-16). Esclusi: allegati PDF/Excel, F-02.C3.
-
-**Flusso 5**
-- **T-62 – Console su API reali**. UI con mock già fatta: `VITE_ORDERS_SOURCE=api`, `PATCH` di correzione riga in `console_api` (oggi `correctLine` lancia errore), `customerName`/`uncertainLines`/`handoff` nel riepilogo, nome prodotto sulla riga, `imageS3Uri`. Vista chiave della demo: bigliettino accanto alle righe.
-- **T-49 – Handoff**. Tool `handoff_to_human` e gestione `mode = HUMAN` / release (il controllo `mode = HUMAN` è già nel Router), F-14.
-- **T-63 – Conversazioni live**. `broadcaster` (WebSocket) + azioni *Take over / Reply / Release* in `console_api`.
-- **T-67 – Errori del turno**. Messaggio di cortesia al primo errore del Runtime (E-05), al secondo `handoff_to_human` con `LOW_CONFIDENCE` (E-12); oggi solo retry SQS ×3 e DLQ senza avviso. Tetto alla lunghezza di `pending`.
-
-**Flusso 6**
-- **T-08 – `ProactiveStack`** (lo stack esiste vuoto). `insights_analyzer` (riordini scaduti, prodotti smessi, gap rispetto a clienti simili), `proactive_trigger`, scheduler notturno. Per la demo basta un'esecuzione a comando sui dati del seed.
-- **T-50 – Tool `reco`**. Suggerimenti motivati per cliente; per il ristoratore max 1 per ordine, solo con consenso (FN-11).
-- **T-51 – Tool `sales`**. Briefing del cliente, agenda, ordine per conto del cliente; solo clienti del portafoglio dell'agente (autorizzazione già nei tool).
-- **T-06b – Knowledge Base schede tecniche** (resto di T-06; indice `products` e `catalog_indexer` sono fatti). `CfnKnowledgeBase` (L1), vector store S3 Vectors, indice `product-sheets`, data source `catalog-assets/sheets/` con schede sintetiche.
-- **T-44b – Tool `ask_product_sheets`** (target Gateway `catalog`, stessa Lambda `tool-catalog` di T-44). Risposte dalle schede tecniche con citazione, o dichiarazione esplicita che l'informazione non c'è; per tutti i ruoli, senza dati interni.
-- **T-64 – Chat web agenti di commercio**. Lambda `rep_chat` + UI con streaming; `NormalizedMessage` con `channel = WEB`. Meno prioritario: l'agente di commercio può già usare WhatsApp.
-
-**Flusso 7**
-- **T-24 – Completamento del Notifier** (la base — risposte su WhatsApp ed email, sandbox, idempotenza, read receipt — è fatta). Template fuori dalla finestra 24h (F-11.C2), compreso `order_pending_reminder` inviato da `order-sweeper`; fallback di canale e RCS→SMS; fasce orarie; opt-out. Dal Router: richiesta di reinvio per media non scaricati (E-02) e avviso per allegati rifiutati senza `s3Uri` (E-13). Fallimenti di invio: retry ×3 e fallback (E-09).
-- **T-52 – Turno proattivo di riordino**. Template `reorder_suggestion` (approvato, T-29), pulsanti *Riordina uguale / Modifica / No grazie / Stop proposte*, cooldown di 7 giorni, mai in fascia notturna, solo con consenso (FN-19).
-
-**Flusso 8**
-- **T-27 – SMS/RCS**. Infra EUM SMS v2 (configuration set, event destinations, opt-out list, topic `sms-inbound`); sottoscrizione del topic alla coda `inbound` e normalizzazione SMS/RCS nel Router; rich card di conferma e di avviso di consegna (avanzamento dall'ERP mock, azione `advance`) con *Ricevuto / Segnala problema* (tool `report_delivery_issue` già fatto); fallback SMS. Bloccato dalle registrazioni di M-11.
-
-**Qualità tecnica**
-- **T-54 – Completamento dell'agente**. AgentCore Memory (`actorId = contactId`, storico e preferenze), Bedrock Guardrail (PII, topic negati), prompt e tool `sales_rep` completi, Observability/OTel (`aws-opentelemetry-distro`), retention e CMK del log group del Runtime, verifica multilingua; testo e allegati dei messaggi passati al modello come **contenuto non fidato** delimitato (`<user_message>`), mai come istruzioni.
-- **T-05 – Dataset eval**. ≥ 15 bigliettini scritti a mano (grafie diverse, da M-01), vocali, email d'ordine, conversazioni attese, in `agent/evals/data/`, con soluzione attesa.
-- **T-53 – Eval**. Runner e metriche (lettura righe, matching, intento, n. scambi) anche con AgentCore Evaluations; eval della conversazione d'ordine (da bigliettino a `CONFIRMED` con sostituto, arrotondamento, cut-off, *Modifica*, doppia conferma); miglioramento della lettura del corsivo (oggi 62% con Nova Pro). Report in `agent/evals/README.md`.
-
-**Demo e submission**
-- **T-11 – Materiali**. Aggiornare `docs/architecture.drawio` (coda `inbound` standard, niente Lambda Media Fetcher, niente analytics) ed esportarlo in PNG; testi Devpost in inglese (problema, soluzione, servizi AWS, impatto misurabile) e paragrafo sull'uso di EUM Social / WhatsApp (premio Meta); bozza in `docs/SUBMISSION_TEXT.md`.
-- **T-12 – Copione del video**. ≤ 3 minuti, in inglese o con sottotitoli: telefono del ristoratore + console affiancati; flusso 2 completo, momento "wow" foto → ordine verificato; flusso 5; i flussi 6–8 mostrati se pronti, altrimenti citati come prossimi passi; checklist di registrazione (reset dati, nessun marchio o musica senza licenza).
-- **T-10 – `dev` pronto per i giudici**. Dopo il freeze: ultimo deploy di tutti gli stack da `main`, console ripubblicata con `VITE_ORDERS_SOURCE=api` (`scripts/deploy-console.sh dev`), `seed/reset.py --env dev`, prova del flusso 9 da un telefono non registrato. README: sezione di deploy riproducibile da zero (oggi dice "Commands will be finalized"), passi manuali, seed; "Try it (for judges)" con URL della console, credenziali `judge` (M-06), codice cliente di prova (T-71), bigliettino di esempio. Da lì `dev` resta congelato fino al 12/11.
-- **T-72 – Documenti di design snelli**. 01, 02, 03 e INFRASTRUCTURE_DESIGN ridotti alle funzionalità della gara: via analytics/KPI (FN-30, FN-33 lato Firehose/Athena), domande per il cliente reale, integrazione ERP reale, parti mai pianificate. Solo documentazione, si può fare dopo il freeze.
-
-</details>
+| Issue | Flussi | Task |
+|---|---|---|
+| [#37](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/37) | 1 e 9 – primo contatto, identificazione, prova dei giudici | T-71, T-48 |
+| [#38](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/38) | 2 e 3 – ordine da foto e dopo l'ordine | T-68, T-26, T-25, T-29 |
+| [#39](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/39) | 4 – ordine via email | T-26b |
+| [#40](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/40) | 5 – supervisione in console | T-62, T-49, T-63, T-67 |
+| [#41](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/41) | 6 – copilota per l'agente di commercio | T-08, T-50, T-51, T-06b, T-44b, T-64 |
+| [#42](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/42) | 7 – riordino proattivo | T-24, T-52 |
+| [#43](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/43) | 8 – consegna SMS/RCS | T-27 |
+| [#44](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/44) | Qualità tecnica | T-54, T-05, T-53, T-73 |
+| [#45](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/45) | Demo e submission | T-11, T-12, T-10, T-72 |
+| [#46](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/46) | Azioni manuali | M-01…M-11 |
 
 ### 4.3 I flussi utente
 
@@ -300,25 +198,11 @@ Task sullo stesso stack non testabili da soli: una PR, un commit per task. Finor
 
 ## 5. Azioni manuali
 
-Quello che gli agenti di sviluppo non possono fare: accessi, Meta, AWS Partner Central, registrazione, Devpost.
+Sono le issue con etichetta **`manual`**, sotto-issue di [#46](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/46): accessi, Meta, AWS Partner Central, registrazioni, video, Devpost. Le più urgenti: [#76](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/76) numeri dei tester (sblocca T-68), [#85](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/85) registrazioni SMS/RCS, [#79](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/79) opportunità ACE, [#75](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/75) foto dei bigliettini. Submission: [#81](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/81) video, [#82](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/82) Devpost (PS), [#83](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/83) controllo dei link.
 
-| ID | Azione | Owner | Entro | Sblocca | Stato |
-|---|---|---|---|---|---|
-| M-01 | ≥ 15 foto di bigliettini scritti a mano da persone diverse (prodotti del catalogo sintetico) + qualche vocale, consegnate a chi fa T-05 | | 27/10 sera | T-05 | ☐ |
-| M-02 | Registrare i numeri WhatsApp dei tester come contatti di prova (`seed/private/`, mai nel repo) | MG | 27/10 sera | T-68 | ☐ |
-| M-03 | Tag `Project`, `Owner`, `Env` sulla risorsa del numero `phone-number-id-79f9…` (il WABA li ha già) | MG | 28/10 | – | ☐ |
-| M-04 | Attivare `Project` ed `Env` come *cost allocation tags* in Billing | MG | 28/10 | M-10 | ☐ |
-| M-05 | **Opportunità ACE** su Partner Central (dettagli sotto) → annotare l'ID | PS | 28/10 12:00 | M-08 | ☐ |
-| M-06 | Utente Cognito `judge` su `dev` (README, *Manual steps* §4) | | 28/10 12:00 | T-10 | ☐ |
-| M-07 | Registrare il video (copione T-12) e caricarlo **pubblico** su YouTube o Vimeo | | 28/10 14:00 | M-08 | ☐ |
-| M-08 | Compilare e **inviare** Devpost (dettagli sotto) | PS | 28/10 15:00 | – | ☐ |
-| M-09 | Controllo finale: repo pubblico con licenza visibile, video pubblico, console raggiungibile, WhatsApp che risponde | | 28/10 15:00 | – | ☐ |
-| M-10 | Ambiente attivo e gratuito per i giudici fino al **12/11 17:00 PT**, costi sotto controllo, risposte ai giudici; in caso di vittoria moduli entro 10 giorni lavorativi | MG, PS | 12/11 | – | ☐ |
-| M-11 | Avviare subito la registrazione del mittente SMS per l'Italia e dell'agente RCS con i telefoni tester (inviti), verificando i tempi: se non arrivano entro il freeze, T-27 esce | MG | 27/10 sera | T-27 | ☐ |
-
-**M-05 – ACE** ([Partner Central](https://partnercentral.awspartner.com/)): opportunità **nuova** (creata dopo il 14/09/2026), stato almeno *Created*; Step 2 → *Opportunity marketing details* → *Sourced from marketing activity* → campaign `AWS CDS Agentic AI Hackathon -Sept. 2026`; Step 4 → prodotti **AWS End User Messaging**, **AWS End User Messaging Social**, **Amazon SES**; sul cliente reale (distribuzione alimentare HoReCa), ARR stimato con il commerciale beSharp; ID `OXXXXXXXX` in *Sell → Opportunities*.
-
-**M-08 – Form Devpost** ([overview](https://aws-cds-partner.devpost.com/) · [rules](https://aws-cds-partner.devpost.com/rules) · [FAQ](https://aws-cds-partner.devpost.com/details/faq)): URL del repo · diagramma (PNG da T-11) · descrizione (T-11) · link al video (M-07) · istruzioni di test per i giudici (README, T-10) · ID ACE (M-05) · paragrafo sull'uso di WhatsApp (premio Meta, T-11).
+```bash
+gh issue list --label manual --state open
+```
 
 ---
 
@@ -332,6 +216,10 @@ Nessuna per la gara.
 
 | Data | Decisione |
 |---|---|
+| 27/10 | Backlog e azioni manuali su GitHub Issues (sotto-issue per flusso, dipendenze *blocked by*); si prende un task assegnandosi l'issue, si chiude con `Closes #n` nella PR |
+| 27/10 | Lavoro in parallelo su tre corsie (§1.5), max 2 sessioni per persona in worktree separati; comandi `/sa-next-task`, `/sa-dod-check`, `/sa-cds-check` nel repo |
+| 27/10 | Gli agenti non attendono conferma sul piano se l'issue ha criteri chiari; ogni fine task riporta deploy e script con i comandi completi |
+| 27/10 | Security review una sola volta a fine iterazione (T-73, 28/10 ~10:00), non a ogni task |
 | 27/10 | Un solo ambiente, `dev`, per sviluppo, video e giudici: l'ambiente `demo` è stato tolto da codice e documenti; dopo il code freeze `dev` è congelato |
 | 27/10 | Il repo serve solo alla gara: niente task o domande per il cliente reale; tolti T-09, T-65 (analytics/KPI) e T-70 (hardening) |
 | 27/10 | Perimetro = flussi utente 1–9 (§4.3), con priorità Must/Should/Could; i flussi 6–8 sono Could |
@@ -355,7 +243,7 @@ Nessuna per la gara.
 
 ## 7. Fatto
 
-Una riga per task chiuso (più recente in alto). Dettagli, scelte e verifiche: descrizione della PR; storico fino al 27/10 in [`docs/OLD/DONE.md`](./docs/OLD/DONE.md).
+Dal 27/10 sera il fatto sono le [issue chiuse](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues?q=is%3Aissue+is%3Aclosed) con le loro PR. Qui sotto lo storico fino al 27/10 (dettagli in [`docs/OLD/DONE.md`](./docs/OLD/DONE.md)).
 
 | Data | Task | Cosa | PR |
 |---|---|---|---|

@@ -1,0 +1,26 @@
+{
+  // SuppliAgent: safe commands run without asking (START_HERE §1.5); everything else, and every
+  // `false` rule below, still asks. Optional env prefix allowed (e.g. GH_PROMPT_DISABLED=1 GH_PAGER=cat).
+  "chat.agent.maxRequests": 100,
+  "chat.tools.terminal.autoApprove": {
+    "/^(\\w+=\\S*\\s+)*git\\s+(--no-pager\\s+)?(status|diff|log|show|branch|fetch|switch|add|commit|worktree|ls-files|rev-parse|merge-base)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*git\\s+checkout\\s+-b\\b/": true,
+    "/^(\\w+=\\S*\\s+)*git\\s+pull\\s+(--rebase|--ff-only)\\s+origin\\s+main$/": true,
+    "/^(\\w+=\\S*\\s+)*git\\s+push\\s+(-u\\s+)?origin\\s+(feat|fix|docs|chore)\\/[\\w./-]+$/": true,
+    "/^(\\w+=\\S*\\s+)*npm\\s+(ci|install|test|run)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*npx\\s+(tsc|eslint|prettier|vitest)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*npx\\s+cdk\\s+(synth|diff|ls)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*uv\\s+(sync|lock)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*uv\\s+run\\s+(ruff|mypy|pytest)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*uv\\s+run\\s+python\\s+agent\\/evals\\//": true,
+    "/^(\\w+=\\S*\\s+)*gh\\s+issue\\s+(list|view|create|edit|comment)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*gh\\s+pr\\s+(list|view|create|ready|checks|diff|edit)\\b/": true,
+    "/^(\\w+=\\S*\\s+)*gh\\s+pr\\s+merge\\b/": false,
+    "/\\bgit\\s+push\\b.*(\\s-f\\b|--force|\\smain\\b)/": false,
+    "/\\bgit\\s+(reset|rebase|clean|restore)\\b/": false,
+    "/\\bcdk\\s+(deploy|destroy)\\b/": false,
+    "/\\baws\\s/": false,
+    "/\\bseed\\/(seed|reset)\\.py\\b/": false,
+    "/\\b(rm|rmdir|sudo|docker|kill|chmod|chown)\\b/": false
+  }
+}
