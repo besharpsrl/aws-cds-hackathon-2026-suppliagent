@@ -215,7 +215,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | 2 | T-43 `order_intake` (lettura bigliettini) | `feat/FN-05-order-intake` | – | Must | ✅ PR #21 |
 | 3 | T-06 (**solo** indice prodotti S3 Vectors, niente Knowledge Base; il resto è T-06b, non assegnato) | `feat/FN-07-product-index` | – | Must | ✅ PR #25 |
 | 4 | T-44 `catalog` (`match_products`, `search_catalog`; `ask_product_sheets` è T-44b, non assegnato: attende T-06b) | `feat/FN-07-catalog-matching` | – | Must | ✅ PR #27 |
-| 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 ✅, ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 ✅ | Must | ✅ PR da aprire |
+| 5 | T-45 + T-46 + T-47 con il resto di T-04 (catalogo, listini, stock) | `feat/FN-12-order-flow` | ↺ T-07 ✅, ↺ T-25 (Piattaforma: senza, risposte testuali), ↺ T-22 ✅ | Must | ✅ PR #29 |
 | 6 | T-49 `handoff_to_human` | | T-22 ✅ (il controllo `mode = HUMAN` è già nel Router) | Should | ☐ |
 | 7 | T-54 (prima Guardrail e Memory) | | – | Should | ☐ |
 | 8 | T-53 eval leggera | | ↺ T-05 (Integrazione): si parte dai 3 bigliettini in `agent/evals/` | Should | ☐ |
