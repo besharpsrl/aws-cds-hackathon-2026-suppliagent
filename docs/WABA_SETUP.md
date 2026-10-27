@@ -113,9 +113,9 @@ Su `demo` il sandbox è già `false` (config).
 
 ## 4. Dopo il collegamento
 
-- **Template WhatsApp (T-29)**: invio degli 8 template a Meta con il comando di [09 §1](./09_CONTENT_AND_TEMPLATES.md) usando il `<WABA_ID>`; approvazione entro 24 h. Servono per scrivere fuori dalla finestra di 24 h (conferme, promemoria, riordino).
-- **Pagina demo della console**: `AWS_PROFILE=default VITE_DEMO_WHATSAPP="+39…" VITE_DEMO_ORDER_EMAIL="ordini@<sesDomain>" scripts/deploy-console.sh dev`.
-- **README per i giudici**: numero WhatsApp nelle istruzioni di test (T-10).
+- **Template WhatsApp (T-29)**: ✅ gli 8 template (4 × IT/EN) sono stati inviati a Meta il 27/10 con il comando di [09 §1](./09_CONTENT_AND_TEMPLATES.md) (WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a`), tutti `PENDING`. Approvazione entro 24 h. **Da fare**: controllare lo stato (comando in 09 §1; resta aperto in T-29 nel backlog) e correggere/reinviare quelli rifiutati. Servono per scrivere fuori dalla finestra di 24 h (conferme, promemoria, riordino).
+- **Pagina demo della console**: `AWS_PROFILE=default VITE_DEMO_WHATSAPP="+393452460472" VITE_DEMO_ORDER_EMAIL="ordini@suppliagent.stonecutters.besharp.net" scripts/deploy-console.sh dev` (i valori sono anche in `console/.env.example`; lo script li legge dalle variabili d'ambiente, non dai file `.env`).
+- **README per i giudici**: ✅ numero WhatsApp ed email d'ordine inseriti in "Try it (for judges)" il 27/10; restano da aggiungere URL console, credenziali `judge` e cliente di prova (T-10).
 - **Ambiente `demo`** (T-10): stesso account, quindi stesso WABA e stesso numero. Da decidere al deploy di `demo` se spostare la destinazione eventi sul topic `suppliagent-demo-wa-events` (da quel momento `dev` non riceve più) o tenere un solo ambiente collegato.
 
 ---

@@ -8,6 +8,10 @@
 
 ## 27/10/2026
 
+### Invio dei template WhatsApp a Meta e dati demo nel README · FN-12, FN-19, FN-31
+- **Fatto**: 8 template (`order_confirmation`, `order_pending_reminder`, `delivery_update`, `reorder_suggestion`, IT/EN) inviati a Meta sul WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a` con `create-whatsapp-message-template`; tutti `PENDING` (UTILITY ×6, MARKETING ×2). Numero `+39 345 246 0472` e email d'ordine `ordini@suppliagent.stonecutters.besharp.net` nel README ("Try it (for judges)") e in `console/.env.example` (`VITE_DEMO_*`).
+- **Verifica**: `aws socialmessaging list-whatsapp-message-templates --id <WABA_ID>` mostra gli 8 template. L'approvazione resta aperta in T-29 (backlog). Console di `dev` ripubblicata con `VITE_DEMO_*` (`scripts/deploy-console.sh dev`): la pagina *Try the demo* mostra numero ed email.
+
 ### Collegamento WhatsApp reale su `dev` e foto scartate dal Router · FN-01, E-13
 - **Fatto**: WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a` collegato a EUM Social (`eu-west-1`), numero `+39 345 246 0472` (`phone-number-id-79f96a1ea97d47aabfce52eb7b8cf23c`), destinazione eventi `suppliagent-dev-wa-events`, SSM `waPhoneNumberId` valorizzato (docs/WABA_SETUP.md parti 1–2). Testo reale ricevuto (`message stored`, mittente `UNKNOWN`).
 - **Bug**: la prima foto reale (157 KB) è stata scartata con `media dropped: too large`: `GetWhatsAppMessageMedia` restituisce `fileSize` in **byte**, il Router lo moltiplicava per 1024. Ora il limite di 10 MB si controlla sulla `Size` dell'oggetto scaricato su S3; test di regressione con la dimensione reale.

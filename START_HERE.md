@@ -69,7 +69,7 @@ Le cose che Claude Code non può fare: account, accessi, contatti con cliente e 
 
 **Canali** → `docs/INFRASTRUCTURE_DESIGN.md` §5.1 e §11
 - [x] **WhatsApp**: account WhatsApp Business collegato ad AWS End User Messaging Social **in eu-west-1**, numero +39 345 246 0472, testo e foto reali ricevuti il 27/10 → procedura e stato in `docs/WABA_SETUP.md`
-- [ ] **Template WhatsApp** inviati a Meta: testi pronti (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`); appena la WABA è collegata a EUM Social si inviano con il task **T-29** (comando in 09 §1)
+- [ ] **Template WhatsApp**: 8 template inviati a Meta il 27/10 (T-28, `services/notifier/whatsapp_templates/`, revisione in `docs/09_CONTENT_AND_TEMPLATES.md`), tutti `PENDING`; resta da verificare l'approvazione (task **T-29**, comando in 09 §1)
 - [x] **SES**: dominio verificato (DNS), uscita dalla sandbox (27/10), record MX per la ricezione
 - [ ] **SMS/RCS**: verificare tempi di registrazione mittente per l'Italia e dell'agente RCS di test (telefoni tester); se non pronto entro il 25 → SMS/RCS solo nel video
 
@@ -202,7 +202,7 @@ Questa sezione assegna **tutti** i task aperti a una sessione, in ordine, con le
 | 4 | T-07 ERP mock + `order_pdf` + regola `order.confirmed` | `feat/FN-13-erp-mock-order-pdf` | – | Must | ✅ PR #28 |
 | 5 | T-25 messaggi interattivi WhatsApp | | – | Should | ☐ |
 | 6 | T-26 (solo email di conferma con PDF) | | ↺ T-46 (Agente) per i dati d'ordine reali | Must | ☐ |
-| 7 | T-29 invio template a Meta (ID EUM Social sempre da SSM) | | WABA collegata ✅ 27/10 | Should | ☐ |
+| 7 | T-29 verifica approvazione template (inviati il 27/10, `PENDING`; ID EUM Social sempre da SSM) | | WABA collegata ✅ 27/10 | Should | ☐ |
 | 8 | T-08 `ProactiveStack` | | – | Could | ☐ |
 | 9 | T-24 completo, T-27 RCS | | – | Could | ☐ |
 | 10 | T-67 errori del turno nel Dispatcher (cortesia E-05, handoff E-12) | | ↺ T-49 (Agente) | Should | ☐ |

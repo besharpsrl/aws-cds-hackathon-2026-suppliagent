@@ -33,4 +33,6 @@ done
 aws socialmessaging list-whatsapp-message-templates --id <WABA_ID>   # stato: PENDING → APPROVED/REJECTED
 ```
 
+**Stato (WABA `dev`, `waba-8c2d297ba5154c33b7d0ceac98c7410a`)**: gli 8 template sono stati inviati il 27/10/2026 e risultano `PENDING` (categorie assegnate da Meta: UTILITY per i primi tre, MARKETING per `reorder_suggestion`). L'esito `APPROVED`/`REJECTED` va verificato con `list-whatsapp-message-templates` e annotato qui (task T-29).
+
 In alternativa: console AWS End User Messaging Social → *Message templates* → *Create template*, copiando i testi dai JSON. Se Meta rifiuta un template, si corregge il JSON (il test deve restare verde) e lo si reinvia.
