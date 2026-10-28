@@ -133,12 +133,14 @@ sequenceDiagram
 |---|---|
 | `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | 3000 / 6000 / 15000 |
 | `turnLockTtlMs` | 120000 |
+| `turnMaxMessages` | 20 (messaggi presi da un turno, i più vecchi; gli altri al turno dopo) |
 
 - **C1** messaggio singolo → risposta dopo `debounceTextMs`.
 - **C2** raffica (foto bigliettino + vocale "aggiungi…" + testo) → **un turno** con tutti i messaggi in ordine.
 - **C3** messaggi durante un turno → accumulati, nuovo turno unico a fine turno; l'agente sa che sono arrivati dopo la sua risposta (es. "ah, aggiungi anche…" dopo il riepilogo).
 - **C4** raffica oltre `debounceMaxMs` → si risponde comunque.
 - **C5** crash → lock scaduto, retry del flush, nessuna perdita.
+- **C6** turno dell'agente fallito (T-67, E-05/E-12) → primo errore: messaggio di cortesia e retry del flush; secondo errore di fila: handoff `LOW_CONFIDENCE`, avviso al cliente, messaggi tolti dal buffer (restano in `Messages` per l'operatore).
 
 ### 3.4 Media
 
@@ -396,14 +398,14 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 | E-02 | Download media fallito | Retry ×3 (riconsegna SQS), poi DLQ; richiesta di reinvio al cliente quando c'è il Notifier (T-24) |
 | E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
 | E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |
-| E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato |
+| E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato (T-67: cortesia una volta per raffica; il lock resta preso per metà di `turnLockTtlMs` (backoff di 60 s, così gli altri flush della raffica non riprovano subito), poi retry SQS dopo il visibility timeout di 120 s; il contatore `turnFailures` nel TurnBuffer si azzera al primo turno riuscito) |
 | E-06 | Guardrail interviene | Risposta sicura predefinita nella lingua del contatto ("non posso aiutarti con questa richiesta…"); il messaggio bloccato non resta nello storico |
 | E-07 | Errore indice prodotti / KB | Fallback su ricerca lessicale in DynamoDB; risposte sulle schede rimandate all'agente di commercio |
 | E-08 | ERP adapter non disponibile | Ordine `CONFIRMED`, retry con backoff, allarme; cliente informato della presa in carico |
 | E-09 | Invio CDS fallito | Retry ×3, fallback di canale |
 | E-10 | Messaggio in DLQ | Allarme; redrive; blocca solo quella chat |
 | E-11 | Lock orfano | Scadenza `turnLockTtlMs` |
-| E-12 | Turno oltre il tempo massimo | Cortesia, retry una volta, poi handoff `LOW_CONFIDENCE` |
+| E-12 | Turno oltre il tempo massimo | Cortesia, retry una volta, poi handoff `LOW_CONFIDENCE` (T-67: vale per ogni errore dell'invocazione del Runtime; il secondo errore di fila passa la conversazione a `HUMAN`, avvisa il cliente e scarta i messaggi dal buffer, quindi niente DLQ) |
 | E-13 | Allegato non consentito/malevolo | Non salvato (tipo fuori whitelist, firma dei byte diversa dal tipo dichiarato, oltre 10 MB, virus scan SES diverso da `PASS`): resta nel messaggio senza `s3Uri` e il cliente viene informato. I media WhatsApp non passano da un antivirus |
 
 ## 6. Contratti
@@ -523,6 +525,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 |---|---|
 | `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | 3000 / 6000 / 15000 |
 | `turnLockTtlMs` | 120000 |
+| `turnMaxMessages` | 20 |
 | `matchAutoThreshold` / `matchAskThreshold` | 0.85 / 0.5 |
 | `maxClarificationsPerMessage` | 5 |
 | `unmatchedMaxAttempts` | 2 |

@@ -583,6 +583,7 @@ export class MessagingStack extends Stack {
         NOTIFIER_FUNCTION_NAME: notifierName,
         DEBOUNCE_MAX_MS: config.parameters.debounceMaxMs,
         TURN_LOCK_TTL_MS: config.parameters.turnLockTtlMs,
+        TURN_MAX_MESSAGES: config.parameters.turnMaxMessages,
         ...debounce,
       },
     });
@@ -592,7 +593,8 @@ export class MessagingStack extends Stack {
     const allow = (actions: string[], resources: string[]) =>
       dispatcher.function.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
     allow(['dynamodb:GetItem', 'dynamodb:UpdateItem'], [tables.turnBuffer.tableArn]);
-    allow(['dynamodb:GetItem'], [tables.conversations.tableArn]);
+    // GetItem: the mode; UpdateItem: the handoff after a second failed turn (T-67, E-12).
+    allow(['dynamodb:GetItem', 'dynamodb:UpdateItem'], [tables.conversations.tableArn]);
     allow(['sqs:SendMessage'], [this.turnFlushQueue.queueArn]);
     allow(['events:PutEvents'], [props.eventBus.eventBusArn]);
     allow(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
