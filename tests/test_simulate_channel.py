@@ -49,3 +49,34 @@ def test_every_event_has_its_own_message_id() -> None:
 
 def test_conversation_id_matches_the_routers() -> None:
     assert sim.conversation_id("con_001") == "conv_con001"
+
+
+def test_a_tap_is_read_by_the_router_as_a_reply_to_the_message_with_the_buttons() -> None:
+    interactive = {
+        "kind": "ORDER_SUMMARY",
+        "options": [
+            {"id": "order_confirm", "title": "Confermo"},
+            {"id": "order_modify", "title": "Modifica"},
+        ],
+    }
+    message = sim.tap_message(interactive["options"][0], interactive, "wamid.sandbox_1")
+    event = sim.build_event("+393330000001", message, AT)
+
+    [normalized] = whatsapp_messages(event)
+    assert normalized.interactive_reply is not None
+    assert normalized.interactive_reply.model_dump() == {
+        "id": "order_confirm",
+        "title": "Confermo",
+        "contextId": "wamid.sandbox_1",
+    }
+
+
+def test_a_tap_on_a_long_list_is_a_list_reply() -> None:
+    interactive = {
+        "kind": "CHOICE",
+        "options": [{"id": f"opt_{i}", "title": "x"} for i in range(4)],
+    }
+    message = sim.tap_message(interactive["options"][3], interactive, "wamid.sandbox_2")
+    assert message["interactive"]["type"] == "list_reply"
+    [normalized] = whatsapp_messages(sim.build_event("+393330000001", message, AT))
+    assert normalized.interactive_reply is not None and normalized.interactive_reply.id == "opt_3"

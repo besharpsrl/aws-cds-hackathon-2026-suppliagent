@@ -52,7 +52,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-05 | **Ordine da foto di bigliettino scritto a mano** | M | AG | CR, DP, WA | F-04 | ✅ |
 | FN-06 | Ordine da vocale, testo ed email | M | AG + CH | TE, FU | F-04 | ◐ T-26b |
 | FN-07 | Abbinamento al catalogo con storico del cliente | M | AG | TE, VI | F-05 | ✅ |
-| FN-08 | Chiarimenti con pulsanti interattivi | M | AG + CH | DP, WA | F-05 | ◐ T-25 |
+| FN-08 | Chiarimenti con pulsanti interattivi | M | AG + CH | DP, WA | F-05 | ✅ T-25 (pulsanti per una domanda alla volta; più domande in un messaggio: opzioni numerate nel testo) |
 | FN-09 | Disponibilità, sostituti, multipli e minimi | M | AG | VI | F-06 | ✅ |
 | FN-10 | Data di consegna e cut-off | M | AG | FU | F-06 | ✅ |
 | FN-11 | Suggerimento contestuale (max 1 per ordine) | S | AG | VI, CR | F-07 | ◐ T-50 |
