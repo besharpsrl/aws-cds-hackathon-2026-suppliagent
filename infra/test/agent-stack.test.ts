@@ -313,7 +313,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       FunctionName: 'suppliagent-dev-tool-inventory-pricing',
       Handler: 'suppliagent_tool_inventory_pricing.handler.lambda_handler',
       Environment: {
-        Variables: Match.objectLike({ DELIVERY_CUTOFF: '18:00', MIN_ORDER_VALUE: '80' }),
+        Variables: Match.objectLike({ DELIVERY_CUTOFF: '18:00', MIN_ORDER_VALUE: '0' }),
       },
     });
   });
@@ -356,7 +356,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       Environment: {
         Variables: Match.objectLike({
           DELIVERY_CUTOFF: '18:00',
-          MIN_ORDER_VALUE: '80',
+          MIN_ORDER_VALUE: '0',
           MEDIA_BUCKET: Match.anyValue(),
         }),
       },

@@ -76,10 +76,9 @@ def test_partial_stock_gives_the_available_quantity() -> None:
     assert line["availableQuantity"] == 6
 
 
-def test_pack_multiple_proposes_rounding_up() -> None:
+def test_pack_multiple_is_not_enforced() -> None:
     line = by_sku(availability(CUSTOMER, ("BURRO-PAN-1KG", 3), ("MOZZ-BUF-125", 4)))
-    assert line["BURRO-PAN-1KG"]["roundedQuantity"] == 8
-    assert "roundedQuantity" not in line["MOZZ-BUF-125"]  # 4 is a multiple of 2
+    assert "roundedQuantity" not in line["BURRO-PAN-1KG"]
 
 
 def test_discontinued_product_points_to_its_substitute() -> None:

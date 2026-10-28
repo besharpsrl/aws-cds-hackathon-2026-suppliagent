@@ -534,7 +534,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `maxSuggestionsPerOrder` | 1 |
 | `pendingReminderHours` / `draftExpiry` | 2 / fine giornata (mezzanotte `Europe/Rome` del giorno del riepilogo) |
 | `deliveryCutoff` | 18:00 (`Europe/Rome`): un ordine dopo il cut-off ha la consegna un giorno più tardi; un ordine resta modificabile fino al cut-off del giorno prima della consegna |
-| `minOrderValue` | 80 (EUR): sotto questo valore il riepilogo non si produce (`BELOW_MINIMUM`) |
+| `minOrderValue` | 0 (EUR) per la demo della gara (era 80): sotto questo valore il riepilogo non si produce (`BELOW_MINIMUM`) |
 | `reorderDueFactor` | 1.5 (× intervallo medio) |
 | `reorderCooldownDays` | 7 |
 | `quietHours` | 21:00–07:00 |

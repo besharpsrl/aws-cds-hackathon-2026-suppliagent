@@ -142,9 +142,13 @@ def _ticket_uri(order: dict[str, Any]) -> str | None:
     if not conversation:
         return None
     source_ids = {line.get("sourceMessageId") for line in order.get("lines", [])}
-    # ponytail: oldest 100 messages of the conversation; page if a chat outgrows it.
+    # Newest first: a long chat keeps its recent photos within the page (the old oldest-first read
+    # lost them). Without a line-level source, the newest photo sent before the order was created.
+    created = str(order.get("createdAt", "~"))
     messages = _table("MESSAGES_TABLE").query(
-        KeyConditionExpression=Key("conversationId").eq(conversation), Limit=PAGE_SIZE
+        KeyConditionExpression=Key("conversationId").eq(conversation),
+        ScanIndexForward=False,
+        Limit=PAGE_SIZE,
     )["Items"]
     first: str | None = None
     for message in messages:
@@ -154,7 +158,8 @@ def _ticket_uri(order: dict[str, Any]) -> str | None:
             if attachment.get("type") == "image" and attachment.get("s3Uri"):
                 if message.get("messageId") in source_ids:
                     return str(attachment["s3Uri"])
-                first = first or str(attachment["s3Uri"])
+                if not first and str(message.get("tsMessageId", "")) <= created:
+                    first = str(attachment["s3Uri"])
     return first
 
 

@@ -60,7 +60,7 @@ const runtimeParameters: Record<string, string> = {
   deliveryAutoConfirm: 'true',
   // Orders placed after the cut-off (Europe/Rome) are delivered one day later; below the minimum value (EUR) an order is not confirmed (FN-09, FN-10).
   deliveryCutoff: '18:00',
-  minOrderValue: '80',
+  minOrderValue: '0', // hackathon demo: no minimum order (was 80)
   identificationMaxAttempts: '3',
   // Privacy notice of the first contact (F-01, FN-02): the distributor publishes the page and sets its URL here (`UNSET` = the agent says the notice is available from the office); the version is stored with each consent.
   privacyNoticeUrl: 'UNSET',

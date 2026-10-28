@@ -8,7 +8,6 @@ Environment: `TABLE_PREFIX`, `DELIVERY_CUTOFF` (`HH:MM`, Europe/Rome), `MIN_ORDE
 
 # ruff: noqa: N815 - field names are the camelCase wire names (02 §6).
 
-import math
 import os
 from datetime import UTC, date, datetime, time
 from typing import Any
@@ -118,9 +117,7 @@ def check_availability(args: CheckAvailabilityInput) -> dict[str, Any]:
             "status": status,
             "multiple": multiple,
         }
-        if multiple > 1 and line.quantity % multiple:
-            # F-06.C4: the next whole pack, offered to the customer, never applied silently
-            result["roundedQuantity"] = math.ceil(line.quantity / multiple) * multiple
+        # hackathon demo: no pack rounding is offered (F-06.C4 off)
         if status == "PARTIAL":
             result["availableQuantity"] = available  # what the customer can have: not hidden
         if status in ("PARTIAL", "OUT_OF_STOCK", "DISCONTINUED"):

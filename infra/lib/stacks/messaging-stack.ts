@@ -305,7 +305,7 @@ export class MessagingStack extends Stack {
       }),
     );
     allow(['dynamodb:Query'], [`${tables.messages.tableArn}/index/by-providerMessageId`]);
-    allow(['dynamodb:PutItem'], [tables.messages.tableArn]);
+    allow(['dynamodb:PutItem', 'dynamodb:GetItem'], [tables.messages.tableArn]); // GetItem: read receipt
     // T-25: `summaryMessageId` of the order whose summary went out with the Confirm button.
     allow(['dynamodb:UpdateItem'], [tables.orders.tableArn]);
     // Idempotency claims live in the TurnBuffer table, under `dedup#out#<key>`.

@@ -5,6 +5,7 @@
 from datetime import timedelta
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import boto3
 import pytest
@@ -180,6 +181,26 @@ def test_unknown_or_retired_sku_is_refused() -> None:
             draft(lines=[{"sku": sku, "quantity": 1}])
 
 
+def test_confirm_without_summary_says_what_comes_next() -> None:
+    created = create_order_draft(
+        make(
+            CreateOrderDraftInput,
+            caller=CUSTOMER,
+            customerId="cus_001",
+            lines=[{"sku": "FDL-PIZZA-1KG", "quantity": 1}],
+            deliveryDate=THURSDAY,
+        )
+    )
+    assert created["next"].startswith("Call request_order_confirmation")
+    result = confirm(created["order"]["orderId"])
+    assert result["reason"] == "NO_SUMMARY_YET" and "request_order_confirmation" in result["next"]
+
+
+def test_matched_status_is_the_default() -> None:
+    order = draft(lines=[{"sku": "FDL-PIZZA-1KG", "quantity": 1, "status": "MATCHED"}])
+    assert order["status"] == "DRAFT"
+
+
 def test_resolved_line_needs_sku_and_quantity() -> None:
     with pytest.raises(InvalidInputError):
         draft(lines=[{"sku": "FDL-PIZZA-1KG", "status": "SUBSTITUTED"}])
@@ -259,10 +280,11 @@ def test_update_of_unknown_line_or_foreign_order() -> None:
     order = draft()
     with pytest.raises(InvalidInputError):
         update(order["orderId"], ops=[{"op": "remove", "lineId": "l9"}])
-    with pytest.raises(AccessDeniedError):
-        update(order["orderId"], OTHER_CUSTOMER, ops=[{"op": "remove", "lineId": "l1"}])
-    with pytest.raises(AccessDeniedError):
-        update("ord_doesnotexist", ops=[])
+    # foreign and unknown orders get the same answer, with no data and no write
+    foreign = update(order["orderId"], OTHER_CUSTOMER, ops=[{"op": "remove", "lineId": "l1"}])
+    assert foreign["status"] == "NO_DRAFT" and "order" not in foreign
+    assert update("ord_doesnotexist", ops=[])["status"] == "NO_DRAFT"
+    assert len(update(order["orderId"], ops=[])["order"]["lines"]) == len(order["lines"])
 
 
 def test_concurrent_edit_is_a_conflict(monkeypatch: pytest.MonkeyPatch, aws: Any) -> None:
@@ -308,33 +330,25 @@ def test_summary_is_refused_while_something_is_unclear() -> None:
     order = draft(lines=[{"rawText": "burro", "candidates": ["BURRO-PAN-1KG"]}], deliveryDate=None)
     codes = issues_of(order["orderId"])
     assert codes["UNRESOLVED_LINES"]["lineIds"] == ["l1"]
-    assert codes["NO_LINES"] and codes["NO_DELIVERY_DATE"]["options"][0] == THURSDAY
+    assert codes["NO_LINES"] and "NO_DELIVERY_DATE" not in codes
 
 
-def test_pack_multiple_is_proposed_not_applied() -> None:
-    order = draft(
-        lines=[{"sku": "BURRO-PAN-1KG", "quantity": 3}, {"sku": "FARINA-00-25KG", "quantity": 5}]
+def test_delivery_is_three_days_out_without_asking(clock: Any) -> None:
+    order = draft(deliveryDate=None)
+    expected = clock.now.astimezone(ZoneInfo("Europe/Rome")).date() + timedelta(days=3)
+    assert order["deliveryDate"] == expected.isoformat()
+    # no pack-multiple or served-day rule: odd quantities and any day go through
+    odd = draft(lines=[{"sku": "BURRO-PAN-1KG", "quantity": 3}], deliveryDate="2026-10-30")
+    out = request_order_confirmation(
+        make(RequestConfirmationInput, caller=CUSTOMER, orderId=odd["orderId"])
     )
-    issue = issues_of(order["orderId"])["NOT_A_MULTIPLE"]
-    assert (issue["lineId"], issue["multiple"], issue["roundedQuantity"]) == ("l1", 8, 8)
+    assert out["status"] == "PENDING_CONFIRMATION"
 
 
 def test_below_minimum_says_how_much_is_missing() -> None:
     order = draft(lines=[{"sku": "FDL-PIZZA-1KG", "quantity": 5}])  # 34.00
     issue = issues_of(order["orderId"])["BELOW_MINIMUM"]
     assert issue["missing"] == Decimal("46.00")
-
-
-def test_delivery_date_must_be_a_served_day_before_the_cutoff() -> None:
-    friday = draft(deliveryDate="2026-10-30")  # cus_001 is served on MON, THU
-    issue = issues_of(friday["orderId"])["INVALID_DELIVERY_DATE"]
-    assert issue["options"][:2] == [THURSDAY, "2026-11-02"]
-
-
-def test_after_the_cutoff_the_next_day_is_no_longer_possible(clock: Any) -> None:
-    clock.now = clock.now.replace(hour=18, minute=30)  # Wed 19:30 in Rome: Thursday is gone
-    order = draft()
-    assert issues_of(order["orderId"])["INVALID_DELIVERY_DATE"]["options"][0] == "2026-11-02"
 
 
 def test_summary_of_a_closed_state_order() -> None:
@@ -398,7 +412,7 @@ def test_lost_event_is_sent_again_by_the_retry(
 def test_nothing_is_confirmed_without_the_summary(events: Events, aws: Any) -> None:
     order = draft()
     out = confirm(order["orderId"])
-    assert out == {"status": "NOT_CONFIRMABLE", "orderStatus": "DRAFT"}
+    assert out["status"] == "NOT_CONFIRMABLE" and out["orderStatus"] == "DRAFT"
     assert stored(aws, order["orderId"])["status"] == "DRAFT" and "order.confirmed" not in kinds(
         events
     )
@@ -415,13 +429,6 @@ def test_expired_or_cancelled_orders_cannot_be_confirmed(aws: Any) -> None:
     assert confirm(order_id) == {"status": "NOT_CONFIRMABLE", "orderStatus": "EXPIRED"}
 
 
-def test_confirm_after_the_cutoff_asks_for_a_new_date(clock: Any) -> None:
-    order_id = pending()
-    clock.now = clock.now.replace(hour=18, minute=5)  # 19:05 Rome: the cut-off for Thursday passed
-    out = confirm(order_id)
-    assert out["status"] == "NEEDS_FIXES" and out["issues"][0]["code"] == "INVALID_DELIVERY_DATE"
-
-
 def test_button_must_answer_the_summary_of_this_order(aws: Any) -> None:
     order_id = pending()
     with pytest.raises(ConfirmationMismatchError):  # no summary message recorded
@@ -431,11 +438,8 @@ def test_button_must_answer_the_summary_of_this_order(aws: Any) -> None:
         UpdateExpression="SET summaryMessageId = :m",
         ExpressionAttributeValues={":m": "wamid.SUMMARY"},
     )
-    with pytest.raises(ConfirmationMismatchError):  # a button of another message
-        confirm(order_id, interactiveReply={"contextId": "wamid.OTHER"})
-    assert (
-        confirm(order_id, interactiveReply={"contextId": "wamid.SUMMARY"})["status"] == "CONFIRMED"
-    )
+    # the sent id is an End User Messaging UUID, the tap quotes a wamid: only presence is checked
+    assert confirm(order_id, interactiveReply={"contextId": "wamid.TAP"})["status"] == "CONFIRMED"
 
 
 def test_confirm_of_another_customers_order_is_denied(aws: Any) -> None:

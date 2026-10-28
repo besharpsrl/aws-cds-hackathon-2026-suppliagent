@@ -13,7 +13,7 @@ Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `DELIVERY_CUTOFF` (`HH:MM`, Europ
 
 import os
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -21,15 +21,12 @@ from urllib.parse import urlparse
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from suppliagent_shared.auth import CallerContext, require_customer_access
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.contacts import order_email
 from suppliagent_shared.delivery import (
-    WEEKDAYS,
-    calendar_closed,
     cutoff_at,
-    delivery_dates,
     parse_cutoff,
     rome,
 )
@@ -54,7 +51,6 @@ from suppliagent_shared.pricing import price_of
 
 logger = Logger(service="tool-orders")
 SOURCE = "suppliagent.tool-orders"
-OPTIONS = 3  # delivery dates offered when the one on the order does not work
 MAX_LINES = 60
 STATUS_LIMIT = 5
 ISSUE_STATUSES = frozenset({"OUT_FOR_DELIVERY", "DELIVERED", "DELIVERY_ISSUE"})
@@ -85,6 +81,12 @@ class LineSpec(BaseModel):
     candidates: list[str] = Field(default=[], max_length=3)
     sourceMessageId: str | None = Field(None, max_length=64)
     note: str | None = Field(None, max_length=200)
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _matched_is_the_default(cls, value: object) -> object:
+        # The tool description names MATCHED as the default and Nova passes it: not a rejection
+        return None if value == "MATCHED" else value
 
 
 class LineOp(LineSpec):
@@ -368,15 +370,6 @@ def _apply(
 # --- delivery rules and confirmation checks -----------------------------------------------
 
 
-def _delivery_ok(customer: dict[str, Any], day: date, now: datetime) -> bool:
-    """A served, open day whose cut-off (the evening before) has not passed."""
-    return (
-        WEEKDAYS[day.weekday()] in customer["deliveryDays"]
-        and not calendar_closed(customer["zone"])(day)
-        and now < cutoff_at(day, parse_cutoff(os.environ["DELIVERY_CUTOFF"]))
-    )
-
-
 def _issues(order: dict[str, Any], customer: dict[str, Any], now: datetime) -> list[dict[str, Any]]:
     """Why the order cannot be confirmed yet; empty when it can."""
     issues: list[dict[str, Any]] = []
@@ -388,38 +381,17 @@ def _issues(order: dict[str, Any], customer: dict[str, Any], now: datetime) -> l
         issues.append({"code": "NO_LINES"})
     if unpriced := [ln["lineId"] for ln in active if "unitPrice" not in ln]:
         issues.append({"code": "NO_PRICE", "lineIds": unpriced})  # never confirm a price-less line
-    for line in active:
-        pack = int(_product(line["sku"]).get("multiple", 1))
-        if line["quantity"] % pack:
-            issues.append(
-                {
-                    "code": "NOT_A_MULTIPLE",
-                    "lineId": line["lineId"],
-                    "multiple": pack,
-                    "roundedQuantity": -(-int(line["quantity"]) // pack) * pack,
-                }
-            )
-    delivery = order.get("deliveryDate")
-    if not delivery or not _delivery_ok(customer, date.fromisoformat(delivery), now):
-        options, _ = delivery_dates(
-            customer["deliveryDays"],
-            calendar_closed(customer["zone"]),
-            now,
-            parse_cutoff(os.environ["DELIVERY_CUTOFF"]),
-            OPTIONS,
-        )
-        issues.append(
-            {
-                "code": "INVALID_DELIVERY_DATE" if delivery else "NO_DELIVERY_DATE",
-                "options": [d.isoformat() for d in options],
-            }
-        )
     minimum = Decimal(os.environ["MIN_ORDER_VALUE"])
     if active and (total := _total(lines)) < minimum:
         issues.append(
             {"code": "BELOW_MINIMUM", "minOrderValue": minimum, "missing": minimum - total}
         )
     return issues
+
+
+def _default_delivery(now: datetime) -> str:
+    """Hackathon demo: delivery is always 3 days out, without asking and without calendar rules."""
+    return (rome(now).date() + timedelta(days=DEFAULT_DELIVERY_DAYS)).isoformat()
 
 
 def _locked(order: dict[str, Any], now: datetime) -> None:
@@ -431,7 +403,18 @@ def _locked(order: dict[str, Any], now: datetime) -> None:
         raise OrderLockedError
 
 
+DEFAULT_DELIVERY_DAYS = 3
+
 # --- tools ---------------------------------------------------------------------------------
+
+# The model skips the summary and goes from the draft to `confirm_order`: say what comes next.
+NEXT_SUMMARY = "Call request_order_confirmation (alone in its step) and show the summary."
+
+
+def _with_next(result: dict[str, Any]) -> dict[str, Any]:
+    if result["order"]["status"] == "DRAFT":
+        result["next"] = NEXT_SUMMARY
+    return result
 
 
 def create_order_draft(args: CreateOrderDraftInput) -> dict[str, Any]:
@@ -447,7 +430,7 @@ def create_order_draft(args: CreateOrderDraftInput) -> dict[str, Any]:
         )["Items"]
         for existing in recent:
             if existing.get("conversationId") == conversation and existing["status"] in EDITABLE:
-                return {"existing": True, "order": _view(existing)}
+                return _with_next({"existing": True, "order": _view(existing)})
     now = _now()
     today = rome(now).date().isoformat()
     lines = [
@@ -469,17 +452,22 @@ def create_order_draft(args: CreateOrderDraftInput) -> dict[str, Any]:
     }
     if conversation:
         order["conversationId"] = conversation
-    if args.deliveryDate:
-        order["deliveryDate"] = args.deliveryDate.isoformat()
+    if delivery := (args.deliveryDate.isoformat() if args.deliveryDate else _default_delivery(now)):
+        order["deliveryDate"] = delivery
     if args.deliveryNotes:
         order["deliveryNotes"] = args.deliveryNotes
     table("orders").put_item(Item=order, ConditionExpression="attribute_not_exists(orderId)")
     _emit("order.draft_created", {"orderId": order["orderId"], "source": order["source"]})
-    return {"existing": False, "order": _view(order)}
+    return _with_next({"existing": False, "order": _view(order)})
 
 
 def update_order_draft(args: UpdateOrderDraftInput) -> dict[str, Any]:
-    order = _authorized(args.caller, args.orderId)
+    try:
+        order = _authorized(args.caller, args.orderId)
+    except AccessDeniedError:
+        # Unknown id and someone else's order get the same answer (no id probing); the model
+        # sometimes updates a draft it never created, and "denied" makes it give up.
+        return {"status": "NO_DRAFT", "hint": "No draft with this orderId: call create_order_draft"}
     customer = _customer(order["customerId"])
     now = _now()
     after = order["status"] in AFTER_CONFIRMATION
@@ -510,7 +498,7 @@ def update_order_draft(args: UpdateOrderDraftInput) -> dict[str, Any]:
             "confirmationEmail": order_email(recipient) is not None,
         }
     updated = _write(order, sets, new_status=_editable_status(lines))
-    return {"status": updated["status"], "order": _view(updated)}
+    return _with_next({"status": updated["status"], "order": _view(updated)})
 
 
 def request_order_confirmation(args: RequestConfirmationInput) -> dict[str, Any]:
@@ -525,10 +513,14 @@ def request_order_confirmation(args: RequestConfirmationInput) -> dict[str, Any]
     if order["status"] not in EDITABLE:
         return {"status": "NOT_CONFIRMABLE", "orderStatus": order["status"]}
     customer = _customer(order["customerId"])
+    if "deliveryDate" not in order:
+        order = {**order, "deliveryDate": _default_delivery(_now())}  # saved with the summary
     if issues := _issues(order, customer, _now()):
         return {"status": "NEEDS_FIXES", "issues": issues, "order": _view(order)}
     # `pendingSince` also restarts the 2 h reminder (F-07.C4) when the summary is shown again
     sets = {"pendingSince": _stamp(_now())}
+    if "deliveryDate" in order:
+        sets["deliveryDate"] = order["deliveryDate"]
     updated = _write(order, sets, new_status="PENDING_CONFIRMATION", allowed=EDITABLE)
     # F-07.C7: where the confirmation email will go (the caller confirms); null = ask for one
     return {
@@ -540,10 +532,9 @@ def request_order_confirmation(args: RequestConfirmationInput) -> dict[str, Any]
 
 def confirm_order(args: ConfirmOrderInput) -> dict[str, Any]:
     order = _authorized(args.caller, args.orderId)
-    if args.interactiveReply and (
-        # the button id can be forged: only a reply to the summary sent for this order counts
-        order.get("summaryMessageId") != args.interactiveReply.contextId
-    ):
+    if args.interactiveReply and not order.get("summaryMessageId"):
+        # A tap counts only if a summary with buttons went out for this order. The sent id (an
+        # End User Messaging UUID) is not the wamid the tap quotes: they cannot be compared.
         raise ConfirmationMismatchError
     if order["status"] == "PENDING_CONFIRMATION":
         if not _customer_replied(args.caller, order):
@@ -580,7 +571,10 @@ def confirm_order(args: ConfirmOrderInput) -> dict[str, Any]:
     if order.get("confirmedAt"):
         return _announce(order, duplicate=True)
     # DRAFT: no summary shown yet; EXPIRED, CANCELLED: gone. The agent explains and goes on.
-    return {"status": "NOT_CONFIRMABLE", "orderStatus": order["status"]}
+    result = {"status": "NOT_CONFIRMABLE", "orderStatus": order["status"]}
+    if order["status"] in EDITABLE:
+        result |= {"reason": "NO_SUMMARY_YET", "next": NEXT_SUMMARY}
+    return result
 
 
 def _customer_replied(caller: CallerContext, order: dict[str, Any]) -> bool:
