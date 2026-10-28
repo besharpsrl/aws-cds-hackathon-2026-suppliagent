@@ -5,6 +5,7 @@ The agent starts it with the `handoff_to_human` tool, an operator with *Take ove
 mode and the Dispatcher runs no turn while it is HUMAN (INFRASTRUCTURE_DESIGN §5.2, step 6).
 """
 
+import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -13,6 +14,8 @@ from botocore.exceptions import ClientError
 
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.errors import NotFoundError
+
+logger = logging.getLogger(__name__)
 
 
 class HandoffReason(StrEnum):
@@ -34,7 +37,15 @@ NAMES = {"#mode": "mode", "#handoff": "handoff"}
 
 
 def _now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _event(source: str, detail_type: str, detail: dict[str, Any]) -> None:
+    """Best effort: the mode is already written, a failed event must not turn into a retry."""
+    try:
+        put_event(source, detail_type, detail)
+    except Exception:
+        logger.exception("handoff event not sent")
 
 
 def start_handoff(
@@ -63,7 +74,7 @@ def start_handoff(
         if "Item" not in e.response:
             raise NotFoundError from e
         return False
-    put_event(
+    _event(
         source,
         "handoff.started",
         {"conversationId": conversation_id, "reason": reason, "by": by},
@@ -87,7 +98,7 @@ def release_handoff(source: str, conversation_id: str, by: str) -> bool:
             raise
         return False
     old: dict[str, Any] = response["Attributes"].get("handoff", {})
-    put_event(
+    _event(
         source,
         "handoff.released",
         {"conversationId": conversation_id, "reason": old.get("reason"), "by": by},

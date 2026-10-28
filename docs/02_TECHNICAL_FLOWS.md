@@ -27,7 +27,7 @@ stateDiagram-v2
     HUMAN --> AGENT: Release
 ```
 
-In `HUMAN` i messaggi vanno solo in console; al `Release` l'agente riprende con il contesto completo.
+In `HUMAN` i messaggi vanno solo in console; al `Release` l'agente riprende con la sua storia di sessione (contesto completo, con i messaggi scambiati in `HUMAN`, con T-54).
 
 ### 2.2 Ruoli
 
@@ -376,7 +376,7 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 
 `handoff_to_human(reason, summary)` → `mode = HUMAN`, notifica in console (e all'agente di commercio del cliente). Il back office risponde dalla console sullo stesso canale; *Release* riporta all'agente.
 
-Implementazione (T-49): logica in `suppliagent_shared.handoff` (`start_handoff`, `release_handoff`), usata dal tool e dalla console (*Take over* con `OPERATOR_TAKEOVER`, *Release*: T-63). La conversazione è quella del `caller`, mai scelta dal modello; il tool è disponibile a tutti i ruoli, anche `UNKNOWN` (F-02.C3/C4); `OPERATOR_TAKEOVER` solo dalla console. Un secondo handoff mentre è già `HUMAN` non cambia nulla (`ALREADY_HANDED_OFF`). La risposta del turno in cui avviene l'handoff parte normalmente; i messaggi successivi restano in `Messages`. Limiti: niente avviso all'agente di commercio; al *Release* l'agente non vede i messaggi scambiati in `HUMAN` (solo la sua storia di sessione, fino a T-54).
+Implementazione (T-49): logica in `suppliagent_shared.handoff` (`start_handoff`, `release_handoff`), usata dal tool e dalla console (*Take over* con `OPERATOR_TAKEOVER`, *Release*: T-63). La conversazione è quella del `caller`, mai scelta dal modello; il tool è disponibile a tutti i ruoli, anche `UNKNOWN` (F-02.C3/C4); `OPERATOR_TAKEOVER` solo dalla console. Un secondo handoff mentre è già `HUMAN` non cambia nulla (`ALREADY_HANDED_OFF`). La risposta del turno in cui avviene l'handoff parte normalmente; i messaggi successivi restano in `Messages`. Limiti: niente avviso all'agente di commercio; al *Release* l'agente non vede i messaggi scambiati in `HUMAN` (solo la sua storia di sessione, fino a T-54); l'`order-sweeper` manda promemoria e scadenze delle bozze anche in `HUMAN`. Finché manca il *Release* in console (T-63), `seed/reset.py` riporta ad `AGENT` le conversazioni in `HUMAN`.
 
 ### F-15 – Cambio di canale (FN-25)
 

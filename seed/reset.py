@@ -2,8 +2,9 @@
 
 Usage: uv run python seed/reset.py --env dev [--profile NAME] [--skip-index]
 
-Deletes every item of Orders, Deliveries and Issues (conversations and contacts are kept), runs the
-seed and then rebuilds the product index (`catalog-indexer`, mode `full`). Synthetic data only.
+Deletes every item of Orders, Deliveries and Issues (conversations and contacts are kept, handed-off
+conversations go back to the agent), runs the seed and then rebuilds the product index
+(`catalog-indexer`, mode `full`). Synthetic data only.
 """
 
 import argparse
@@ -35,6 +36,29 @@ def clear(dynamodb: Any, env: str) -> None:
                     batch.delete_item(Key={k: item[k] for k in key})
 
 
+def release_handoffs(dynamodb: Any, env: str) -> int:
+    """Conversations left in HUMAN (F-14) go back to AGENT, as a console Release would (T-63)."""
+    table = dynamodb.Table(f"suppliagent-{env}-conversations")
+    names = {"#mode": "mode", "#handoff": "handoff"}
+    released = 0
+    for page in table.meta.client.get_paginator("scan").paginate(
+        TableName=table.name,
+        ProjectionExpression="conversationId",
+        FilterExpression="#mode = :human",
+        ExpressionAttributeNames={"#mode": "mode"},
+        ExpressionAttributeValues={":human": "HUMAN"},
+    ):
+        for item in page["Items"]:
+            table.update_item(
+                Key={"conversationId": item["conversationId"]},
+                UpdateExpression="SET #mode = :agent REMOVE #handoff",
+                ExpressionAttributeNames=names,
+                ExpressionAttributeValues={":agent": "AGENT"},
+            )
+            released += 1
+    return released
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--env", required=True, choices=["dev"])
@@ -45,9 +69,13 @@ def main() -> None:
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
     dynamodb = session.resource("dynamodb")
     clear(dynamodb, args.env)
+    released = release_handoffs(dynamodb, args.env)
     data = seed_script.load()
     seed_script.write(dynamodb, args.env, data)
-    print(f"{args.env}: orders cleared, {sum(map(len, data.values()))} seed items loaded")
+    print(
+        f"{args.env}: orders cleared, {released} handoffs released,"
+        f" {sum(map(len, data.values()))} seed items loaded"
+    )
     if not args.skip_index:
         out = session.client("lambda").invoke(
             FunctionName=f"suppliagent-{args.env}-catalog-indexer",

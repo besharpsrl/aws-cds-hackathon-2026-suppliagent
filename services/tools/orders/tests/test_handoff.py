@@ -90,6 +90,7 @@ def test_handoff_only_touches_the_callers_conversation(
         {"reason": "OPERATOR_TAKEOVER"},  # console only
         {"reason": "BORED"},
         {"summary": ""},
+        {"summary": "   "},
         {"conversationId": "conv_other"},  # the model cannot pick the conversation
     ],
 )
