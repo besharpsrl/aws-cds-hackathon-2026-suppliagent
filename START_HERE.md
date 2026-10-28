@@ -106,7 +106,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Email (SES) | ◐ | Dominio `suppliagent.stonecutters.besharp.net` verificato, fuori sandbox, ricezione ok; email di conferma con PDF da fare (T-26) |
 | SMS/RCS | ☐ | Could (T-27), servono registrazioni con tempi di attesa (M-11) |
 | Pipeline (Router, debounce, Dispatcher, Notifier base) | ✅ | Errori del turno senza cortesia/handoff (T-67) |
-| Agente (AgentCore Runtime + Gateway, Strands, Nova `eu.`) | ◐ | Versione ridotta: ruoli e tool ok; Memory e Guardrail da fare (T-54); primo contatto (T-48) |
+| Agente (AgentCore Runtime + Gateway, Strands, Nova `eu.`) | ◐ | Versione ridotta: ruoli e tool ok; informativa e consenso al primo contatto fatti (T-48); Memory e Guardrail da fare (T-54) |
 | Identificazione di nuovi contatti | ✅ | Abbinamento ok; i contatti nuovi restano da verificare, tranne quelli dei clienti di prova dei giudici `C90001`–`C90003` (T-71, F-02.C7) |
 | Lettura bigliettini (`order_intake`) | ✅ | 62% di righe corrette sul corsivo (3 note): da migliorare (T-05, T-53) |
 | Matching catalogo (S3 Vectors) | ✅ | Schede tecniche (Knowledge Base) Could (T-06b, T-44b) |

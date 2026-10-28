@@ -1,10 +1,12 @@
-"""identify_contact and get_customer_profile (FN-03, F-02, TECHNICAL_FLOWS §3.2 and §6.5)."""
+"""identify_contact, get_customer_profile and update_privacy (FN-02, FN-03, F-01, F-02,
+TECHNICAL_FLOWS §3.2 and §6.5)."""
 
 # ruff: noqa: N815 - field names are the camelCase wire names (02 §6).
 
 import os
 import re
 import unicodedata
+from datetime import UTC, datetime
 from difflib import SequenceMatcher
 from typing import Any, cast
 from uuid import uuid4
@@ -44,10 +46,17 @@ class IdentifyContactInput(ToolInput):
     vatNumber: str | None = Field(None, max_length=20)
     venueName: str | None = Field(None, max_length=120)
     language: Language = Language.IT
+    # F-01: the privacy notice was already sent to this unregistered caller; stored on the contact
+    privacyNoticeSent: bool = False
 
 
 class GetCustomerProfileInput(ToolInput):
     customerId: CustomerId
+
+
+class UpdatePrivacyInput(ToolInput):
+    noticeSent: bool = False
+    proactiveConsent: bool | None = None
 
 
 def identify_contact(args: IdentifyContactInput) -> dict[str, Any]:
@@ -94,6 +103,76 @@ def get_customer_profile(args: GetCustomerProfileInput) -> dict[str, Any]:
     return profile
 
 
+def update_privacy(args: UpdatePrivacyInput) -> dict[str, Any]:
+    """Records that the privacy notice was sent and/or the contact's answer on proactive messages
+    (F-01, FN-02). Customer contacts only, and only their own record."""
+    caller = args.caller
+    if caller.role is not Role.CUSTOMER_CONTACT or not caller.contactId:
+        raise AccessDeniedError
+    if not args.noticeSent and args.proactiveConsent is None:
+        raise InvalidInputError
+    now = _now()
+    version = _notice_version()
+    channel = caller.channelAddress.split("#", 1)[0]
+    sets: list[str] = []
+    values: dict[str, Any] = {}
+    if args.noticeSent:  # the first notice stays on record
+        sets += [
+            "privacyNoticeSentAt = if_not_exists(privacyNoticeSentAt, :now)",
+            "privacyNoticeVersion = if_not_exists(privacyNoticeVersion, :version)",
+        ]
+        values |= {":now": now, ":version": version}
+    if args.proactiveConsent is not None:  # the latest answer wins: "stop" revokes at any time
+        sets += [
+            "proactiveConsent = :consent",
+            "proactiveConsentAt = :now",
+            "proactiveConsentChannel = :channel",
+            "proactiveConsentVersion = :version",
+        ]
+        values |= {
+            ":consent": args.proactiveConsent,
+            ":now": now,
+            ":channel": channel,
+            ":version": version,
+        }
+    try:
+        updated = table("contacts").update_item(
+            Key={"contactId": caller.contactId},
+            UpdateExpression="SET " + ", ".join(sets),
+            ConditionExpression="attribute_exists(contactId)",
+            ExpressionAttributeValues=values,
+            ReturnValues="ALL_NEW",
+        )["Attributes"]
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+            raise
+        raise NotFoundError from e
+    detail: dict[str, Any] = {"contactId": caller.contactId, "channel": channel}
+    if args.noticeSent:
+        detail["noticeSent"] = True
+    if args.proactiveConsent is not None:
+        detail["proactiveConsent"] = args.proactiveConsent
+    put_event(SOURCE, "contact.privacy_updated", detail)
+    return {"status": "UPDATED", "privacy": _privacy(updated)}
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _notice_version() -> str:
+    return os.environ.get("PRIVACY_NOTICE_VERSION", "unversioned")
+
+
+def _privacy(contact: dict[str, Any]) -> dict[str, Any]:
+    """What the agent needs for F-01: was the notice sent, and the answer on proactive messages
+    (None = never asked)."""
+    return {
+        "noticeSent": "privacyNoticeSentAt" in contact,
+        "proactiveConsent": contact.get("proactiveConsent"),
+    }
+
+
 def _known(caller: CallerContext) -> dict[str, Any]:
     scope = caller_scope(caller)
     if scope.customer_ids:
@@ -102,12 +181,16 @@ def _known(caller: CallerContext) -> dict[str, Any]:
         status, venues = ContactStatus.PENDING_VERIFICATION, scope.pending_customer_ids
     else:
         return {"status": "NOT_FOUND"}
-    return {
+    known: dict[str, Any] = {
         "status": "KNOWN",
         "contact": {"contactId": caller.contactId, "status": status},
         "role": caller.role,
         "customers": _venues(sorted(venues)),
     }
+    if caller.role is Role.CUSTOMER_CONTACT:  # a sales rep is staff: no privacy notice
+        contact = table("contacts").get_item(Key={"contactId": caller.contactId}).get("Item", {})
+        known["privacy"] = _privacy(contact)
+    return known
 
 
 def _venues(customer_ids: list[str]) -> list[dict[str, Any]]:
@@ -181,6 +264,8 @@ def _register(args: IdentifyContactInput, customer: dict[str, Any], method: str)
         customerIds=[customer["customerId"]],
         language=args.language,
         status=ContactStatus.VERIFIED if verified else ContactStatus.PENDING_VERIFICATION,
+        privacyNoticeSentAt=_now() if args.privacyNoticeSent else None,
+        privacyNoticeVersion=_notice_version() if args.privacyNoticeSent else None,
     )
     # model_validate: a malformed caller address is a ValidationError (INVALID_INPUT), not a crash
     identity = ChannelIdentity.model_validate(
@@ -230,4 +315,5 @@ def _register(args: IdentifyContactInput, customer: dict[str, Any], method: str)
         "contact": {"contactId": contact.contactId, "status": contact.status},
         "role": Role.CUSTOMER_CONTACT,
         "customers": [{"customerId": customer["customerId"], "venueName": customer["venueName"]}],
+        "privacy": _privacy(contact.model_dump(mode="json", exclude_none=True)),
     }

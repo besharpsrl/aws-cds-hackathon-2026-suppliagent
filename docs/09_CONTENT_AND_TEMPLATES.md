@@ -36,3 +36,13 @@ aws socialmessaging list-whatsapp-message-templates --id <WABA_ID>   # stato: PE
 **Stato (WABA `dev`, `waba-8c2d297ba5154c33b7d0ceac98c7410a`)**: gli 8 template sono stati inviati il 27/10/2026 e risultano `PENDING` (categorie assegnate da Meta: UTILITY per i primi tre, MARKETING per `reorder_suggestion`). L'esito `APPROVED`/`REJECTED` va verificato con `list-whatsapp-message-templates` e annotato qui (task T-29).
 
 In alternativa: console AWS End User Messaging Social → *Message templates* → *Create template*, copiando i testi dai JSON. Se Meta rifiuta un template, si corregge il JSON (il test deve restare verde) e lo si reinvia.
+
+## 2. Informativa e consenso al primo contatto (T-48, F-01)
+
+**Fonte unica**: le regole nei prompt [`customer.md`](../agent/src/suppliagent_agent/prompts/customer.md) (contatto noto) e [`customer_unknown.md`](../agent/src/suppliagent_agent/prompts/customer_unknown.md) (indirizzo sconosciuto). L'agente scrive il testo nella lingua del contatto (IT/EN); non c'è un testo fisso da approvare, ma questi contenuti:
+
+- **Informativa** (in coda alla risposta, mai prima né al posto della risposta): sono l'assistente virtuale del Distributore; si può ordinare anche con foto del bigliettino, vocale o testo; i dati servono a gestire gli ordini, con il link all'informativa (`privacyNoticeUrl`; finché è `UNSET`: "disponibile presso l'ufficio del Distributore", mai un link inventato).
+- **Consenso**: domanda *Sì / No* in testo (i messaggi liberi non hanno pulsanti) su promemoria e suggerimenti sui loro ordini abituali; una volta per conversazione, mai nello stesso messaggio di un'altra domanda sì/no; dopo un *No* non si richiede. "Stop proposte" revoca in ogni momento.
+- Gli agenti di commercio non ricevono né informativa né domanda.
+
+Il testo legale dell'informativa pubblicata all'URL è del Distributore (azione manuale: pubblicare la pagina e impostare `privacyNoticeUrl` in `infra/config/environments.ts`).

@@ -1,6 +1,6 @@
 import * as agentcore from 'aws-cdk-lib/aws-bedrockagentcore';
 
-const { ARRAY, NUMBER, OBJECT, STRING } = agentcore.SchemaDefinitionType;
+const { ARRAY, BOOLEAN, NUMBER, OBJECT, STRING } = agentcore.SchemaDefinitionType;
 
 /**
  * Declared so the Gateway forwards it to the Lambda; the agent removes it from the schema the model
@@ -23,7 +23,7 @@ export const CUSTOMERS_TOOLS: agentcore.ToolDefinition[] = [
   {
     name: 'identify_contact',
     description:
-      'Returns who the caller is and their venues. For an unregistered caller, pass the venue name and the customer code (or VAT number) they gave you; never guess them. Status: KNOWN, MATCHED, NOT_FOUND or IDENTIFICATION_FAILED.',
+      'Returns who the caller is and their venues. For an unregistered caller, pass the venue name and the customer code (or VAT number) they gave you; never guess them. Status: KNOWN, MATCHED, NOT_FOUND or IDENTIFICATION_FAILED. For a customer contact, `privacy` says whether the privacy notice was sent and the answer on proactive messages (null = never asked).',
     inputSchema: {
       type: OBJECT,
       properties: {
@@ -34,6 +34,11 @@ export const CUSTOMERS_TOOLS: agentcore.ToolDefinition[] = [
         vatNumber: { type: STRING, description: 'VAT number, if no customer code.' },
         venueName: { type: STRING, description: 'Venue name as given by the user.' },
         language: { type: STRING, description: 'Language of the conversation: it or en.' },
+        privacyNoticeSent: {
+          type: BOOLEAN,
+          description:
+            'True if you already sent the privacy notice to this unregistered caller in this conversation.',
+        },
         caller: CALLER,
       },
       required: ['caller'],
@@ -50,6 +55,27 @@ export const CUSTOMERS_TOOLS: agentcore.ToolDefinition[] = [
         caller: CALLER,
       },
       required: ['customerId', 'caller'],
+    },
+  },
+  {
+    name: 'update_privacy',
+    description:
+      "Records, for the caller's own contact, that the privacy notice was sent (noticeSent) and/or their answer on reminders and suggestions (proactiveConsent: true or false; false also revokes). Customer contacts only. Returns status UPDATED and the privacy state.",
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        noticeSent: {
+          type: BOOLEAN,
+          description: 'True once you have sent the privacy notice in your reply.',
+        },
+        proactiveConsent: {
+          type: BOOLEAN,
+          description:
+            "The user's clear answer: true to receive reminders and suggestions, false not to.",
+        },
+        caller: CALLER,
+      },
+      required: ['caller'],
     },
   },
 ];

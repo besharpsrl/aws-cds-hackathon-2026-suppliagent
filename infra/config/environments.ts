@@ -60,6 +60,9 @@ const runtimeParameters: Record<string, string> = {
   deliveryCutoff: '18:00',
   minOrderValue: '80',
   identificationMaxAttempts: '3',
+  // Privacy notice of the first contact (F-01, FN-02): the distributor publishes the page and sets its URL here (`UNSET` = the agent says the notice is available from the office); the version is stored with each consent.
+  privacyNoticeUrl: 'UNSET',
+  privacyNoticeVersion: '2026-10-28',
   // The Notifier records outgoing messages instead of sending them (T-24, T-14); read at runtime.
   notifierSandbox: 'true',
   // The ERP mock answers as unavailable while `true` (to show E-08); read at runtime, default `false` (T-07).

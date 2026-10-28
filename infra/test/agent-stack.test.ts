@@ -30,6 +30,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     expect(toolsOf('customers').map((t: { Name: string }) => t.Name)).toEqual([
       'identify_contact',
       'get_customer_profile',
+      'update_privacy',
     ]);
     expect(toolsOf('order-intake').map((t: { Name: string }) => t.Name)).toEqual([
       'extract_order_lines',
@@ -78,6 +79,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
         MODEL_ID: 'eu.amazon.nova-pro-v1:0',
         GATEWAY_URL: { 'Fn::GetAtt': [Match.stringLikeRegexp('^Gateway'), 'GatewayUrl'] },
         AWS_REGION: 'eu-west-1',
+        PRIVACY_NOTICE_URL: 'UNSET',
       },
     });
   });
@@ -121,8 +123,12 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       ]),
     );
     expect(JSON.stringify(statements)).not.toContain('/index/*');
-    const update = statements.find((s) => [s.Action].flat().includes('dynamodb:UpdateItem'));
-    expect(JSON.stringify(update?.Resource)).toContain('Conversations');
+    const updates = statements
+      .filter((s) => [s.Action].flat().includes('dynamodb:UpdateItem'))
+      .map((s) => JSON.stringify(s.Resource));
+    expect(updates).toHaveLength(2);
+    expect(updates.some((r) => r.includes('Conversations'))).toBe(true);
+    expect(updates.some((r) => r.includes('Contacts'))).toBe(true); // privacy and consent (T-48)
   });
 
   it('configures the tool from the environment config, not hard-coded values', () => {
@@ -133,6 +139,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
         Variables: Match.objectLike({
           TABLE_PREFIX: 'suppliagent-dev-',
           IDENTIFICATION_MAX_ATTEMPTS: '3',
+          PRIVACY_NOTICE_VERSION: '2026-10-28',
           EVENT_BUS_NAME: Match.anyValue(),
         }),
       },

@@ -77,7 +77,12 @@ class Contact(Item):
     language: Language
     status: ContactStatus
     privacyNoticeSentAt: str | None = None
+    privacyNoticeVersion: str | None = None
+    # None = never asked; the consent record (FN-02): when, on which channel, for which notice
     proactiveConsent: bool | None = None
+    proactiveConsentAt: str | None = None
+    proactiveConsentChannel: str | None = None
+    proactiveConsentVersion: str | None = None
 
 
 class SalesRep(Item):

@@ -47,6 +47,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
     tools = [
         mcp_tool("customers___identify_contact"),
         mcp_tool("customers___get_customer_profile"),
+        mcp_tool("customers___update_privacy"),
         mcp_tool("order-intake___extract_order_lines"),
         mcp_tool("catalog___match_products"),
         mcp_tool("catalog___search_catalog"),
@@ -66,6 +67,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
     assert [t.tool_name for t in customer] == [
         "customers___identify_contact",
         "customers___get_customer_profile",
+        "customers___update_privacy",
         "order_intake___extract_order_lines",
         "catalog___match_products",
         "catalog___search_catalog",
@@ -78,6 +80,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
     assert {"order_intake___extract_order_lines", "orders___confirm_order"} <= {
         t.tool_name for t in rep
     }
+    assert "customers___update_privacy" not in {t.tool_name for t in rep}  # F-01: staff
     for t in customer:
         schema = t.tool_spec["inputSchema"]["json"]
         assert "caller" not in schema["properties"]
@@ -245,6 +248,34 @@ def test_system_prompt_by_role_and_language(
 def test_system_prompt_gives_the_current_date_in_rome_time() -> None:
     prompt = system_prompt(TurnRequest.model_validate(TURN))  # 08:00Z, Rome is on CET (UTC+1)
     assert "- Now: Monday 2026-10-26 09:00 (Europe/Rome)" in prompt
+
+
+@pytest.mark.parametrize(
+    ("role", "url", "line"),
+    [
+        ("CUSTOMER_CONTACT", "https://privacy.example/n", "- Privacy notice link: https://privacy"),
+        ("UNKNOWN", "https://privacy.example/n", "- Privacy notice link: https://privacy"),
+        ("CUSTOMER_CONTACT", "UNSET", "- Privacy notice link: none published yet"),
+        ("CUSTOMER_CONTACT", "", "- Privacy notice link: none published yet"),
+    ],
+)
+def test_customer_roles_get_the_privacy_notice_link_in_the_context(
+    monkeypatch: pytest.MonkeyPatch, role: str, url: str, line: str
+) -> None:  # F-01: the link comes from the Runtime environment, never from the model
+    monkeypatch.setenv("PRIVACY_NOTICE_URL", url)
+    prompt = system_prompt(TurnRequest.model_validate({**TURN, "role": role}))
+    assert line in prompt
+
+
+def test_sales_rep_gets_no_privacy_notice(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PRIVACY_NOTICE_URL", "https://privacy.example/n")
+    prompt = system_prompt(TurnRequest.model_validate({**TURN, "role": "SALES_REP"}))
+    assert "Privacy notice" not in prompt and "update_privacy" not in prompt
+
+
+def test_unknown_caller_sends_the_notice_with_the_greeting() -> None:  # F-01.C3
+    prompt = system_prompt(TurnRequest.model_validate({**TURN, "role": "UNKNOWN"}))
+    assert "privacy notice (F-01)" in prompt and "privacyNoticeSent" in prompt
 
 
 def test_sales_rep_gets_the_ordering_rules_and_unknown_does_not() -> None:
