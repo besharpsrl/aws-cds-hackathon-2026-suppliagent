@@ -41,7 +41,7 @@ Built by [beSharp](https://www.besharp.it) for the **AWS Communication Developer
 
 <p align="center"><img src="docs/architecture.png" alt="SuppliAgent architecture"><br><a href="docs/architecture.drawio">docs/architecture.drawio</a> (faded components are roadmap)</p>
 
-- Region **eu-west-1**; **Amazon Nova** (Nova Pro for reasoning and handwritten-note vision, Nova Lite for fast classification) on Amazon Bedrock via the **`eu.` inference profiles** (data and inference stay in the EU).
+- Region **eu-west-1**; **Amazon Nova Pro** (reasoning and handwritten-note vision) on Amazon Bedrock via the **`eu.` inference profile** (data and inference stay in the EU).
 - **Strands Agents on Amazon Bedrock AgentCore** (Runtime, Memory, Gateway, Identity, Observability), Bedrock Guardrails, Bedrock Knowledge Bases, **Amazon S3 Vectors**, Amazon Transcribe.
 - Serverless ingestion: SNS → SQS (idempotent per provider message, parallel across chats) → debounce with a per-conversation lock (one answer per burst of messages, in arrival order).
 - DynamoDB, S3, EventBridge, Lambda (Python 3.12), API Gateway (REST + WebSocket), Cognito, CloudFront, Firehose, Glue, Athena.

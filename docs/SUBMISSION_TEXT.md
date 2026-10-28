@@ -15,11 +15,11 @@ We built SuppliAgent with beSharp for a real use case: a food distributor that i
 ## What it does
 
 - **Order from a photo, a voice note or a text on WhatsApp, or by email.** The agent reads the handwritten note (vision), transcribes voice notes, and matches every line to the catalog using the customer's price list and purchase history.
-- **Asks only when needed.** Lines the matcher is sure about are accepted; lines with close candidates get a short question with at most three options; unreadable lines are flagged, never guessed.
+- **Asks only when needed.** Lines the matcher is sure about are accepted and lines with close candidates get a short question with at most three options. The agent is told to flag lines it cannot read instead of guessing, and the customer must confirm the summary before anything is sent.
 - **Checks the business rules** before anything is promised: stock, price list, pack sizes, delivery days and cut-off. It proposes substitutes for missing products.
 - **Explicit confirmation.** An order reaches the ERP only after the customer clearly confirms the summary. Confirmation is idempotent: a double tap never makes two orders.
-- **Then the paperwork.** An order number, an order PDF and a confirmation message go out through the Notifier.
-- **Back office console.** Orders in real time, with the **original photo of the note next to the order lines**. The back office can correct a line by picking one of the candidates, and a read-only `judge` role is available for the hackathon.
+- **Then the paperwork.** The ERP adapter (a mock) numbers the order, an order PDF is generated and the customer gets a confirmation in the chat; the email with the PDF follows.
+- **Back office console.** Orders refreshed within seconds, with the **original photo of the note next to the order lines**. The back office can correct a line by picking one of the candidates, and a read-only `judge` role is available for the hackathon.
 - **Sales rep copilot** (role-based access in the agent): reps get the same assistant, limited to their own portfolio.
 
 Everything the agent does goes through tools that enforce authorization **by role inside the tool**, not only in the prompt: a restaurant can only see its own data and a sales rep only their portfolio. The agent introduces itself as a virtual assistant and never invents prices, discounts or conditions outside the price list.
@@ -32,8 +32,8 @@ Everything the agent does goes through tools that enforce authorization **by rol
 |---|---|
 | Messaging (AWS CDS) | AWS End User Messaging Social (WhatsApp), Amazon SES v2 (send and receive email) |
 | Ingestion | Amazon SNS → Amazon SQS (standard queue + DLQ) → Lambda Inbound Router (identity, role, idempotency, media to S3) → per-conversation turn buffer in DynamoDB with delayed SQS flush → Lambda Turn Dispatcher (debounce and lock: **one answer per burst of messages**) |
-| Agent | **Strands Agents on Amazon Bedrock AgentCore Runtime**, tools exposed through **AgentCore Gateway** (MCP, IAM SigV4) on Lambda targets, AgentCore Identity |
-| Models | **Amazon Nova** on Amazon Bedrock through the `eu.` inference profiles (Nova Pro for reasoning and handwriting vision, Nova Lite for fast classification): data and inference stay in the EU |
+| Agent | **Strands Agents on Amazon Bedrock AgentCore Runtime**, tools exposed through **AgentCore Gateway** (MCP, IAM SigV4) on Lambda targets |
+| Models | **Amazon Nova Pro** on Amazon Bedrock through the `eu.` inference profile, for reasoning and handwriting vision: data and inference stay in the EU |
 | Catalog matching | **Amazon S3 Vectors** index with Amazon Titan Text Embeddings V2, hybrid with fuzzy matching and the customer's history |
 | Voice | Amazon Transcribe |
 | Orders | DynamoDB, EventBridge (`order.confirmed`), Lambda ERP adapter (mock), Lambda order PDF, scheduled EventBridge sweep (draft reminders and expiry) |
@@ -53,17 +53,17 @@ Design choices that matter:
 WhatsApp is the product, not an add-on: it is the channel restaurants already use to order.
 
 - **Receiving.** A WhatsApp Business number is linked to AWS End User Messaging Social. Inbound text, images (the handwritten notes), voice notes and interactive replies arrive as events on an SNS topic and enter the pipeline described above. Media is downloaded and stored encrypted in S3 so the agent can read the photo and the console can show it next to the order lines.
-- **Sending.** The Notifier calls `socialmessaging:SendWhatsAppMessage` for every outgoing WhatsApp message, in the language of the customer. Free-form answers go out inside the 24-hour customer service window; outside it the Notifier falls back to email. The WhatsApp **message templates** (order confirmation, pending-order reminder, delivery update, reorder suggestion, in Italian and English) are defined and tested in the repo and submitted to Meta; they let the assistant write first once approved.
+- **Sending.** The Notifier calls `socialmessaging:SendWhatsAppMessage` for every outgoing WhatsApp message, in the language of the customer. Free-form answers go out inside the 24-hour customer service window. Outside it the Notifier does not send: the message templates and the email fallback are on the roadmap. The WhatsApp **message templates** (order confirmation, pending-order reminder, delivery update, reorder suggestion, in Italian and English) are defined and tested in the repo and submitted to Meta.
 - **Conversation design for WhatsApp.** Several photos and messages sent in a burst are merged into one turn, so the customer gets one coherent answer instead of five. Clarifications are short questions with at most three options. A tap on a confirmation button only counts if it answers the summary of that very order (button ids can be forged, so the order tool checks the message id).
-- **Identification.** An unknown number is asked for the venue name and customer code before it can order; the number is then bound to the customer. Authorization by role is enforced inside every tool.
-- **Delivery tracking.** Delivery and read receipts come back through the same event destination and update the message history.
+- **Identification.** An unknown number is asked for the venue name and customer code and is then linked to the customer, pending the distributor's verification. Authorization by role is enforced inside every tool.
+- **Read receipts.** The agent marks inbound WhatsApp messages as read; delivery-status tracking is on the roadmap.
 
 Other CDS services in the code: Amazon SES v2 (`sesv2:SendEmail`, plus inbound email as an ordering channel). Amazon End User Messaging SMS/RCS (`pinpoint-sms-voice-v2`) is on the roadmap.
 
 ## Measurable impact
 
 - **Time per order.** The target is seconds of customer time and zero retyping, against minutes of manual entry per order. The demo shows the time from the photo to the confirmed order.
-- **Reading handwriting.** We measure the agent against a small set of anonymized handwritten notes (`agent/evals/`). On three notes (29 lines) the first prototype reads 62% of the lines correctly (18 of 29); the weak spot is cursive handwriting. The rest of the work is in the matching and the clarification questions, which are what keeps a wrongly read line from becoming a wrong order. Nothing is sent to the ERP without the customer's explicit confirmation.
+- **Reading handwriting.** We measure the agent against a small set of anonymized handwritten notes (`agent/evals/`). On three notes (29 lines) the first prototype reads 62% of the lines correctly (18 of 29), and 9 of 29 were read wrongly but shown as valid; the weak spot is cursive handwriting. That is why nothing goes to the ERP without the customer's explicit confirmation of the summary, and why the next work is on calibrating confidence and on the clarification questions.
 - **No baseline claims.** The distributor's real baseline (orders per day, entry time, error rate) is not part of this submission, so we do not quote percentages we did not measure.
 
 ## Challenges
@@ -94,5 +94,5 @@ Each line is a claim above. Keep it only if it is true on `dev` at the freeze (1
 - [ ] Console: orders on real data with the photo next to the lines and line correction (T-62, PR #90).
 - [ ] WhatsApp templates approved by Meta (T-29): then say "approved" and that the assistant can write first; until then keep the wording above.
 - [ ] Voice notes read through Transcribe in the demo.
-- [ ] Items faded in the diagram (roadmap): promote to solid and to the text only if deployed (handoff, copilot tools, proactivity, SMS/RCS, Memory, Observability, Guardrails, WAF, WebSocket chat).
+- [ ] Items faded in the diagram (roadmap): promote to solid and to the text only if deployed (handoff, copilot tools, proactivity, SMS/RCS, Memory, Observability, Guardrails, WAF, WebSocket chat, AgentCore Identity, CloudTrail, Budgets, Secrets Manager, configuration sets). After any change, regenerate `architecture.png` from the `.drawio`.
 - [ ] Judges' instructions (number, email, console URL and credentials, sample note) are in the README (T-10) and the text says the same.
