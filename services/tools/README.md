@@ -9,3 +9,4 @@ Every tool receives a `caller` argument set by the agent code, never by the mode
 | `customers/` | `identify_contact`, `get_customer_profile`, `update_privacy`, `set_order_email` | T-42, T-48, T-26 |
 | `catalog/` | `match_products`, `search_catalog` (Gateway target `catalog`) | T-44 |
 | `order_intake/` | `extract_order_lines` (foto, vocale, testo → righe grezze; Gateway target `order-intake`) | T-43 |
+| `reco/` | `recommend_products`, `record_suggestion_outcome` (one suggestion per order, with consent; up to 3 in a sales rep briefing; Gateway target `reco`) | T-50 |

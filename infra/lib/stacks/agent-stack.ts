@@ -31,6 +31,7 @@ import {
   INVENTORY_PRICING_TOOLS,
   ORDER_INTAKE_TOOLS,
   ORDERS_TOOLS,
+  RECO_TOOLS,
 } from './tool-schemas.js';
 
 export interface AgentStackProps extends StackProps {
@@ -299,6 +300,34 @@ export class AgentStack extends Stack {
     allowOrders(['dynamodb:UpdateItem'], tables.Conversations.tableArn);
     eventBus.grantPutEventsTo(ordersTool);
 
+    // Suggestions (T-50, FN-11, FN-20): reads insights, history, catalog and promotions; writes
+    // only the suggestion on the order and the refused products on CustomerInsights.
+    const recoTool = new PythonLambda(this, 'RecoTool', {
+      config,
+      key,
+      name: 'tool-reco',
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/tools/reco'),
+        uvBundling({
+          package: 'suppliagent-tool-reco',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/tools/reco/src/suppliagent_tool_reco': 'suppliagent_tool_reco',
+          },
+          omit: LAMBDA_PLATFORM_PACKAGES,
+        }),
+      ),
+      handler: 'suppliagent_tool_reco.handler.lambda_handler',
+      environment: { TABLE_PREFIX: `${prefix}-`, EVENT_BUS_NAME: eventBus.eventBusName },
+    }).function;
+    const allowReco = allowScope(recoTool);
+    allowReco(['dynamodb:GetItem'], tables.Products.tableArn, tables.Stock.tableArn);
+    allowReco(['dynamodb:Scan'], tables.Promotions.tableArn);
+    allowReco(['dynamodb:Query'], tables.OrderHistory.tableArn);
+    allowReco(['dynamodb:GetItem', 'dynamodb:UpdateItem'], tables.CustomerInsights.tableArn);
+    allowReco(['dynamodb:GetItem', 'dynamodb:UpdateItem'], tables.Orders.tableArn);
+    eventBus.grantPutEventsTo(recoTool);
+
     const gateway = new agentcore.Gateway(this, 'Gateway', {
       gatewayName: `${prefix}-gateway`,
       description: 'SuppliAgent tools (MCP); invoked only by the agent runtime (SigV4).',
@@ -342,6 +371,12 @@ export class AgentStack extends Stack {
       description: 'Order drafts, confirmation, changes, status and delivery issues (T-46).',
       lambdaFunction: ordersTool,
       toolSchema: agentcore.ToolSchema.fromInline(ORDERS_TOOLS),
+    });
+    gateway.addLambdaTarget('RecoTarget', {
+      gatewayTargetName: 'reco',
+      description: 'Motivated product suggestions for an order or a rep briefing (T-50).',
+      lambdaFunction: recoTool,
+      toolSchema: agentcore.ToolSchema.fromInline(RECO_TOOLS),
     });
     const gatewayUrl = gateway.gatewayUrl;
     if (!gatewayUrl) throw new Error('Gateway L2 returned no gatewayUrl');
@@ -487,6 +522,8 @@ export class AgentStack extends Stack {
       'Resource::<InventoryPricingToolFunction29E9FD79.Arn>:*':
         'lambda.grantInvoke covers the versions/aliases of the single tool function.',
       'Resource::<OrdersToolFunction85C7D529.Arn>:*':
+        'lambda.grantInvoke covers the versions/aliases of the single tool function.',
+      'Resource::<RecoToolFunction815D4DBB.Arn>:*':
         'lambda.grantInvoke covers the versions/aliases of the single tool function.',
     });
     acknowledgeWildcards(this.runtime, {
