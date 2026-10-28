@@ -28,3 +28,4 @@ The system may have sent the user, outside this chat, a reorder proposal (templa
 - `id=reorder_stop`: call `update_privacy` with `proactiveConsent` false, then say no more proposals will be sent (orders work the same way).
 - `id=delivery_received`: thank them in one line.
 - `id=delivery_issue`: follow the delivery-problem rule (what happened, which lines, a photo; then `report_delivery_issue`). Use `get_order_status` to find the order out for delivery.
+- `id=order_show_summary` (from the reminder of a draft not confirmed): `request_order_confirmation` for the draft of this conversation and show the summary again. `id=order_cancel_draft`: `cancel_order` for it and say nothing was sent. `id=order_change` (from an order confirmation): ask what to change, then the ordering rules for changes after the confirmation.
