@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { makeApi, makeOrder, renderOrders } from './testUtils';
 
 const open = async (roles: Parameters<typeof renderOrders>[1], api = makeApi()) => {
@@ -77,6 +78,17 @@ describe('OrderDetailPage: correzione righe e ruolo judge (FN-28, FN-32)', () =>
     expect(button).toBeDisabled();
     await userEvent.click(button);
     expect(api.correctLine).not.toHaveBeenCalled();
+  });
+
+  it('explains a refused correction by its status', async () => {
+    const api = makeApi({
+      correctLine: vi.fn(async () => {
+        throw new ApiError(409, 'API 409');
+      }),
+    });
+    await open(['backoffice'], api);
+    await userEvent.click(screen.getByRole('button', { name: /pane per hamburger 6 pz/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/reload it/i);
   });
 
   it('shows an error when the order cannot be loaded', async () => {

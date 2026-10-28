@@ -112,7 +112,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Matching catalogo (S3 Vectors) | ✅ | Schede tecniche (Knowledge Base) Could (T-06b, T-44b) |
 | Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp da fare (T-25) |
 | ERP mock + PDF ordine | ✅ | |
-| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Online su `dev` ma con **dati mock** (T-62); live e handoff da fare (T-49, T-63) |
+| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Inbox, dettaglio e correzione riga su API reali (T-62, dopo il deploy di `console` e `scripts/deploy-console.sh`); live e handoff da fare (T-49, T-63) |
 | Copilota agenti, riordino proattivo | ☐ | Could (flussi 6 e 7) |
 | Analytics e KPI | – | Tolti (§4.4) |
 | `dev` pronto per i giudici, README giudici | ☐ | T-10 |
