@@ -79,6 +79,14 @@ def test_passages_come_with_the_sheet_to_cite(kb: FakeKb) -> None:
     assert "filter" not in call["retrievalConfiguration"]["vectorSearchConfiguration"]
 
 
+def test_with_the_sku_a_short_question_still_finds_the_sheet(kb: FakeKb) -> None:
+    kb.results = [hit("BURRATA-125", 0.51)]  # "lattosio" on the burrata sheet, measured
+    assert ask("lattosio", sku="BURRATA-125")["status"] == "FOUND"
+    assert ask("lattosio")["status"] == "NOT_FOUND"  # without the sku the bar stays high
+    kb.results = [hit("BURRATA-125", 0.3)]
+    assert ask("orari del magazzino", sku="BURRATA-125")["status"] == "NOT_FOUND"
+
+
 def test_a_known_sku_filters_the_search(kb: FakeKb) -> None:
     kb.results = [hit("FDL-PIZZA-1KG", 0.7)]
     ask("conservazione", sku="FDL-PIZZA-1KG")

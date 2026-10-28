@@ -28,6 +28,9 @@ PASSAGE_CHARS = 2000
 # answer ("orari del magazzino", "dipendenti del caseificio") ~0.61. A product without a sheet can
 # still hit a similar one (crudo -> cotto): the agent passes the sku and checks the product.
 MIN_SCORE = 0.65
+# With the sku the filter already picks the product's own sheet: only an off-topic question is
+# dropped. "lattosio" alone scores 0.51 on the burrata sheet, the full question 0.80 (28/10).
+MIN_SCORE_WITH_SKU = 0.4
 
 
 class AskProductSheetsInput(ToolInput):
@@ -56,10 +59,11 @@ def ask_product_sheets(args: AskProductSheetsInput) -> dict[str, Any]:
         retrievalConfiguration={"vectorSearchConfiguration": search},
     )
     passages = []
+    threshold = MIN_SCORE_WITH_SKU if args.sku else MIN_SCORE
     for result in response.get("retrievalResults", []):
         score = float(result.get("score", 0))
         sku = str((result.get("metadata") or {}).get("sku", ""))
-        if score < MIN_SCORE or not sku:
+        if score < threshold or not sku or (args.sku and sku != args.sku):
             continue
         product = table("products").get_item(Key={"sku": sku}).get("Item") or {}
         passages.append(

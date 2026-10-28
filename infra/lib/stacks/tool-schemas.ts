@@ -159,7 +159,10 @@ export const CATALOG_TOOLS: agentcore.ToolDefinition[] = [
     inputSchema: {
       type: OBJECT,
       properties: {
-        question: { type: STRING, description: "The question, in the user's words." },
+        question: {
+          type: STRING,
+          description: "The full question, in the user's words (not just a keyword).",
+        },
         sku: {
           type: STRING,
           description: 'SKU of the product, if known (from match_products or search_catalog).',
