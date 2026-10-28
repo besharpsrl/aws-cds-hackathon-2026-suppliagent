@@ -84,4 +84,7 @@ def invoke(payload: dict[str, Any], context: Any) -> dict[str, Any]:
     # the session manager flushes pending events when the turn ends, also on errors
     with gateway, memory or nullcontext():
         reply = run_turn(turn, gateway.list_tools_sync(), model, memory)
-    return {"conversationId": turn.conversationId, "reply": reply}
+    response: dict[str, Any] = {"conversationId": turn.conversationId, "reply": reply.text}
+    if reply.interactive:
+        response["interactive"] = reply.interactive
+    return response
