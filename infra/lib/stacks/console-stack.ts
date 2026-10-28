@@ -16,6 +16,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import type { ITableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import type { IEventBus } from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -175,6 +176,18 @@ export class ConsoleStack extends Stack {
         id: 'AwsSolutions-CFR4',
         reason:
           'Default *.cloudfront.net certificate: TLS policy cannot be enforced without a custom domain.',
+      });
+    }
+
+    if (consoleDomain && config.consoleHostedZone) {
+      new route53.CnameRecord(this, 'ConsoleRecord', {
+        zone: route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', {
+          hostedZoneId: config.consoleHostedZone.id,
+          zoneName: config.consoleHostedZone.name,
+        }),
+        recordName: consoleDomain,
+        domainName: this.distribution.distributionDomainName,
+        ttl: Duration.minutes(5),
       });
     }
 

@@ -263,7 +263,7 @@ Dal 27/10 sera il fatto sono le [issue chiuse](https://github.com/besharpsrl/aws
 | 26/10 | T-40, T-41 (ridotti) | AgentCore Gateway + Runtime, agente Strands per ruolo | #15 |
 | 26/10 | T-66 | Ruolo `judge` in sola lettura, pagina demo | #13 |
 | 26/10 | – | Console online su `dev` (script di pubblicazione) | #12 |
-| 28/10 | – | Dominio custom `app.suppliagent.stonecutters.besharp.net` per la console (`consoleDomain`, `consoleCertificateArn`, `scripts/console-dns-records.sh`) | `feat/console-custom-domain` |
+| 28/10 | – | Dominio custom `app.suppliagent.stonecutters.besharp.net` per la console (`consoleDomain`, `consoleCertificateArn`, `consoleHostedZone`: CNAME creato dalla stack) | `feat/console-custom-domain` |
 | 26/10 | T-62 (UI) | Inbox e dettaglio ordine con bigliettino, su mock | #10 |
 | 26/10 | T-61 | Scaffold console React + Vite + Cognito | #9, #11 |
 | 26/10 | T-20 | `ChannelsStack`: topic SNS, SES configuration set e rule set | #7 |

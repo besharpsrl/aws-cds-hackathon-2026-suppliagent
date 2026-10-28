@@ -156,6 +156,7 @@ describe('ConsoleStack custom domain', () => {
       ...getConfig('dev'),
       consoleDomain: 'app.example.com',
       consoleCertificateArn: arn,
+      consoleHostedZone: undefined,
     }).console,
   );
 
@@ -169,6 +170,23 @@ describe('ConsoleStack custom domain', () => {
         }),
       }),
     });
+  });
+
+  it('creates the CNAME to the distribution when the zone is configured', () => {
+    const zoned = Template.fromStack(
+      buildApp(new App({ context }), {
+        ...getConfig('dev'),
+        consoleDomain: 'app.example.com',
+        consoleCertificateArn: arn,
+        consoleHostedZone: { id: 'Z123', name: 'example.com' },
+      }).console,
+    );
+    zoned.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'CNAME',
+      Name: 'app.example.com.',
+      HostedZoneId: 'Z123',
+    });
+    withDomain.resourceCountIs('AWS::Route53::RecordSet', 0);
   });
 
   it('rejects a domain without certificate', () => {
