@@ -113,7 +113,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp (T-25) in PR, da provare sul telefono |
 | ERP mock + PDF ordine | ✅ | |
 | Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Inbox, dettaglio e correzione riga su API reali (T-62, dopo il deploy di `console` e `scripts/deploy-console.sh`); conversazioni live e handoff in console (T-63: *Take over* / *Reply* / *Release*, polling 2 s; lato agente T-49); WebSocket e KPI da fare |
-| Copilota agenti, riordino proattivo | ☐ | Could (flussi 6 e 7) |
+| Copilota agenti, riordino proattivo | ◐ | Could (flussi 6 e 7). Insight per cliente e selezione dei riordini scaduti in `ProactiveStack` (T-08, dopo il deploy di `proactive`): analisi notturna su `CustomerInsights`, al mattino `reorder.due`; il turno proattivo con il template è T-52, i suggerimenti `reco` T-50 |
 | Analytics e KPI | – | Tolti (§4.4) |
 | `dev` pronto per i giudici, README giudici | ☐ | T-10 |
 | Materiali (diagramma, testi, video, ACE, Devpost) | ☐ | T-11, T-12, §5 |

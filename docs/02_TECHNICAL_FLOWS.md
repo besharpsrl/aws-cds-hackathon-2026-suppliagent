@@ -352,8 +352,8 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 
 ### F-13 – Riordino proattivo (FN-19)
 
-1. **Notte**: Analyzer calcola per ogni cliente gli intervalli medi per prodotto → `CustomerInsights.dueReorders`.
-2. **Mattina** (fascia consentita): Proactive Trigger, per i clienti con consenso, avvia un **turno proattivo**.
+1. **Notte**: Analyzer calcola per ogni cliente gli intervalli medi per prodotto → `CustomerInsights.expectedReorders` (regole in INFRASTRUCTURE_DESIGN §5.6).
+2. **Mattina** (fascia consentita): Proactive Trigger, per i clienti con consenso e un riordino scaduto (oltre `reorderDueFactor` × intervallo), emette `reorder.due`, che avvia un **turno proattivo**; il cooldown di 7 giorni parte dalla proposta (`CustomerInsights.lastProposalAt`).
 3. Messaggio template `reorder_suggestion`: "Buongiorno! Di solito a quest'ora avete già riordinato olio EVO e pelati. Vuole lo stesso ordine dell'ultima volta?" → *Riordina uguale / Modifica / No grazie*.
 4. *Riordina uguale* → bozza dall'ultimo ordine → F-06 → F-07.
 
@@ -479,6 +479,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `order.confirmed` | orderId, value, lines, createdBy | KPI principali |
 | `erp.submitted` / `erp.failed` | orderId, erpOrderNumber | integrazione |
 | `reorder.proposed` / `reorder.accepted` | customerId, orderId | proattività |
+| `reorder.due` / `reorder.skipped` | customerId, contactIds, skus / reason (`NO_CONSENT`) | Proactive Trigger: proposta da fare (turno proattivo, T-52) o saltata (segnalazione all'agente di commercio) |
 | `delivery.issue_reported` | orderId, type | qualità consegne |
 | `rep.query` | repId, type (briefing, sheets, catalog, order) | uso copilota |
 | `handoff.started` / `handoff.released` | conversationId, reason, by (`AGENT` o operatore) | automazione |
