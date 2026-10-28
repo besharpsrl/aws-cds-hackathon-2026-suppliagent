@@ -501,7 +501,14 @@ def update_order_draft(args: UpdateOrderDraftInput) -> dict[str, Any]:
         sets["revision"] = int(order.get("revision", 0)) + 1
         updated = _write(order, sets, allowed=AFTER_CONFIRMATION)
         _emit("order.updated", {"orderId": order["orderId"], "revision": sets["revision"]})
-        return {"status": "UPDATED", "order": _view(updated)}
+        # T-26b: whether the updated confirmation goes out by email (the Notifier's recipient, who
+        # confirmed); a flag, not the address: the caller may be someone else (a sales rep).
+        recipient = str(order.get("confirmedBy") or order.get("createdBy") or "")
+        return {
+            "status": "UPDATED",
+            "order": _view(updated),
+            "confirmationEmail": order_email(recipient) is not None,
+        }
     updated = _write(order, sets, new_status=_editable_status(lines))
     return {"status": updated["status"], "order": _view(updated)}
 

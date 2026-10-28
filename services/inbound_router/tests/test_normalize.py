@@ -104,6 +104,37 @@ def test_email_reply_drops_quoted_text_and_correlates_the_order(
     assert msg.order_id == "ord_789"
 
 
+def test_email_keeps_subject_and_message_id_for_the_reply_thread(
+    ses_notification: Builder, raw_mail: Builder
+) -> None:
+    raw = raw_mail("10 kg farina", subject="Ordine per domani", message_id="<abc.1@mail.example>")
+    msg = email_message(ses_notification(), raw)
+    assert msg.text == "Ordine per domani\n10 kg farina"
+    assert (msg.email_subject, msg.email_message_id) == (
+        "Ordine per domani",
+        "<abc.1@mail.example>",
+    )
+
+
+@pytest.mark.parametrize(
+    "subject", ["Re: Ordine per domani", "RE: R: Conferma ordine ord_789", "Rif: Ordine", "AW: x"]
+)
+def test_the_subject_of_a_reply_is_not_repeated_to_the_agent(
+    ses_notification: Builder, raw_mail: Builder, subject: str
+) -> None:
+    msg = email_message(ses_notification(), raw_mail("Confermo", subject=subject))
+    assert msg.text == "Confermo"
+    assert msg.email_subject == subject
+
+
+@pytest.mark.parametrize("message_id", ["no-brackets@example", "<" + "x" * 990 + ">"])
+def test_an_unusable_message_id_is_not_kept(
+    ses_notification: Builder, raw_mail: Builder, message_id: str
+) -> None:
+    msg = email_message(ses_notification(), raw_mail("x", message_id=message_id))
+    assert msg.email_message_id is None
+
+
 @pytest.mark.parametrize(
     ("destination", "dmarc"),
     [

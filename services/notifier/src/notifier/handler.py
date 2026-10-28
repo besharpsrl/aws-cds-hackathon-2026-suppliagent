@@ -5,6 +5,7 @@ Two kinds of request, invoked by Lambda (the Dispatcher, the Router):
 - `reply`: a text to the contact of a conversation, on the channel of their last message. The
   address is never taken from the request: it is the verified one the Router stored on the
   conversation (`lastInbound*`), so a caller cannot make the Notifier write to an arbitrary number.
+  An email reply goes out in the contact's thread (`lastEmail*`: "Re: <subject>", In-Reply-To).
   Idempotent on `idempotencyKey`.
   With `interactive` (T-25, FN-08, FN-12) the text goes out on WhatsApp as a message with reply
   buttons (up to 3 short options) or a list (up to 10); on other channels the options are already
@@ -33,6 +34,7 @@ Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `WA_PHONE_NUMBER_ID_PARAM`, `SES_
 
 import json
 import os
+import re
 import time
 from datetime import UTC, datetime, timedelta
 from functools import cache
@@ -64,6 +66,8 @@ WHATSAPP_TEXT_LIMIT = 4096
 CLAIM_SECONDS = 120  # an unfinished send can be retried after this
 DONE_SECONDS = 7 * 24 * 3600
 SUBJECTS = {"it-IT": "La tua richiesta", "en-GB": "Your request"}
+# An email subject that already says it is a reply (Router normalize.REPLY_SUBJECT).
+REPLY_SUBJECT = re.compile(r"^\s*(re|r|rif|aw|sv)\s*:", re.IGNORECASE)
 ORDER_TEMPLATE = "order_confirmation"
 # The email follows the order through the ERP; a cancelled or expired order gets none.
 EMAILED_STATUSES = AFTER_CONFIRMATION | {"SCHEDULED", "OUT_FOR_DELIVERY"}
@@ -325,7 +329,7 @@ def _send(
             )
         return _send_whatsapp(address, text, last_inbound), False
     if channel == "EMAIL":
-        _send_email(address, text, conversation.get("lastInboundLocale"))
+        _send_email(address, text, conversation)
         return None, False
     raise ChannelUnavailableError  # SMS/RCS arrive with T-27
 
@@ -410,19 +414,30 @@ def _whatsapp(message: dict[str, Any]) -> str:
     return str(response.get("messageId", ""))  # an empty id is simply not stored
 
 
-def _send_email(address: str, text: str, locale: str | None) -> None:
+def _send_email(address: str, text: str, conversation: dict[str, Any]) -> None:
+    """In the thread of the contact's last email (T-26b): "Re: <their subject>" and In-Reply-To /
+    References, which the Router stored only if printable ASCII (what SES accepts)."""
     sender = _param("SES_FROM_PARAM")
     if sender == "UNSET":
         raise ChannelUnavailableError
+    thread = str(conversation.get("lastEmailSubject") or "")
+    if not thread:
+        subject = SUBJECTS.get(conversation.get("lastInboundLocale") or "", SUBJECTS["it-IT"])
+    else:
+        subject = thread if REPLY_SUBJECT.match(thread) else f"Re: {thread}"
+    simple: dict[str, Any] = {
+        "Subject": {"Data": subject, "Charset": "UTF-8"},
+        "Body": {"Text": {"Data": text, "Charset": "UTF-8"}},
+    }
+    if parent := conversation.get("lastEmailMessageId"):
+        simple["Headers"] = [
+            {"Name": "In-Reply-To", "Value": parent},
+            {"Name": "References", "Value": parent},
+        ]
     _ses().send_email(
         FromEmailAddress=sender,
         Destination={"ToAddresses": [address]},
-        Content={
-            "Simple": {
-                "Subject": {"Data": SUBJECTS.get(locale or "", SUBJECTS["it-IT"])},
-                "Body": {"Text": {"Data": text}},
-            }
-        },
+        Content={"Simple": simple},
         ConfigurationSetName=_param("SES_CONFIGURATION_SET_PARAM"),
     )
 

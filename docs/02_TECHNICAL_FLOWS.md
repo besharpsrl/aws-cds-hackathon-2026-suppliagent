@@ -113,7 +113,7 @@ sequenceDiagram
 | Canale | Sorgente | Estrazione | Chat (conversazione) |
 |---|---|---|---|
 | WhatsApp | SNS da EUM Social | testo, image/audio/document, `interactive` reply (button/list), `context` | numero (E.164) |
-| Email | SES receipt rule → S3 + SNS | mittente (identità solo con DMARC `PASS`), oggetto, corpo pulito, allegati (foto, PDF, Excel) | indirizzo mittente |
+| Email | SES receipt rule → S3 + SNS | mittente (identità solo con DMARC `PASS`), oggetto (non ripetuto all'agente se è una risposta: `Re:`, `R:`, `Rif:`, `AW:`, `SV:`), corpo pulito senza la parte citata, allegati (foto, PDF, Excel); oggetto e `Message-ID` restano sulla conversazione per rispondere nello stesso thread (T-26b) | indirizzo mittente |
 | RCS / SMS | SNS two-way | testo, postback suggested reply, keyword STOP/HELP | numero |
 | Chat web | WebSocket → `rep-chat` | testo, allegati caricati | `userId` Cognito |
 
@@ -288,7 +288,7 @@ Un indirizzo `UNKNOWN` riceve l'informativa nel primo messaggio (saluto + richie
 | Caso | Comportamento |
 |---|---|
 | C1 ordine in `DRAFT`/`PENDING_CONFIRMATION` | Modifica diretta |
-| C2 ordine `SUBMITTED`, prima del cut-off | Modifica/annullo → nuovo invio all'ERP (`updateOrder`/`cancelOrder`), nuova conferma email/SMS |
+| C2 ordine `SUBMITTED`, prima del cut-off | Modifica/annullo → nuovo invio all'ERP (`updateOrder`/`cancelOrder`), nuova conferma email/SMS. Anche rispondendo all'email di conferma (Reply-To `ordine+<orderId>@` → `activeOrderId`, T-26b). Implementato: modifica → `order.updated` (`revision` + 1) → ERP `updateOrder` e nuovo PDF → email "Ordine aggiornato" col PDF, una per revisione; l'annullo non manda email; SMS con T-27 |
 | C3 dopo il cut-off o `SCHEDULED` | Spiega che non è più modificabile automaticamente → handoff back office |
 | C4 integrazione ("aggiungi anche…") dopo la conferma | Proposta di **ordine integrativo** sulla stessa consegna se entro cut-off |
 
@@ -441,6 +441,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 - `runtimeSessionId = uuid5(NAMESPACE_URL, "suppliagent:" + conversationId)`: stessa conversazione → stessa sessione → stesso storico (fino a T-54 lo storico vive nella sessione del Runtime).
 - `messages[].text` porta il testo del messaggio (assente per i soli allegati); `channelAddress` è il mittente verificato (INFRASTRUCTURE_DESIGN §5.3.2). Campi non previsti vengono ignorati.
 - `messages[].interactiveReply` (`id`, `title`, `contextId`) è il tap su un pulsante o una riga di lista (T-25).
+- `activeOrderId` (T-26b): l'ordine a cui risponde l'ultimo messaggio che ne porta uno (email a `ordine+<orderId>@`, cioè la risposta all'email di conferma). L'agente lo riceve nel contesto di sistema ("Order this message replies to") solo se ha la forma `ord_…`, e lo usa per modifiche, annullo e stato; i tool controllano comunque che l'ordine sia del chiamante.
 - Risposta: `{"conversationId", "reply", "interactive"?}` con il testo da inviare tramite il Notifier, oppure `{"error": "INVALID_REQUEST"}`. `interactive` (T-25) sono le opzioni della risposta, che il Dispatcher passa al Notifier così com'è: `{"kind": "ORDER_SUMMARY", "orderId": "ord_…", "options": [{"id": "order_confirm", "title": "Confermo"}, {"id": "order_modify", "title": "Modifica"}]}` oppure `{"kind": "CHOICE", "options": [{"id": "opt_1", "title": "…"}, …]}` (2–10 opzioni, titolo ≤ 24 caratteri). Il Notifier le usa solo su WhatsApp. Un errore dell'invocazione (eccezione nel Runtime, throttling Bedrock, Gateway non raggiungibile) arriva come errore di `InvokeAgentRuntime`: il Dispatcher lo tratta come E-05 / E-12.
 
 ### 6.3 Riga d'ordine (estratto di `Orders`)
@@ -509,7 +510,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `recommend_products` | orderId (ordine in `PENDING_CONFIRMATION`: max 1 suggerimento per ordine, registrato sull'ordine; per il cliente solo con consenso proattivo) \| customerId (solo agente di commercio, briefing: fino a 3) | `status` `OK` + suggestions[] (sku, name, format, unit, multiple, unitPrice, finalPrice, `reason` `REORDER_DUE` (everyDays, lastOrderedAt, lastQuantity) \| `DROPPED` \| `SIMILAR_VENUES` (note) \| `PROMOTION` (promo)), oppure `NONE` + reason (`NO_CONSENT`, `ALREADY_SUGGESTED`, `SUMMARY_FIRST`, `ORDER_CLOSED`, `ORDER_REQUIRED`, `NOTHING_RELEVANT`) |
 | `record_suggestion_outcome` | orderId, accepted | `RECORDED` (+ `value` se accettato e già nell'ordine) \| `ALREADY_RECORDED` \| `NO_SUGGESTION`; evento `order.suggestion`; un rifiuto esclude lo SKU dai suggerimenti al cliente per 30 giorni (F-07.C2) |
 | `create_order_draft` | customerId, lines[] (sku, quantity, rawText, status?, candidates?…), source, deliveryDate?, deliveryNotes? | `existing`, order. Nome, unità, prezzi e totale li calcola il tool, mai il modello; se la conversazione ha già una bozza aperta la restituisce invariata |
-| `update_order_draft` | orderId, ops[] (`add` \| `update` \| `remove` + campi della riga), deliveryDate?, deliveryNotes? | `status`, order. Modificare un riepilogo lo riporta a bozza; un ordine `CONFIRMED`/`SUBMITTED` si modifica fino al cut-off (`UPDATED`, evento `order.updated`), oltre `ORDER_LOCKED`; `NEEDS_FIXES` non salva |
+| `update_order_draft` | orderId, ops[] (`add` \| `update` \| `remove` + campi della riga), deliveryDate?, deliveryNotes? | `status`, order. Modificare un riepilogo lo riporta a bozza; un ordine `CONFIRMED`/`SUBMITTED` si modifica fino al cut-off (`UPDATED`, evento `order.updated`, con `confirmationEmail`: se la conferma aggiornata parte via email a chi ha confermato; un flag, mai l'indirizzo), oltre `ORDER_LOCKED`; `NEEDS_FIXES` non salva |
 | `request_order_confirmation` | orderId | `PENDING_CONFIRMATION` + summary + `orderEmail` (dove andrà l'email di conferma, `null` = nessun indirizzo), oppure `NEEDS_FIXES` + issues[] (`UNRESOLVED_LINES`, `NO_LINES`, `NOT_A_MULTIPLE`, `NO_PRICE`, `NO_DELIVERY_DATE`, `INVALID_DELIVERY_DATE` con `options`, `BELOW_MINIMUM` con `missing`) |
 | `confirm_order` | orderId, idempotencyKey?, interactiveReply? (`contextId`) | `CONFIRMED` \| `ALREADY_CONFIRMED` \| `NOT_CONFIRMABLE` (+ `orderStatus`) \| `NEEDS_FIXES`; errore `CONFIRMATION_MISMATCH` |
 | `cancel_order` | orderId | order (`CANCELLED`); errore `ORDER_LOCKED` oltre il cut-off o dopo la pianificazione |

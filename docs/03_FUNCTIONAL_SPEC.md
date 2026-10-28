@@ -50,7 +50,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-03 | Identificazione contatto e ruolo (cliente / agente di commercio) | M | AG | FU | F-02 | ✅ |
 | FN-04 | Comprensione dell'intento | M | AG | FU | F-03 | ✅ |
 | FN-05 | **Ordine da foto di bigliettino scritto a mano** | M | AG | CR, DP, WA | F-04 | ✅ |
-| FN-06 | Ordine da vocale, testo ed email | M | AG + CH | TE, FU | F-04 | ◐ T-26b |
+| FN-06 | Ordine da vocale, testo ed email | M | AG + CH | TE, FU | F-04 | ◐ email testo e foto ✅ T-26b (da provare su `dev`); allegati PDF/Excel no |
 | FN-07 | Abbinamento al catalogo con storico del cliente | M | AG | TE, VI | F-05 | ✅ |
 | FN-08 | Chiarimenti con pulsanti interattivi | M | AG + CH | DP, WA | F-05 | ✅ T-25 (pulsanti per una domanda alla volta; più domande in un messaggio: opzioni numerate nel testo) |
 | FN-09 | Disponibilità, sostituti, multipli e minimi | M | AG | VI | F-06 | ✅ |

@@ -23,7 +23,7 @@ from importlib.resources import files
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from strands import Agent
 from strands import tool as local_tool
 from strands.hooks import AfterToolCallEvent, BeforeToolCallEvent
@@ -146,7 +146,15 @@ class TurnRequest(BaseModel):
     activeCustomerId: str | None = None
     channel: str = "WHATSAPP"
     locale: str = "it-IT"
+    # T-26b: the order whose confirmation email this message answers (`ordine+<orderId>@`).
+    activeOrderId: str | None = None
     messages: list[InboundMessage] = Field(min_length=1)
+
+    @field_validator("activeOrderId")
+    @classmethod
+    def _order_id_or_none(cls, value: str | None) -> str | None:
+        # Only a well-formed id reaches the prompt; anything else is dropped, not the turn.
+        return value if value and ORDER_ID.match(value) else None
 
 
 def caller_of(turn: TurnRequest) -> dict[str, Any]:
@@ -329,6 +337,8 @@ def system_prompt(turn: TurnRequest) -> str:
         f"- Caller's venues (customerId): {', '.join(turn.customerIds) or 'none'}",
         f"- Active venue: {turn.activeCustomerId or 'not chosen'}",
     ]
+    if turn.activeOrderId:
+        lines.append(f"- Order this message replies to: {turn.activeOrderId}")
     if turn.role != "SALES_REP":  # sales reps are staff: no privacy notice
         lines.append(privacy_notice_line())
     context = "\n".join(lines)

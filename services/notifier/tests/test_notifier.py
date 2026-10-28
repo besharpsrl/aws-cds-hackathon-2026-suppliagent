@@ -290,7 +290,54 @@ def test_email_conversation_is_answered_by_email_in_the_contacts_language(fakes:
     assert email["Content"]["Simple"]["Subject"]["Data"] == "Your request"
     assert email["Content"]["Simple"]["Body"]["Text"]["Data"] == "Ciao Anna!"
     assert email["ConfigurationSetName"] == "suppliagent-test"
+    assert "Headers" not in email["Content"]["Simple"]  # no thread to answer in
     assert fakes.whatsapp == []
+
+
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [("Ordine per domani", "Re: Ordine per domani"), ("RE: Ordine", "RE: Ordine")],
+)
+def test_email_reply_stays_in_the_customers_thread(
+    fakes: Fakes, subject: str, expected: str
+) -> None:
+    sandbox("false")
+    conversation(
+        CONV,
+        lastInboundChannel="EMAIL",
+        lastInboundFrom="ordini@forno.example.com",
+        lastEmailSubject=subject,
+        lastEmailMessageId="<m1@forno.example.com>",
+        lastWhatsappInboundAt=None,
+    )
+
+    notifier.handler(reply(), None)
+
+    [email] = fakes.emails
+    simple = email["Content"]["Simple"]
+    assert simple["Subject"]["Data"] == expected
+    assert simple["Headers"] == [
+        {"Name": "In-Reply-To", "Value": "<m1@forno.example.com>"},
+        {"Name": "References", "Value": "<m1@forno.example.com>"},
+    ]
+
+
+def test_email_reply_without_a_message_id_keeps_the_subject_only(fakes: Fakes) -> None:
+    sandbox("false")
+    conversation(
+        CONV,
+        lastInboundChannel="EMAIL",
+        lastInboundFrom="ordini@forno.example.com",
+        lastEmailSubject="Ordine",
+        lastEmailMessageId="",
+        lastWhatsappInboundAt=None,
+    )
+
+    notifier.handler(reply(), None)
+
+    [email] = fakes.emails
+    assert email["Content"]["Simple"]["Subject"]["Data"] == "Re: Ordine"
+    assert "Headers" not in email["Content"]["Simple"]
 
 
 def test_conversation_without_a_verified_sender_gets_no_reply(fakes: Fakes) -> None:
