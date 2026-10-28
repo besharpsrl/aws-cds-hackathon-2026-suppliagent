@@ -113,7 +113,7 @@ Per i giudici l'invio deve restare reale: `notifierSandbox` va messo a `false` i
 
 ## 4. Dopo il collegamento
 
-- **Template WhatsApp (T-29)**: ✅ gli 8 template (4 × IT/EN) sono stati inviati a Meta il 27/10 con il comando di [09 §1](./09_CONTENT_AND_TEMPLATES.md) (WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a`), tutti `PENDING`. Approvazione entro 24 h: verifica e reinvio dei rifiutati sono il task T-29 (`START_HERE.md` §4). Servono per scrivere fuori dalla finestra di 24 h (conferme, promemoria, riordino).
+- **Template WhatsApp (T-29)**: ✅ gli 8 template (4 × IT/EN) sono stati inviati a Meta il 27/10 con il comando di [09 §1](./09_CONTENT_AND_TEMPLATES.md) (WABA `waba-8c2d297ba5154c33b7d0ceac98c7410a`), tutti `PENDING`; ancora `PENDING` alla verifica del 28/10 ore 12:00 (dettagli e cause probabili in [09 §1](./09_CONTENT_AND_TEMPLATES.md)). Verifica e reinvio dei rifiutati sono il task T-29 (`START_HERE.md` §4). Servono per scrivere fuori dalla finestra di 24 h (conferme, promemoria, riordino).
 - **Pagina demo della console**: `AWS_PROFILE=default VITE_DEMO_WHATSAPP="+393452460472" VITE_DEMO_ORDER_EMAIL="ordini@suppliagent.stonecutters.besharp.net" scripts/deploy-console.sh dev` (i valori sono anche in `console/.env.example`; lo script li legge dalle variabili d'ambiente, non dai file `.env`).
 - **README per i giudici**: ✅ numero WhatsApp ed email d'ordine inseriti in "Try it (for judges)" il 27/10; URL console, credenziali `judge` e cliente di prova sono nel task T-10 (`START_HERE.md` §4).
 - **Ambiente dei giudici**: è `dev` (unico ambiente, decisione del 27/10), con lo stesso WABA e lo stesso numero.
