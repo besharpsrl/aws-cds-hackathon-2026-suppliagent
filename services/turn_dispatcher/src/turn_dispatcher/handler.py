@@ -290,7 +290,7 @@ def _notify(
 ) -> None:
     """The key comes from the turn's messages, so a retried turn cannot send a second reply."""
     key = f"turn#{messages[0]['messageId']}#{messages[-1]['messageId']}"
-    request = {
+    request: dict[str, Any] = {
         "kind": "reply",
         "conversationId": conversation_id,
         "idempotencyKey": key,
@@ -304,6 +304,11 @@ def _notify(
     )
     if response.get("FunctionError"):
         error_type = json.loads(response["Payload"].read()).get("errorType")
+        if error_type == "ValidationError" and interactive:
+            # Options the Notifier refuses (refused before anything is sent): the text still goes.
+            logger.warning("reply options refused: sent without them")
+            _notify(conversation_id, messages, reply)
+            return
         if error_type in PERMANENT_NOTIFIER_ERRORS:
             # Retrying would run the agent again for nothing (its tools have side effects): the
             # turn is over, the Notifier already recorded why nothing went out.

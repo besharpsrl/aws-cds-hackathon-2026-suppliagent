@@ -176,6 +176,29 @@ def test_reply_options_of_the_agent_reach_the_notifier(fakes: Fakes) -> None:  #
     assert sent["interactive"] == options
 
 
+def test_options_refused_by_the_notifier_still_send_the_text(fakes: Fakes) -> None:  # T-25
+    fakes.reply = {"conversationId": CONV, "reply": "Quale?", "interactive": {"kind": "BAD"}}
+    plain_invoke = fakes.invoke
+
+    def invoke(**request: Any) -> dict[str, Any]:
+        if "interactive" not in json.loads(request["Payload"]):
+            return plain_invoke(**request)
+        fakes.notifications.append(json.loads(request["Payload"]))
+        body = json.dumps({"errorType": "ValidationError"}).encode()
+        return {"FunctionError": "Unhandled", "Payload": type("B", (), {"read": lambda _s: body})()}
+
+    fakes.invoke = invoke  # type: ignore[method-assign]
+    put_buffer([message("msg_1")])
+
+    flush()
+
+    assert len(fakes.turns) == 1  # the agent is not run again
+    first, second = fakes.notifications
+    assert "interactive" in first and "interactive" not in second
+    assert second["text"] == "Quale?" and second["idempotencyKey"] == first["idempotencyKey"]
+    assert buffer()["pending"] == []
+
+
 def test_a_tap_reaches_the_agent_with_the_message_it_replies_to(fakes: Fakes) -> None:  # T-25
     tap = {"id": "order_confirm", "title": "Confermo", "contextId": "wamid.SUMMARY"}
     put_buffer([message("msg_1") | {"interactiveReply": tap}])
