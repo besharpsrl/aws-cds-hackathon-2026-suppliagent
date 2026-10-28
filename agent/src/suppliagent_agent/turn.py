@@ -266,6 +266,8 @@ def offer_choices(options: list[str], tool_context: ToolContext) -> str:
         raise ValueError(f"Give 2 to {MAX_OPTIONS} options.")
     if too_long := [o for o in labels if len(o) > MAX_OPTION_LENGTH]:
         raise ValueError(f"Shorten these labels to {MAX_OPTION_LENGTH} characters: {too_long}")
+    if len({o.casefold() for o in labels}) != len(labels):
+        raise ValueError("Two labels are the same: make each one distinct (e.g. add the format).")
     tool_context.invocation_state[TURN_STATE].choices = labels
     return "Done: the options will appear as buttons under your reply."
 

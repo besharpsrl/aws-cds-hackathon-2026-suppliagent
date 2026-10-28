@@ -35,7 +35,7 @@ import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities import parameters
 from botocore.exceptions import ClientError
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.errors import (
     AccessDeniedError,
@@ -87,6 +87,15 @@ class Interactive(BaseModel):
     kind: Literal["ORDER_SUMMARY", "CHOICE"]
     options: list[Option] = Field(min_length=1, max_length=10)
     orderId: str | None = Field(None, pattern=r"^ord_[A-Za-z0-9]{1,40}$")  # noqa: N815
+
+    @model_validator(mode="after")
+    def _distinct(self) -> "Interactive":
+        # WhatsApp refuses buttons or rows with the same id or title.
+        ids = [o.id for o in self.options]
+        titles = [o.title.casefold() for o in self.options]
+        if len(set(ids)) != len(ids) or len(set(titles)) != len(titles):
+            raise ValueError("options must have distinct ids and titles")
+        return self
 
 
 class Request(BaseModel):
@@ -204,7 +213,8 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
             # A recorded id lets the simulator tap the buttons (scripts/simulate_channel.py --tap).
             provider_id = _sandbox_id(request.idempotencyKey) if interactive else None
         else:
-            provider_id = _send(channel, address, request.text, conversation, interactive)
+            provider_id, shown = _send(channel, address, request.text, conversation, interactive)
+            interactive = interactive if shown else None
     except Exception:
         _unclaim(request.idempotencyKey)
         _event("notification.failed", request.conversationId, channel, sandbox)
@@ -272,17 +282,18 @@ def _send(
     text: str,
     conversation: dict[str, Any],
     interactive: Interactive | None = None,
-) -> str | None:
+) -> tuple[str | None, bool]:
+    """Provider id of the message sent, and whether the options went out with it."""
     if channel == "WHATSAPP":
         last_inbound = conversation.get("lastWhatsappInboundAt")
         if interactive:
             return _send_whatsapp_interactive(
                 address, text, last_inbound, interactive, conversation.get("lastInboundLocale")
             )
-        return _send_whatsapp(address, text, last_inbound)
+        return _send_whatsapp(address, text, last_inbound), False
     if channel == "EMAIL":
         _send_email(address, text, conversation.get("lastInboundLocale"))
-        return None
+        return None, False
     raise ChannelUnavailableError  # SMS/RCS arrive with T-27
 
 
@@ -306,15 +317,22 @@ def _send_whatsapp_interactive(
     last_inbound: str | None,
     interactive: Interactive,
     locale: str | None,
-) -> str:
+) -> tuple[str, bool]:
     """Buttons when the options fit (at most 3, short titles), a list otherwise. A text longer
     than the interactive body goes out first as a plain message; the buttons follow with a short
-    question. The id returned is the interactive message's: the one a tap replies to."""
+    question. The id returned is the interactive message's: the one a tap replies to.
+
+    If the interactive message fails, the reply still goes out once, without the options (the
+    contact answers in words): the text already sent, or the text alone. Never raised after a part
+    of the reply went out, so a retry cannot send it twice."""
     _check_window(last_inbound)
     language = "en" if (locale or "").lower().startswith("en") else "it"
     body = text
+    text_id = None
     if len(text) > INTERACTIVE_BODY_LIMIT:
-        _whatsapp({"to": address, "type": "text", "text": {"body": text[:WHATSAPP_TEXT_LIMIT]}})
+        text_id = _whatsapp(
+            {"to": address, "type": "text", "text": {"body": text[:WHATSAPP_TEXT_LIMIT]}}
+        )
         body = SHORT_BODY[interactive.kind][language]
     options = interactive.options
     if len(options) <= MAX_BUTTONS and all(len(o.title) <= BUTTON_TITLE_LIMIT for o in options):
@@ -338,7 +356,16 @@ def _send_whatsapp_interactive(
                 ],
             },
         }
-    return _whatsapp({"to": address, "type": "interactive", "interactive": content})
+    try:
+        return _whatsapp({"to": address, "type": "interactive", "interactive": content}), True
+    except Exception as e:
+        if text_id is None and not isinstance(e, ClientError):
+            raise  # nothing went out (e.g. a timeout): the caller retries the whole reply
+        code = e.response["Error"]["Code"] if isinstance(e, ClientError) else type(e).__name__
+        logger.warning("interactive message refused: reply sent without options", error=code)
+    if text_id is not None:
+        return text_id, False
+    return _send_whatsapp(address, text, last_inbound), False
 
 
 def _whatsapp(message: dict[str, Any]) -> str:

@@ -539,7 +539,8 @@ def test_the_model_offers_the_choices_of_one_question_as_buttons() -> None:
 
 
 @pytest.mark.parametrize(
-    "options", [["Solo una"], ["x" * 25, "Altro"], [f"o{i}" for i in range(11)]]
+    "options",
+    [["Solo una"], ["x" * 25, "Altro"], [f"o{i}" for i in range(11)], ["Burrata", "burrata "]],
 )
 def test_choices_the_buttons_cannot_show_are_refused(options: list[str]) -> None:
     model = ScriptedModel([("offer_choices", {"options": options})], "Quale?")

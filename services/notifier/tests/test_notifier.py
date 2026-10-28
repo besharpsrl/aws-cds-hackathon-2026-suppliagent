@@ -7,6 +7,7 @@ from typing import Any
 import boto3
 import pytest
 from aws_lambda_powertools.utilities import parameters
+from botocore.exceptions import ClientError
 from moto import mock_aws
 from notifier import handler as notifier
 from pydantic import ValidationError
@@ -35,10 +36,15 @@ class Fakes:
         self.whatsapp: list[dict[str, Any]] = []
         self.emails: list[dict[str, Any]] = []
         self.fail = False
+        self.refuse_interactive = False
 
     def send_whatsapp_message(self, **request: Any) -> dict[str, str]:
         if self.fail:
             raise RuntimeError("ThrottlingException")
+        message = json.loads(request["message"])
+        if self.refuse_interactive and message["type"] == "interactive":
+            error = {"Error": {"Code": "ValidationException", "Message": "duplicate titles"}}
+            raise ClientError(error, "SendWhatsAppMessage")  # type: ignore[arg-type]
         self.whatsapp.append({**request, "message": json.loads(request["message"])})
         return {"messageId": "wamid.out1"}
 
@@ -521,9 +527,45 @@ def test_in_sandbox_buttons_get_a_recorded_id_the_simulator_can_tap(fakes: Fakes
         {"kind": "CHOICE", "options": [{"id": "opt_1", "title": "x" * 25}]},
         {"kind": "CHOICE", "options": [{"id": f"opt_{i}", "title": "x"} for i in range(11)]},
         {**SUMMARY, "orderId": "cus_001"},
+        {
+            "kind": "CHOICE",
+            "options": [{"id": "opt_1", "title": "A"}, {"id": "opt_2", "title": "a"}],
+        },
+        {
+            "kind": "CHOICE",
+            "options": [{"id": "opt_1", "title": "A"}, {"id": "opt_1", "title": "B"}],
+        },
     ],
 )
 def test_invalid_options_are_refused(fakes: Fakes, interactive: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         notifier.handler(reply() | {"interactive": interactive}, None)
     assert outgoing() == []
+
+
+def test_options_refused_by_whatsapp_still_send_the_text_once(fakes: Fakes) -> None:
+    sandbox("false")
+    fakes.refuse_interactive = True
+    order()
+
+    assert notifier.handler(reply(text="Riepilogo") | {"interactive": SUMMARY}, None) == {
+        "status": "SENT"
+    }
+
+    [call] = fakes.whatsapp
+    assert call["message"]["text"] == {"body": "Riepilogo"}
+    assert "summaryMessageId" not in stored_order()  # no button to tap
+    assert "interactive" not in outgoing()[0]
+
+
+def test_a_long_text_already_sent_is_never_sent_again_when_the_buttons_fail(fakes: Fakes) -> None:
+    sandbox("false")
+    fakes.refuse_interactive = True
+    order()
+
+    for _ in range(2):  # the retry of the caller finds the reply sent
+        notifier.handler(reply(text="r" * 2000) | {"interactive": SUMMARY}, None)
+
+    [call] = fakes.whatsapp
+    assert call["message"]["text"]["body"] == "r" * 2000
+    assert "summaryMessageId" not in stored_order()
