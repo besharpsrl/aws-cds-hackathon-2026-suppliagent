@@ -178,6 +178,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 | Tool | Lambda | Ruoli | Dati |
 |---|---|---|---|
 | `identify_contact` | `tool-customers` | tutti | Contacts, Customers |
+| `update_privacy` | `tool-customers` | solo `CUSTOMER_CONTACT` (il proprio contatto) | Contacts |
 | `get_customer_profile` | `tool-customers` | tutti (agente: solo portafoglio) | Customers, CustomerInsights |
 | `extract_order_lines` | `tool-order-intake` (target Gateway `order-intake`: i nomi dei target non ammettono `_`) | tutti i ruoli noti (non `UNKNOWN`) | S3 `media/<contactId\|conversationId>/…` del solo chiamante → Nova Pro vision / testo; vocali via Transcribe (job `ordint-<hash>`, trascrizione in `transcripts/` dello stesso bucket, stesso ciclo di vita di 90 gg) |
 | `match_products` | `tool-catalog` (target Gateway `catalog`) | tutti i ruoli noti, solo clienti del chiamante | S3 Vectors + Products + OrderHistory (+ Stock per i sostituti) |

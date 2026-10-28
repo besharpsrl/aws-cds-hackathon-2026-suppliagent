@@ -155,11 +155,13 @@ I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`att
 
 ### F-01 – Primo contatto e informativa (FN-02)
 
-**Trigger**: primo messaggio di un contatto senza informativa registrata.
+**Trigger**: primo messaggio di un contatto senza informativa registrata (`identify_contact` → `privacy.noticeSent` falso; per un indirizzo sconosciuto, il primo messaggio della conversazione).
 
 1. L'agente si presenta come **assistente virtuale del Distributore**, spiega in una riga cosa può fare ("puoi mandarmi l'ordine anche come foto del bigliettino").
-2. Invia il link all'**informativa privacy** (trattamento dei dati del contatto per la gestione degli ordini) e ne registra l'invio; per le comunicazioni promozionali/proattive chiede il **consenso** specifico (pulsanti *Sì / No*).
+2. Invia il link all'**informativa privacy** (trattamento dei dati del contatto per la gestione degli ordini; URL dal parametro `privacyNoticeUrl`, passato al Runtime e al prompt: finché è `UNSET` dice che l'informativa è disponibile presso l'ufficio del Distributore) e ne registra l'invio con `update_privacy(noticeSent)` (data e versione, `privacyNoticeSentAt` / `privacyNoticeVersion` su `Contacts`). Per le comunicazioni promozionali/proattive chiede il **consenso** specifico con una domanda *Sì / No* in testo (i pulsanti interattivi liberi non sono previsti dal Notifier: solo i template li hanno) e lo registra con `update_privacy(proactiveConsent)` (`proactiveConsent`, `proactiveConsentAt`, `proactiveConsentChannel`, `proactiveConsentVersion`). La domanda non va nello stesso messaggio di un'altra domanda sì/no (riepilogo ordine, chiarimento): si fa al primo messaggio successivo che non ne ha, una volta per conversazione.
 3. Prosegue con la richiesta del cliente.
+
+Un indirizzo `UNKNOWN` riceve l'informativa nel primo messaggio (saluto + richiesta di identificazione); `identify_contact(privacyNoticeSent)` la registra sul contatto creato, e la domanda sul consenso arriva dal messaggio successivo, da contatto noto. Gli agenti di commercio sono personale: nessuna informativa. Il consenso si può cambiare in ogni momento ("stop proposte" lo revoca).
 
 | Caso | Comportamento |
 |---|---|
@@ -463,6 +465,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 |---|---|---|
 | `conversation.started` | contactId, role, channel | KPI |
 | `contact.identified` | contactId, method | audit |
+| `contact.privacy_updated` | contactId, channel, noticeSent?, proactiveConsent? | audit del consenso (FN-02) |
 | `order.draft_created` | orderId, source (photo/voice/text/email/reorder/rep) | KPI |
 | `order.lines_extracted` | conversationId (l'`orderId` non esiste ancora: la bozza nasce dopo la lettura), source (photo/voice/text), lines, unreadable | qualità lettura |
 | `order.line_matched` | conversationId (l'`orderId`/`lineId` non esistono ancora: la bozza nasce dopo l'abbinamento), status, confidence | qualità matching |
@@ -483,7 +486,8 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 
 | Tool | Input | Output |
 |---|---|---|
-| `identify_contact` | (indirizzo dal `caller`, INFRASTRUCTURE_DESIGN §5.3.2) \| customerCode \| vatNumber, venueName | `status` (`KNOWN` \| `MATCHED` \| `NOT_FOUND` \| `IDENTIFICATION_FAILED`), contact, role, customers[] (customerId, venueName) |
+| `identify_contact` | (indirizzo dal `caller`, INFRASTRUCTURE_DESIGN §5.3.2) \| customerCode \| vatNumber, venueName, privacyNoticeSent? | `status` (`KNOWN` \| `MATCHED` \| `NOT_FOUND` \| `IDENTIFICATION_FAILED`), contact, role, customers[] (customerId, venueName), `privacy` (`noticeSent`, `proactiveConsent`: `null` = mai chiesto; solo contatti cliente) |
+| `update_privacy` | noticeSent?, proactiveConsent? (almeno uno; il contatto è quello del `caller`) | `status` `UPDATED`, `privacy`. Solo `CUSTOMER_CONTACT`; errori `ACCESS_DENIED`, `NOT_FOUND` |
 | `get_customer_profile` | customerId | dati del locale; ultimi 5 ordini (contatto verificato o agente); ragione sociale, zona, listino e insight (solo agente) |
 | `extract_order_lines` | s3Uri (foto o vocale del chiamante) \| text | `status` (`OK` \| `NOT_AN_ORDER` \| `UNREADABLE_MEDIA`), `source` (photo/voice/text), `lines[]` (rawText, rawQuantity, rawUnit, note, readConfidence, status `READ`/`UNREADABLE`, imageRegion solo per le foto), `struckOut[]`, `deliveryNotes`, `ignoredNotes[]`, `transcript` (solo vocali). Errori: `ACCESS_DENIED` (media non del chiamante), `UNSUPPORTED_MEDIA` (es. PDF, HEIC), `EXTRACTION_FAILED` (E-04) |
 | `match_products` | lines[], customerId | per riga: candidates[] con confidence |
@@ -523,6 +527,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `quietHours` | 21:00–07:00 |
 | `deliveryAutoConfirm` | true (fine giornata) |
 | `identificationMaxAttempts` | 3 |
+| `privacyNoticeUrl` / `privacyNoticeVersion` | `UNSET` (da impostare con l'URL dell'informativa del Distributore, azione manuale) / `2026-10-28` (registrata con ogni consenso) |
 | `notifierSandbox` | `true` = il Notifier registra le uscite invece di inviarle (simulatore); `false` = invio reale, necessario per i giudici (T-68). Il valore sta in `infra/config/environments.ts`: un deploy sovrascrive il parametro SSM |
 | `erpMockFailure` | `false` (con `true` l'ERP mock risponde "non disponibile": ordine resta `CONFIRMED`, retry e poi DLQ, E-08; letto a runtime, cache 60 s) |
 

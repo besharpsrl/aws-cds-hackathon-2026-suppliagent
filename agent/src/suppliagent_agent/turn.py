@@ -7,6 +7,7 @@ from the tool schemas the model sees and written into every tool call by a hook.
 # ruff: noqa: N815 - field names are the camelCase wire names (02 §6).
 
 import copy
+import os
 import re
 from datetime import datetime
 from importlib.resources import files
@@ -31,6 +32,8 @@ MATCH = "catalog___match_products"
 SEARCH = "catalog___search_catalog"
 # F-14: every role, UNKNOWN included (identification failed, new customer).
 HANDOFF = "orders___handoff_to_human"
+# F-01: privacy notice and consent of a customer contact; sales reps are staff and never get it.
+PRIVACY = "customers___update_privacy"
 # Stock, prices, delivery dates (T-45) and the order lifecycle (T-46); the tools check the caller's
 # own customers (or the rep's portfolio) themselves.
 ORDER_TOOLS = frozenset(
@@ -50,7 +53,7 @@ ORDER_TOOLS = frozenset(
 KNOWN_TOOLS = frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH, HANDOFF}) | ORDER_TOOLS
 ROLE_TOOLS: dict[Role, frozenset[str]] = {
     "UNKNOWN": frozenset({IDENTIFY, HANDOFF}),
-    "CUSTOMER_CONTACT": KNOWN_TOOLS,
+    "CUSTOMER_CONTACT": KNOWN_TOOLS | {PRIVACY},
     "SALES_REP": KNOWN_TOOLS,
 }
 ROLE_PROMPTS: dict[Role, list[str]] = {
@@ -148,20 +151,27 @@ def now_in_rome(turn: TurnRequest) -> str:
     return moment.strftime("%A %Y-%m-%d %H:%M (Europe/Rome)")
 
 
+def privacy_notice_line() -> str:
+    """Link of the privacy notice (F-01), from the Runtime environment; `UNSET` until published."""
+    url = os.environ.get("PRIVACY_NOTICE_URL", "")
+    return f"- Privacy notice link: {'none published yet' if url in ('', 'UNSET') else url}"
+
+
 def system_prompt(turn: TurnRequest) -> str:
     prompts = files("suppliagent_agent") / "prompts"
     language = LANGUAGES.get(turn.locale.split("-")[0].lower(), "English")
-    context = "\n".join(
-        [
-            "## Conversation context (set by the system, not by the user)",
-            f"- Caller role: {turn.role}",
-            f"- Channel: {turn.channel}",
-            f"- Now: {now_in_rome(turn)}",
-            f"- Reply language: {language}",
-            f"- Caller's venues (customerId): {', '.join(turn.customerIds) or 'none'}",
-            f"- Active venue: {turn.activeCustomerId or 'not chosen'}",
-        ]
-    )
+    lines = [
+        "## Conversation context (set by the system, not by the user)",
+        f"- Caller role: {turn.role}",
+        f"- Channel: {turn.channel}",
+        f"- Now: {now_in_rome(turn)}",
+        f"- Reply language: {language}",
+        f"- Caller's venues (customerId): {', '.join(turn.customerIds) or 'none'}",
+        f"- Active venue: {turn.activeCustomerId or 'not chosen'}",
+    ]
+    if turn.role != "SALES_REP":  # sales reps are staff: no privacy notice
+        lines.append(privacy_notice_line())
+    context = "\n".join(lines)
     parts = [(prompts / name).read_text() for name in ["shared.md", *ROLE_PROMPTS[turn.role]]]
     return "\n\n".join([*parts, context])
 

@@ -46,7 +46,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | ID | Funzionalità | Priorità | Stream | Criteri | Flusso | Gara |
 |---|---|---|---|---|---|---|
 | FN-01 | Messaggistica multicanale bidirezionale (WhatsApp, email, RCS/SMS) | M | CH | TE, FU, WA | §3, F-11 | ◐ T-68, T-26, T-27 |
-| FN-02 | Primo contatto, informativa e consenso proattivo | M | AG | VI | F-01 | ◐ T-48 |
+| FN-02 | Primo contatto, informativa e consenso proattivo | M | AG | VI | F-01 | ✅ T-48 (il blocco dei proattivi senza consenso lo applica T-52) |
 | FN-03 | Identificazione contatto e ruolo (cliente / agente di commercio) | M | AG | FU | F-02 | ✅ |
 | FN-04 | Comprensione dell'intento | M | AG | FU | F-03 | ✅ |
 | FN-05 | **Ordine da foto di bigliettino scritto a mano** | M | AG | CR, DP, WA | F-04 | ✅ |

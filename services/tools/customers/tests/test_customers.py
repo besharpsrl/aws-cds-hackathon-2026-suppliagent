@@ -4,13 +4,15 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from suppliagent_shared.errors import AccessDeniedError, InvalidInputError
+from suppliagent_shared.errors import AccessDeniedError, InvalidInputError, NotFoundError
 from suppliagent_tool_customers import customers
 from suppliagent_tool_customers.customers import (
     GetCustomerProfileInput,
     IdentifyContactInput,
+    UpdatePrivacyInput,
     get_customer_profile,
     identify_contact,
+    update_privacy,
 )
 from suppliagent_tool_customers.handler import lambda_handler
 
@@ -190,6 +192,133 @@ def test_identification_attempts_are_limited_per_conversation(events: list[Any])
 def test_unknown_identification_needs_a_conversation() -> None:
     with pytest.raises(InvalidInputError):
         identify(caller=caller("UNKNOWN", conv=""), customerCode="C10003", venueName="Bar Aurora")
+
+
+# --- privacy notice and proactive consent (FN-02, F-01) -------------------------------------
+
+CON_003 = caller("CUSTOMER_CONTACT", "con_003", "WHATSAPP#+393330000003")  # no notice yet
+
+
+@pytest.fixture
+def notice(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PRIVACY_NOTICE_VERSION", "v1")
+
+
+def privacy(who: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+    return update_privacy(UpdatePrivacyInput.model_validate({"caller": who, **kwargs}))
+
+
+def test_known_contact_sees_its_privacy_state() -> None:  # F-01
+    assert identify(caller=CON_003)["privacy"] == {"noticeSent": False, "proactiveConsent": None}
+    assert identify(caller=CON_001)["privacy"] == {"noticeSent": True, "proactiveConsent": True}
+    assert identify(caller=caller("CUSTOMER_CONTACT", "con_002"))["privacy"] == {
+        "noticeSent": True,
+        "proactiveConsent": False,
+    }
+
+
+def test_sales_rep_gets_no_privacy_block() -> None:
+    assert "privacy" not in identify(caller=REP_001)
+
+
+def test_notice_is_recorded_once_with_date_and_version(
+    notice: None, events: list[Any], aws: Any
+) -> None:
+    first = privacy(CON_003, noticeSent=True)
+    assert first["status"] == "UPDATED"
+    assert first["privacy"]["noticeSent"] is True
+    stored = aws.Table("suppliagent-test-contacts").get_item(Key={"contactId": "con_003"})["Item"]
+    assert stored["privacyNoticeVersion"] == "v1"
+    sent_at = stored["privacyNoticeSentAt"]
+    privacy(CON_003, noticeSent=True)  # a repeated call keeps the first record
+    again = aws.Table("suppliagent-test-contacts").get_item(Key={"contactId": "con_003"})["Item"]
+    assert again["privacyNoticeSentAt"] == sent_at
+    assert "proactiveConsent" not in again  # C2: not asked, not given
+    assert events[0] == (
+        "contact.privacy_updated",
+        {"contactId": "con_003", "channel": "WHATSAPP", "noticeSent": True},
+    )
+
+
+@pytest.mark.parametrize("answer", [True, False])  # F-01.C1, C2
+def test_consent_is_recorded_with_date_channel_and_version(
+    answer: bool, notice: None, events: list[Any], aws: Any
+) -> None:
+    result = privacy(CON_003, noticeSent=True, proactiveConsent=answer)
+    assert result["privacy"]["proactiveConsent"] is answer
+    stored = aws.Table("suppliagent-test-contacts").get_item(Key={"contactId": "con_003"})["Item"]
+    assert stored["proactiveConsent"] is answer
+    assert stored["proactiveConsentChannel"] == "WHATSAPP"
+    assert stored["proactiveConsentVersion"] == "v1"
+    assert stored["proactiveConsentAt"].endswith("Z")
+    assert events[-1][1]["proactiveConsent"] is answer
+
+
+def test_consent_can_be_revoked_at_any_time(notice: None) -> None:  # "Stop proposte"
+    assert privacy(CON_001, proactiveConsent=False)["privacy"]["proactiveConsent"] is False
+    assert identify(caller=CON_001)["privacy"]["proactiveConsent"] is False
+
+
+def test_unknown_caller_notice_is_stored_on_the_new_contact(
+    notice: None, events: list[Any], aws: Any
+) -> None:  # F-01.C3: the notice came with the identification greeting
+    result = identify(
+        caller=UNKNOWN, customerCode="C10003", venueName="Bar Aurora", privacyNoticeSent=True
+    )
+    assert result["privacy"] == {"noticeSent": True, "proactiveConsent": None}
+    contact = aws.Table("suppliagent-test-contacts").get_item(
+        Key={"contactId": result["contact"]["contactId"]}
+    )["Item"]
+    assert contact["privacyNoticeVersion"] == "v1"
+    assert contact["privacyNoticeSentAt"].endswith("Z")
+
+
+def test_unknown_caller_without_notice_leaves_it_unsent() -> None:
+    result = identify(caller=UNKNOWN, customerCode="C10003", venueName="Bar Aurora")
+    assert result["privacy"]["noticeSent"] is False
+
+
+@pytest.mark.parametrize(
+    "who",
+    [
+        REP_001,  # staff, not a contact
+        UNKNOWN,
+        caller("CUSTOMER_CONTACT", None),
+        caller("CUSTOMER_CONTACT", "con_nope"),  # not a contact: nothing is created
+    ],
+)
+def test_update_privacy_is_denied_or_not_found_for_anyone_else(
+    who: dict[str, Any], aws: Any
+) -> None:
+    before = len(aws.Table("suppliagent-test-contacts").scan()["Items"])
+    with pytest.raises((AccessDeniedError, NotFoundError)):
+        privacy(who, noticeSent=True)
+    assert len(aws.Table("suppliagent-test-contacts").scan()["Items"]) == before
+
+
+def test_update_privacy_only_touches_the_callers_own_contact(notice: None, aws: Any) -> None:
+    privacy(CON_001, noticeSent=True, proactiveConsent=False)
+    other = aws.Table("suppliagent-test-contacts").get_item(Key={"contactId": "con_002"})["Item"]
+    assert other["proactiveConsent"] is False  # seed value, untouched
+    assert "proactiveConsentAt" not in other
+
+
+def test_update_privacy_needs_something_to_record() -> None:
+    with pytest.raises(InvalidInputError):
+        privacy(CON_003)
+
+
+def test_model_cannot_name_another_contact_in_update_privacy() -> None:
+    event = {"caller": CON_003, "contactId": "con_001", "proactiveConsent": False}
+    assert lambda_handler(event, context("update_privacy")) == {"error": "INVALID_INPUT"}
+
+
+def test_handler_routes_update_privacy(notice: None) -> None:
+    result = lambda_handler(
+        {"caller": CON_003, "proactiveConsent": True}, context("update_privacy")
+    )
+    assert result["status"] == "UPDATED"
+    assert result["privacy"]["proactiveConsent"] is True
 
 
 # --- get_customer_profile -------------------------------------------------------------------

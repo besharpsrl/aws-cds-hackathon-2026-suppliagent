@@ -77,6 +77,7 @@ export class AgentStack extends Stack {
         TABLE_PREFIX: `${prefix}-`,
         EVENT_BUS_NAME: eventBus.eventBusName,
         IDENTIFICATION_MAX_ATTEMPTS: config.parameters.identificationMaxAttempts,
+        PRIVACY_NOTICE_VERSION: config.parameters.privacyNoticeVersion,
       },
     }).function;
     // Least privilege (INFRASTRUCTURE_DESIGN §5.3.2): exactly the calls the tool makes; no table
@@ -90,7 +91,7 @@ export class AgentStack extends Stack {
       `${customers}/index/by-repId`,
     );
     allow(
-      ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem'],
+      ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem', 'dynamodb:UpdateItem'],
       tables.Contacts.tableArn,
     );
     allow(['dynamodb:PutItem'], tables.ChannelIdentities.tableArn);
@@ -349,6 +350,7 @@ export class AgentStack extends Stack {
         GATEWAY_URL: gatewayUrl,
         MODEL_ID: config.model.profileId,
         AWS_REGION: this.region,
+        PRIVACY_NOTICE_URL: config.parameters.privacyNoticeUrl,
       },
     });
     gateway.grantInvoke(this.runtime);
