@@ -87,11 +87,13 @@ npx cdk deploy --all -c env=dev
 uv run python seed/seed.py --env dev
 ```
 
-Without a WhatsApp number, test the whole pipeline with the channel simulator (`dev` only: it refuses to run unless the Notifier sandbox is on, so nothing is sent):
+Without a WhatsApp number, test the whole pipeline with the channel simulator (`dev` only: it refuses to run unless the Notifier sandbox is on, so nothing is sent). The sandbox is off by default (`notifierSandbox: 'false'` in `infra/config/environments.ts`: replies really go out); switch it on in SSM for the test and off again afterwards:
 
 ```bash
+aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value true --overwrite
 uv run python scripts/simulate_channel.py --env dev --from +393330000001 --text "ciao" --wait
 uv run python scripts/simulate_channel.py --env dev --from +393330000001 --image note.jpg --wait
+aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value false --overwrite
 ```
 
 ## Try it (for judges)
