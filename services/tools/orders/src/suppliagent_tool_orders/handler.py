@@ -9,6 +9,7 @@ from aws_lambda_powertools import Logger
 from pydantic import ValidationError
 from suppliagent_shared.errors import SuppliAgentError
 
+from suppliagent_tool_orders.handoff import HandoffInput, handoff_to_human
 from suppliagent_tool_orders.orders import (
     CancelOrderInput,
     ConfirmOrderInput,
@@ -37,6 +38,7 @@ TOOLS: dict[str, tuple[type[ToolInput], Callable[[Any], dict[str, Any]]]] = {
     "cancel_order": (CancelOrderInput, cancel_order),
     "get_order_status": (GetOrderStatusInput, get_order_status),
     "report_delivery_issue": (ReportDeliveryIssueInput, report_delivery_issue),
+    "handoff_to_human": (HandoffInput, handoff_to_human),
 }
 
 

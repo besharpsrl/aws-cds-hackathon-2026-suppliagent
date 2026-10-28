@@ -232,7 +232,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 
 *Stato (T-45, T-46, T-47):* tre Lambda nell'`AgentStack`/`MessagingStack`.
 - `tool-inventory-pricing` (sola lettura, nessun evento): stock con sostituti e multipli, listino del cliente con la promo valida, date di consegna da `Customers.deliveryDays`, eccezioni di `DeliveryCalendar` e cut-off (`DELIVERY_CUTOFF`, `Europe/Rome`: dopo il cut-off la consegna slitta di un giorno).
-- `tool-orders` (scrive solo `Orders` e `Issues`): è il tool a calcolare nomi, unità, prezzi (`price_of`, listino del cliente) e totale; il modello propone solo SKU e quantità. Macchina a stati in `suppliagent_shared.orders` (02 §2.3 più `DELIVERED → DELIVERY_ISSUE`), scritture condizionali su `status` e `version` (una modifica concorrente dà `CONFLICT`, non sovrascrive). `confirm_order` solo da `PENDING_CONFIRMATION`, idempotente: la seconda chiamata risponde `ALREADY_CONFIRMED`; `order.confirmed` è emesso una volta (`confirmedEventAt`) e, se la prima emissione fallisce, la ripetizione lo rimanda. Un tap su pulsante richiede `interactiveReply.contextId == summaryMessageId` (campo che T-25 scriverà quando il Notifier invia il riepilogo con pulsanti; finché non c'è, solo conferma a parole). Dopo la conferma l'ordine si modifica o annulla fino al cut-off del giorno prima della consegna (`order.updated` → ERP e PDF), poi `ORDER_LOCKED`.
+- `tool-orders` (scrive solo `Orders` e `Issues`, più `mode`/`handoff` della conversazione del chiamante con `handoff_to_human`): è il tool a calcolare nomi, unità, prezzi (`price_of`, listino del cliente) e totale; il modello propone solo SKU e quantità. Macchina a stati in `suppliagent_shared.orders` (02 §2.3 più `DELIVERED → DELIVERY_ISSUE`), scritture condizionali su `status` e `version` (una modifica concorrente dà `CONFLICT`, non sovrascrive). `confirm_order` solo da `PENDING_CONFIRMATION`, idempotente: la seconda chiamata risponde `ALREADY_CONFIRMED`; `order.confirmed` è emesso una volta (`confirmedEventAt`) e, se la prima emissione fallisce, la ripetizione lo rimanda. Un tap su pulsante richiede `interactiveReply.contextId == summaryMessageId` (campo che T-25 scriverà quando il Notifier invia il riepilogo con pulsanti; finché non c'è, solo conferma a parole). Dopo la conferma l'ordine si modifica o annulla fino al cut-off del giorno prima della consegna (`order.updated` → ERP e PDF), poi `ORDER_LOCKED`.
 - `order-sweeper` (MessagingStack, schedule ogni 15 minuti sul bus default): per ogni ordine in `PENDING_CONFIRMATION` (GSI `by-status`), promemoria dopo `pendingReminderHours` (una volta per riepilogo, `reminderSentAt`) e `EXPIRED` a mezzanotte `Europe/Rome` del giorno del riepilogo con messaggio; fascia notturna `quietHours`: non scrive niente. Passa dal Notifier (`reply`, testo libero entro 24h; fuori finestra `ChannelUnavailable` e solo la transizione, template con T-29). Scrittura condizionale su `version`: se il cliente ha modificato l'ordine nel frattempo, non lo fa scadere.
 - **Limiti noti**: nessun controllo di stock alla conferma (solo `check_availability` prima); la conferma aggiornata via email/SMS dopo una modifica è di T-26; l'annullo non chiama l'ERP; per i contatti `PENDING_VERIFICATION` niente bozze.
 
@@ -275,7 +275,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 
 | Tabella | PK | SK | GSI | Note |
 |---|---|---|---|---|
-| `Customers` | `customerId` | – | `repId`, `zone` | locali: ragione sociale, tipologia, zona, giorni consegna, agente, listino |
+| `Customers` | `customerId` | – | `repId`, `zone` | locali: ragione sociale, tipologia, zona, giorni consegna, agente, listino; `autoVerifyContacts` solo per i clienti di prova dei giudici (F-02.C7) |
 | `Contacts` | `contactId` | – | `customerId` | persone: ruolo, lingua, preferenze, consenso |
 | `ChannelIdentities` | `channelAddress` (`channel#address`) | – | `contactId` | phone/email → contatto; include agenti di commercio |
 | `SalesReps` | `repId` | – | – | agenti: portafoglio, zona |
@@ -289,7 +289,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 | `CustomerInsights` | `customerId` | – | – | riordini attesi, prodotti smessi, suggerimenti |
 | `Deliveries` | `orderId` | – | `date` | fascia oraria, stato consegna |
 | `Issues` | `issueId` | – | `orderId` | problemi di consegna con foto |
-| `Conversations` | `conversationId` | – | `contactId` | `mode = AGENT \| HUMAN`, ruolo |
+| `Conversations` | `conversationId` | – | `contactId` | `mode = AGENT \| HUMAN`, ruolo; `handoff` (reason, summary, by, at) finché `HUMAN`, `releasedAt` |
 | `Messages` | `conversationId` | `tsMessageId` (`ts#messageId`) | `providerMessageId` | storico multicanale; **Stream** |
 | `TurnBuffer` | `conversationId` | – | – | debounce e lock |
 | `WsConnections` | `connectionId` | – | `userId` | connessioni console/chat web; TTL |

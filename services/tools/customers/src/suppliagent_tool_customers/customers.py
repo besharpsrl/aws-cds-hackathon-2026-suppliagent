@@ -52,7 +52,8 @@ class GetCustomerProfileInput(ToolInput):
 
 def identify_contact(args: IdentifyContactInput) -> dict[str, Any]:
     """Known caller: own contact and venues. Unknown caller: match a customer and register the
-    caller's address as a contact pending verification (F-02 step 3)."""
+    caller's address as a contact pending verification (F-02 step 3), or verified at once for a
+    test customer flagged `autoVerifyContacts` (F-02.C7)."""
     if args.caller.role is not Role.UNKNOWN:
         return _known(args.caller)
     if not (args.customerCode or args.vatNumber) or not args.venueName:
@@ -173,12 +174,13 @@ def _same_venue(registered: str, given: str) -> bool:
 
 def _register(args: IdentifyContactInput, customer: dict[str, Any], method: str) -> dict[str, Any]:
     caller = args.caller
+    verified = customer.get("autoVerifyContacts") is True
     contact = Contact(
         contactId=f"con_{uuid4().hex[:12]}",
         customerId=customer["customerId"],
         customerIds=[customer["customerId"]],
         language=args.language,
-        status=ContactStatus.PENDING_VERIFICATION,
+        status=ContactStatus.VERIFIED if verified else ContactStatus.PENDING_VERIFICATION,
     )
     # model_validate: a malformed caller address is a ValidationError (INVALID_INPUT), not a crash
     identity = ChannelIdentity.model_validate(
@@ -187,7 +189,7 @@ def _register(args: IdentifyContactInput, customer: dict[str, Any], method: str)
             "channel": caller.channelAddress.split("#", 1)[0],
             "contactId": contact.contactId,
             "role": Role.CUSTOMER_CONTACT,
-            "verified": False,
+            "verified": verified,
             "conversationId": caller.conversationId,
         }
     )
@@ -221,7 +223,7 @@ def _register(args: IdentifyContactInput, customer: dict[str, Any], method: str)
     put_event(
         SOURCE,
         "contact.identified",
-        {"contactId": contact.contactId, "method": method, "verified": False},
+        {"contactId": contact.contactId, "method": method, "verified": verified},
     )
     return {
         "status": "MATCHED",

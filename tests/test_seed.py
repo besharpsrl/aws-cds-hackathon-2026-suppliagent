@@ -83,6 +83,9 @@ def test_demo_scenarios_are_covered() -> None:
     assert any(c["language"] == "en" for c in DATA["contacts"])  # FN-27
     assert any("privacyNoticeSentAt" not in c for c in DATA["contacts"])  # F-01 first contact
     assert any(ins["droppedProducts"] for ins in DATA["customer-insights"])
+    # T-71: judges identify with test customers published in the README, verified at once
+    demo = [c["customerCode"] for c in DATA["customers"] if c["autoVerifyContacts"]]
+    assert demo == ["C90001", "C90002", "C90003"]
     assert any(
         r["dueAt"] < ins["updatedAt"]
         for ins in DATA["customer-insights"]
@@ -150,6 +153,28 @@ def test_reset_clears_orders_that_exist(dynamodb: Any) -> None:
     reset.clear(dynamodb, "dev")
     for table in ("orders", "deliveries", "issues"):
         assert dynamodb.Table(f"suppliagent-dev-{table}").scan()["Count"] == 0
+
+
+def test_reset_releases_handed_off_conversations(dynamodb: Any) -> None:  # F-14, until T-63
+    conversations = dynamodb.create_table(
+        TableName="suppliagent-dev-conversations",
+        KeySchema=[{"AttributeName": "conversationId", "KeyType": "HASH"}],
+        AttributeDefinitions=[{"AttributeName": "conversationId", "AttributeType": "S"}],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    conversations.put_item(
+        Item={"conversationId": "conv_h", "mode": "HUMAN", "handoff": {"reason": "X"}}
+    )
+    conversations.put_item(Item={"conversationId": "conv_a", "mode": "AGENT", "role": "UNKNOWN"})
+    spec = importlib.util.spec_from_file_location("reset_script", SEED_PY.with_name("reset.py"))
+    assert spec and spec.loader
+    reset = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(reset)
+    assert reset.release_handoffs(dynamodb, "dev") == 1
+    released = conversations.get_item(Key={"conversationId": "conv_h"})["Item"]
+    assert released == {"conversationId": "conv_h", "mode": "AGENT"}
+    untouched = conversations.get_item(Key={"conversationId": "conv_a"})["Item"]
+    assert untouched["role"] == "UNKNOWN"
 
 
 def test_write_loads_every_item(dynamodb: Any) -> None:

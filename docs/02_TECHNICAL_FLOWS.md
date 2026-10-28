@@ -27,7 +27,7 @@ stateDiagram-v2
     HUMAN --> AGENT: Release
 ```
 
-In `HUMAN` i messaggi vanno solo in console; al `Release` l'agente riprende con il contesto completo.
+In `HUMAN` i messaggi vanno solo in console; al `Release` l'agente riprende con la sua storia di sessione (contesto completo, con i messaggi scambiati in `HUMAN`, con T-54).
 
 ### 2.2 Ruoli
 
@@ -183,6 +183,7 @@ I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`att
 | C4 dati incoerenti dopo 3 tentativi | Handoff `IDENTIFICATION_FAILED` |
 | C5 contatto con più locali | Chiede il locale (lista con pulsanti) |
 | C6 chi scrive è un agente di commercio non censito su quel numero | Verifica tramite console (login `sales_rep`) o back office |
+| C7 clienti di prova dei giudici (`Customers.autoVerifyContacts = true`, codici `C90001`–`C90003` nel README) | Contatto creato già `VERIFIED` (`ChannelIdentity.verified = true`): ordina dal messaggio successivo. Per tutti gli altri clienti resta C1/C2. I giudici che usano lo stesso codice condividono il locale (storico e ordini); `seed/reset.py` cancella gli ordini |
 
 ### F-03 – Comprensione dell'intento (FN-04)
 
@@ -376,6 +377,8 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 
 `handoff_to_human(reason, summary)` → `mode = HUMAN`, notifica in console (e all'agente di commercio del cliente). Il back office risponde dalla console sullo stesso canale; *Release* riporta all'agente.
 
+Implementazione (T-49): logica in `suppliagent_shared.handoff` (`start_handoff`, `release_handoff`), usata dal tool e dalla console (*Take over* con `OPERATOR_TAKEOVER`, *Release*: T-63). La conversazione è quella del `caller`, mai scelta dal modello; il tool è disponibile a tutti i ruoli, anche `UNKNOWN` (F-02.C3/C4); `OPERATOR_TAKEOVER` solo dalla console. Un secondo handoff mentre è già `HUMAN` non cambia nulla (`ALREADY_HANDED_OFF`). La risposta del turno in cui avviene l'handoff parte normalmente; i messaggi successivi restano in `Messages`. Limiti: niente avviso all'agente di commercio; al *Release* l'agente non vede i messaggi scambiati in `HUMAN` (solo la sua storia di sessione, fino a T-54); l'`order-sweeper` manda promemoria e scadenze delle bozze anche in `HUMAN`. Finché manca il *Release* in console (T-63), `seed/reset.py` riporta ad `AGENT` le conversazioni in `HUMAN`.
+
 ### F-15 – Cambio di canale (FN-25)
 
 Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp può essere confermato rispondendo all'email, e un tap RCS sulla consegna è collegato all'ordine giusto. La risposta va sempre sul canale da cui arriva il messaggio.
@@ -472,7 +475,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `reorder.proposed` / `reorder.accepted` | customerId, orderId | proattività |
 | `delivery.issue_reported` | orderId, type | qualità consegne |
 | `rep.query` | repId, type (briefing, sheets, catalog, order) | uso copilota |
-| `handoff.started` / `handoff.released` | reason | automazione |
+| `handoff.started` / `handoff.released` | conversationId, reason, by (`AGENT` o operatore) | automazione |
 | `notification.sent` / `notification.failed` | channel, template | delivery |
 | `agent.turn` | latencyMs, tokens, toolCount | costi e performance |
 
@@ -500,7 +503,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `get_rep_agenda` | repId, date | visite[] con priorità |
 | `get_customer_briefing` | repId, customerId | briefing strutturato |
 | `send_notification` | contactId, channel?, template \| content, attachments | messageId, channelUsed |
-| `handoff_to_human` | conversationId, reason, summary | ok |
+| `handoff_to_human` | reason, summary (conversazione dal `caller`) | `HANDED_OFF` \| `ALREADY_HANDED_OFF`; errore `NOT_FOUND` se la conversazione non esiste |
 
 ## 7. Parametri configurabili (SSM)
 

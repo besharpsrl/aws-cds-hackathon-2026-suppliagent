@@ -65,6 +65,8 @@ class Customer(Item):
     deliveryDays: list[Weekday]
     repId: RepId
     priceListId: str
+    # Test customer for the judges (T-71): contacts that identify with its code are verified at once
+    autoVerifyContacts: bool = False
 
 
 class Contact(Item):
