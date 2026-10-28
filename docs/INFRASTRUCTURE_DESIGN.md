@@ -93,6 +93,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 - **Outbound**: `SendRcsMessage` (conferma d'ordine, avviso di consegna con **suggested replies** *Ricevuto / Segnala problema*, proposta di riordino per chi non usa WhatsApp) con **fallback** `SendTextMessage`.
 - **Inbound two-way** → SNS `suppliagent-sms-inbound` (risposte, postback, STOP).
 - Configuration set con event destinations (Firehose + SNS). Agente RCS registrato, device tester invitati, registrazione Italia (`IT_RCS_LAUNCH_REGISTRATION`).
+- *Stato (M-11, 28/10)*: agente RCS **di test** `ACTIVE` con un tester Android verificato (solo tester, niente lancio verso gli operatori) e sender ID `SUPPLIAGENT` per IT (one-way); account SMS in sandbox. In Italia RCS non arriva su iPhone. Procedura, ID e vincoli: [RCS_SMS_SETUP.md](./RCS_SMS_SETUP.md).
 
 ### 5.2 Ingestion & Routing
 
@@ -431,7 +432,7 @@ SuppliAgent/
 | `sesDomain` | `ordini.example.com` (`infra/config/environments.ts`, `-c sesDomain=…` lo sovrascrive: crea identity e rule set inbound; `dev` = `suppliagent.stonecutters.besharp.net`) |
 
 > `waPhoneNumberId` e `sesDomain` stanno nella config per ambiente (T-15): un deploy di `ChannelsStack` (anche indiretto) non li perde. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
-| `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender |
+| `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender (`dev`: `rcs-83650561df2543e1942ccb9a500fa736` / `SUPPLIAGENT`, ancora da cablare in T-27) |
 | `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |
 | `matchAutoThreshold` / `matchAskThreshold` | `0.85` / `0.5` |
@@ -440,7 +441,7 @@ SuppliAgent/
 Prerequisiti non automatizzabili:
 1. WABA collegata a EUM Social; **template WhatsApp approvati**.
 2. Dominio SES verificato, uscita dalla sandbox, MX per l'inbound.
-3. Agente RCS, inviti tester, origination identity SMS.
+3. Agente RCS, inviti tester, origination identity SMS ([RCS_SMS_SETUP.md](./RCS_SMS_SETUP.md)).
 4. Accesso ai modelli Bedrock (Amazon Nova, Titan Embeddings) in eu-west-1: già disponibili sull'account `471112860008`. Claude richiede l'abilitazione tramite il distributore/AWS (vedi §12).
 5. **Export del catalogo dal cliente** (anonimizzato) e schede tecniche.
 
