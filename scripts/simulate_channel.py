@@ -6,11 +6,14 @@ Usage:
   uv run python scripts/simulate_channel.py --env dev --from +393330000001 --text "ciao" --wait
   uv run python scripts/simulate_channel.py --env dev --from +393330000001 --image note.jpg --wait
   uv run python scripts/simulate_channel.py --env dev --from +393330000001 --audio voice.ogg --wait
+  uv run python scripts/simulate_channel.py --env dev --from +393330000001 --tap opt_1 --wait
 
 `--from` must be in ChannelIdentities (seed numbers), otherwise the sender is UNKNOWN. Photos and
 voice notes are uploaded to `sim/<mediaId>/` in the media bucket and the Router copies them to
 `media/` (only while `notifierSandbox` is true). `--wait` prints the replies the Notifier records
-in `Messages` (status SANDBOX: nothing is sent). Refuses to run when the sandbox is off.
+in `Messages` (status SANDBOX: nothing is sent), with their buttons. `--tap <id>` taps a button
+of the latest reply that has buttons (T-25), as a reply to that message. Refuses to run when the
+sandbox is off.
 """
 
 import argparse
@@ -66,6 +69,35 @@ def media_message(kind: str, media_id: str, mime_type: str, caption: str | None)
     return {"type": kind, kind: media}
 
 
+def tap_message(
+    button: dict[str, Any], interactive: dict[str, Any], context_id: str
+) -> dict[str, Any]:
+    """Tap on a button (or list row) of a recorded reply, as WhatsApp sends it."""
+    options = interactive["options"]
+    as_buttons = len(options) <= 3 and all(len(o["title"]) <= 20 for o in options)
+    kind = "button_reply" if as_buttons else "list_reply"
+    reply = {"id": button["id"], "title": button["title"]}
+    return {
+        "type": "interactive",
+        "interactive": {"type": kind, kind: reply},
+        "context": {"id": context_id},
+    }
+
+
+def latest_buttons(messages: Any, conv: str) -> dict[str, Any] | None:
+    """The latest reply of the conversation sent with buttons."""
+    items = messages.query(
+        KeyConditionExpression=Key("conversationId").eq(conv),
+        ScanIndexForward=False,
+        Limit=20,
+        ConsistentRead=True,
+    )["Items"]
+    for item in items:
+        if item["direction"] == "OUTBOUND":
+            return item if item.get("interactive") and item.get("providerMessageId") else None
+    return None
+
+
 def conversation_id(contact_id: str) -> str:
     """As the Router derives it for a known contact."""
     return "conv_" + contact_id.replace("_", "")
@@ -92,13 +124,15 @@ def main() -> None:
     parser.add_argument("--text", help="message text, or the caption of --image")
     parser.add_argument("--image", type=Path)
     parser.add_argument("--audio", type=Path)
+    parser.add_argument("--tap", help="id of a button of the latest reply, e.g. order_confirm")
     parser.add_argument("--wait", action="store_true", help="print the replies (up to --timeout)")
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--profile")
     parser.add_argument("--region", default="eu-west-1")
     args = parser.parse_args()
-    if bool(args.image) + bool(args.audio) > 1 or not (args.text or args.image or args.audio):
-        parser.error("give --text, or one of --image / --audio")
+    given = bool(args.text or args.image or args.audio)
+    if bool(args.image) + bool(args.audio) > 1 or not (given or args.tap) or (given and args.tap):
+        parser.error("give --text, or one of --image / --audio, or --tap")
 
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
     ssm = session.client("ssm")
@@ -120,8 +154,19 @@ def main() -> None:
     if not identity:
         raise SystemExit(f"{sender} is not in ChannelIdentities: it would be an UNKNOWN sender")
 
+    conv = conversation_id(identity["contactId"])
+    messages = session.resource("dynamodb").Table(f"suppliagent-{args.env}-messages")
     file = args.image or args.audio
-    if file:
+    if args.tap:
+        last = latest_buttons(messages, conv)
+        if not last:
+            raise SystemExit("the latest reply of the conversation has no buttons")
+        button = next((o for o in last["interactive"]["options"] if o["id"] == args.tap), None)
+        if not button:
+            ids = [o["id"] for o in last["interactive"]["options"]]
+            raise SystemExit(f"no button {args.tap!r} in the latest reply: {ids}")
+        message = tap_message(button, last["interactive"], last["providerMessageId"])
+    elif file:
         kind = "image" if args.image else "audio"
         mime = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
         media_id = f"sim_{uuid.uuid4().hex}"
@@ -143,12 +188,12 @@ def main() -> None:
     print(f"→ published as {sender} ({identity['role']}) on {topic.rsplit(':', 1)[-1]}")
 
     if args.wait:
-        conv = conversation_id(identity["contactId"])
         since = now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
-        messages = session.resource("dynamodb").Table(f"suppliagent-{args.env}-messages")
         replies = wait_for_replies(messages, conv, since, args.timeout)
         for reply in replies:
             print(f"← [{reply['status']}] {reply['text']}")
+            for option in reply.get("interactive", {}).get("options", []):
+                print(f"   [{option['title']}] --tap {option['id']}")
         if not replies:
             raise SystemExit(f"no reply in {args.timeout}s: check the DLQs and the Dispatcher logs")
 
