@@ -21,6 +21,7 @@ dependencies = [
   "suppliagent-tool-inventory-pricing",
   "suppliagent-tool-order-intake",
   "suppliagent-tool-orders",
+  "suppliagent-tool-reco",
 ]
 
 [tool.uv]
@@ -44,6 +45,7 @@ suppliagent-tool-customers = { workspace = true }
 suppliagent-tool-inventory-pricing = { workspace = true }
 suppliagent-tool-order-intake = { workspace = true }
 suppliagent-tool-orders = { workspace = true }
+suppliagent-tool-reco = { workspace = true }
 
 [tool.uv.workspace]
 members = ["agent", "services/*", "services/tools/*"]
@@ -74,7 +76,7 @@ python_version = "3.12"
 strict = true
 explicit_package_bases = true
 # Package roots, so files under services/ map to their import names (e.g. suppliagent_shared).
-mypy_path = "services/shared/src:services/catalog_indexer/src:services/console_api/src:services/erp_adapter/src:services/insights_analyzer/src:services/inbound_router/src:services/notifier/src:services/order_pdf/src:services/order_sweeper/src:services/proactive_trigger/src:services/turn_dispatcher/src:services/tools/catalog/src:services/tools/catalog/tests/support:services/tools/customers/src:services/tools/inventory_pricing/src:services/tools/orders/src:agent/src:services/tools/order_intake/src:services/tools/order_intake/tests"
+mypy_path = "services/shared/src:services/catalog_indexer/src:services/console_api/src:services/erp_adapter/src:services/insights_analyzer/src:services/inbound_router/src:services/notifier/src:services/order_pdf/src:services/order_sweeper/src:services/proactive_trigger/src:services/turn_dispatcher/src:services/tools/catalog/src:services/tools/catalog/tests/support:services/tools/customers/src:services/tools/inventory_pricing/src:services/tools/orders/src:services/tools/reco/src:agent/src:services/tools/order_intake/src:services/tools/order_intake/tests"
 exclude = ["(^|/)(node_modules|cdk\\.out|\\.venv)/"]
 
 [tool.pytest.ini_options]

@@ -3,7 +3,7 @@
 > **Punto di partenza** del progetto: stato, timeline, lavoro in parallelo, flussi utente, decisioni e registro del fatto.
 > **Backlog e azioni manuali: [GitHub Issues](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues)** (fonte unica dei task: sotto-issue per flusso, dipendenze, priorità, assegnatario).
 > Comportamento e requisiti: [`docs/`](./docs/README.md) · Regole per gli agenti di sviluppo: [`AGENTS.md`](./agent-context/AGENTS.md).
-> Aggiornato al **27/10/2026 ore 20:00** · Code freeze **28/10 ore 12:00** · Submission interna **28/10 ore 15:00** · Scadenza Devpost **28/10 ore 21:00** (ora italiana)
+> Aggiornato al **28/10/2026** · Scadenza Devpost **28/10 ore 21:00** (ora italiana): si sviluppa fino alla scadenza
 
 **Team**: MG, MM, FZ (sviluppo) · PS (Team Representative su Devpost: invia la submission).
 
@@ -26,7 +26,7 @@
 
 ### 1.2 Come prendere e chiudere un task
 
-- **Backlog**: [issue aperte](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues) con etichette `must` / `should` / `could`, `stream:*`, `corsia:A|B|C`, `manual`; issue madri (etichetta `flusso`) con i task come sotto-issue; dipendenze come *blocked by*; milestone `Code freeze 28/10 12:00`.
+- **Backlog**: [issue aperte](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues) con etichette `must` / `should` / `could`, `stream:*`, `corsia:A|B|C`, `manual`; issue madri (etichetta `flusso`) con i task come sotto-issue; dipendenze come *blocked by*; milestone `Sviluppo`.
   ```bash
   gh issue list --label corsia:B --state open --json number,title,assignees,labels   # i task della corsia
   gh issue view <n>                                                                   # descrizione, dipendenze, madre
@@ -35,11 +35,11 @@
 - **Prendere**: un'issue senza assegnatario e senza *blocked by* aperti → `gh issue edit <n> --add-assignee @me`, branch `feat/FN-xx-…`, push e **PR in draft** con `Closes #<n>` nel corpo e il piano. Nessuna modifica a questo file. Le dipendenze di integrazione (scritte nell'issue) non bloccano: si lavora con mock/stub dichiarati nella PR.
 - **Chiudere**: PR pronta con la Definition of Done e la sezione **Deploy** compilata (stack, comandi completi, script prima e dopo, oppure "nessun deploy"); al merge l'issue si chiude da sola. Se il lavoro crea o rinvia task, si apre o si modifica un'issue (`gh issue create --parent <madre> --blocked-by …`).
 - **Git**: un task = una PR (salvo task accoppiati, §4.5). CI e review automatica di Copilot partono quando la PR esce dalla bozza (`gh pr ready`). Merge su `main` con CI verde e *Create a merge commit*: PR **a basso rischio** (solo `docs/` o file `.md`, solo `console/`, solo test o `agent/evals/`) con CI verde e review automatica di Copilot senza rilievi aperti: chi l'ha aperta può fare merge da solo. Tutte le altre (infra, `services/`, prompt e codice dell'agente, `seed/`, `.github/workflows/`, `agent-context/`): review di un'altra persona del team. Mai push o force push su `main`. `git pull --rebase origin main` prima di iniziare e prima della PR.
-- **Deploy**: regole in §1.5. `dev` è l'**unico ambiente** (sviluppo, video e giudici): dopo il code freeze si fa deploy solo con conferma di MG.
+- **Deploy**: regole in §1.5. `dev` è l'**unico ambiente** (sviluppo, video e giudici): dopo l'invio della submission si fa deploy solo con conferma di MG.
 
 ### 1.3 Cosa non fare senza chiedere
 
-Deploy dopo il code freeze, modifiche a risorse condivise (numero WhatsApp, dominio SES, template Meta), cambio di region/modello, servizi a costo fisso, cancellazione di dati o bucket, dati reali del cliente. Elenco completo: [AGENTS.md §11](./agent-context/AGENTS.md).
+Deploy dopo l'invio della submission, modifiche a risorse condivise (numero WhatsApp, dominio SES, template Meta), cambio di region/modello, servizi a costo fisso, cancellazione di dati o bucket, dati reali del cliente. Elenco completo: [AGENTS.md §11](./agent-context/AGENTS.md).
 
 ### 1.4 Note operative (problemi già incontrati)
 
@@ -57,7 +57,7 @@ Deploy dopo il code freeze, modifiche a risorse condivise (numero WhatsApp, domi
 |---|---|---|---|
 | **A – Canali ed e2e** | MG | `messaging`, `channels` | T-68 → T-26 → T-25 → T-29 → T-26b → T-67 → *could*: T-24 → T-27 |
 | **B – Agente** | MM | `agent`, `catalog` | T-71 → T-49 → T-48 → T-54 → T-05/T-53 → *could*: T-50 → T-51 → T-44b → T-52 |
-| **C – Console e materiali** | FZ | `console`, `proactive` | T-62 → T-11 → T-12 → T-63 (dopo T-49) → *could*: T-06b, T-08, T-64 → dopo il freeze T-10, T-72 |
+| **C – Console e materiali** | FZ | `console`, `proactive` | T-62 → T-11 → T-12 → T-63 (dopo T-49) → *could*: T-06b, T-08, T-64 → per ultimi T-10, T-72 |
 
 Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08 (C); T-44b (B) aspetta T-06b (C). `foundation`, `data`, `seed/reset.py`, `notifierSandbox` e T-73 (security review): MG.
 
@@ -102,7 +102,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Area | Stato | Dettaglio |
 |---|---|---|
 | Infra di base (CDK, CI, tag, KMS, dati) | ✅ | 9 stack su `dev`, CI verde, cdk-nag |
-| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, `PENDING` (T-29); invio reale mai provato (T-68) |
+| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, ancora `PENDING` il 28/10 alle 12:00 (T-29: da controllare in WhatsApp Manager; non servono alla demo, l'invio di template è T-24, rinviato); invio reale mai provato (T-68) |
 | Email (SES) | ◐ | Dominio `suppliagent.stonecutters.besharp.net` verificato, fuori sandbox, ricezione ok; email di conferma con PDF e bounce fatti (T-26, #100); risposte nello stesso thread del cliente e modifica rispondendo all'email di conferma (T-26b); da provare su `dev` dopo il deploy di `channels`, `messaging`, `agent` |
 | SMS/RCS | ◐ | M-11 fatta (28/10): agente RCS di test attivo, tester Android verificato e messaggio di prova ricevuto; sender ID `SUPPLIAGENT` (IT, one-way); RCS non arriva su iPhone in Italia ([RCS_SMS_SETUP](docs/RCS_SMS_SETUP.md)). Codice da fare (T-27, Could) |
 | Pipeline (Router, debounce, Dispatcher, Notifier base) | ✅ | Errori del turno: cortesia al primo, handoff `LOW_CONFIDENCE` al secondo, tetto di messaggi per turno (T-67, da deployare con `messaging`) |
@@ -113,7 +113,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp (T-25) in PR, da provare sul telefono |
 | ERP mock + PDF ordine | ✅ | |
 | Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Inbox, dettaglio e correzione riga su API reali (T-62, dopo il deploy di `console` e `scripts/deploy-console.sh`); conversazioni live e handoff in console (T-63: *Take over* / *Reply* / *Release*, polling 2 s; lato agente T-49); WebSocket e KPI da fare |
-| Copilota agenti, riordino proattivo | ◐ | Could (flussi 6 e 7). Insight per cliente e selezione dei riordini scaduti in `ProactiveStack` (T-08, dopo il deploy di `proactive`): analisi notturna su `CustomerInsights`, al mattino `reorder.due`; il turno proattivo con il template è T-52, i suggerimenti `reco` T-50 |
+| Copilota agenti, riordino proattivo | ◐ | Could (flussi 6 e 7). Insight per cliente e selezione dei riordini scaduti in `ProactiveStack` (T-08, dopo il deploy di `proactive`): analisi notturna su `CustomerInsights`, al mattino `reorder.due`; il turno proattivo con il template è T-52. Suggerimenti `reco` (T-50, PR dopo il code freeze, da deployare solo con conferma di MG): 1 per ordine con consenso, fino a 3 nel briefing dell'agente di commercio |
 | Analytics e KPI | – | Tolti (§4.4) |
 | `dev` pronto per i giudici, README giudici | ☐ | T-10 |
 | Materiali (diagramma, testi, video, ACE, Devpost) | ☐ | T-11, T-12, §5 |
@@ -132,16 +132,12 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 |---|---|---|
 | ✅ 12/10–26/10 | Concept, documenti, P0, pipeline, agente, ordini, console su mock | Devpost, account AWS, SES, WABA |
 | **Mar 27/10 sera** | Must: **T-68 per primo** (e2e da telefono), T-71, T-26, T-62, T-11, T-12; poi Should: T-25, T-48, T-49, T-54 | M-01 foto bigliettini, M-02 numeri tester, M-05 ACE, M-11 registrazioni SMS/RCS |
-| **Mer 28/10 08:00–12:00** | Should: T-63, T-67, T-26b, T-05 + T-53, T-29; correzioni da T-68; **~10:00 T-73 security review** su `main`. Could (flussi 6–8) solo con i Must chiusi | M-06 utente `judge` |
-| **Mer 28/10 ore 12:00** | **Code freeze**: dopo, solo bugfix bloccanti | |
-| 12:00–13:00 | T-10: ultimo deploy di `dev` da `main`, reset, prova del flusso 9 | |
-| 13:00–14:00 | T-72 (documenti) | M-07 registrazione e upload video |
-| 14:00–15:00 | Supporto | M-08 Devpost compilato e **inviato** (PS), M-09 controllo link |
+| **Mer 28/10** | Sviluppo fino alla scadenza: Should (T-63, T-67, T-26b, T-05 + T-53, T-29), correzioni da T-68, T-73 security review su `main`, poi Could (flussi 6–8). Per ultimi: T-10 (ultimo deploy di `dev` da `main`, reset, prova del flusso 9) e T-72 (documenti) | M-06 utente `judge`, M-07 registrazione e upload video, M-08 Devpost compilato e **inviato** (PS), M-09 controllo link |
 | 28/10 ore 21:00 | | Scadenza Devpost |
 | fino al 12/11 17:00 PT | | M-10 ambiente attivo, costi sotto controllo |
 | ~19/11 | | Annuncio vincitori |
 
-Se T-68 non è verde entro le 08:00 del 28/10: si ferma tutto il resto e si lavora solo sull'e2e. Si taglia prima dal Could, poi dal Should; il freeze non si sposta.
+Se T-68 non è verde: si ferma tutto il resto e si lavora solo sull'e2e. Si taglia prima dal Could, poi dal Should.
 
 ---
 
@@ -151,10 +147,10 @@ Il backlog è su **[GitHub Issues](https://github.com/besharpsrl/aws-cds-hackath
 
 ### 4.1 Etichette e priorità
 
-- **`must`**: senza, la demo o la submission non stanno in piedi (flussi 1, 2, 5a, 9 e materiali) · **`should`**: completa i flussi 2–5 e la qualità tecnica · **`could`**: flussi 6–8, si iniziano solo quando tutti i `must` sono presi; quello che non è pronto al code freeze va nel video come "prossimi passi".
+- **`must`**: senza, la demo o la submission non stanno in piedi (flussi 1, 2, 5a, 9 e materiali) · **`should`**: completa i flussi 2–5 e la qualità tecnica · **`could`**: flussi 6–8, si iniziano solo quando tutti i `must` sono presi; quello che non è pronto per il video ci va come "prossimi passi".
 - **`stream:CH|AG|CO|IN`**: area (canali, agente, console, infra/dati/materiali) · **`corsia:A|B|C`**: corsia di default (§1.5) · **`manual`**: azione manuale · **`flusso`**: issue madre.
 - **Stato**: aperta senza assegnatario = libera · assegnata con PR draft = in corso · chiusa = fatta (PR mergiata).
-- **Milestone**: `Code freeze 28/10 12:00` · `Submission 28/10 15:00` · `Judging fino al 12/11`.
+- **Milestone**: `Sviluppo` · `Submission` · `Judging fino al 12/11`.
 
 ### 4.2 Issue madri
 
@@ -220,13 +216,13 @@ Nessuna per la gara.
 | 27/10 | Backlog e azioni manuali su GitHub Issues (sotto-issue per flusso, dipendenze *blocked by*); si prende un task assegnandosi l'issue, si chiude con `Closes #n` nella PR |
 | 27/10 | Lavoro in parallelo su tre corsie (§1.5), max 2 sessioni per persona in worktree separati; comandi `/sa-next-task`, `/sa-dod-check`, `/sa-cds-check` nel repo |
 | 27/10 | Gli agenti non attendono conferma sul piano se l'issue ha criteri chiari; ogni fine task riporta deploy e script con i comandi completi |
-| 27/10 | Security review una sola volta a fine iterazione (T-73, 28/10 ~10:00), non a ogni task |
+| 27/10 | Security review una sola volta a fine iterazione (T-73), non a ogni task |
 | 28/10 | CI solo su PR pronte e su `main`; review automatica di Copilot sulle PR; merge da soli per le PR a basso rischio (§1.2); un solo controllo completo per task |
-| 27/10 | Un solo ambiente, `dev`, per sviluppo, video e giudici: l'ambiente `demo` è stato tolto da codice e documenti; dopo il code freeze `dev` è congelato |
+| 27/10 | Un solo ambiente, `dev`, per sviluppo, video e giudici: l'ambiente `demo` è stato tolto da codice e documenti |
 | 27/10 | Il repo serve solo alla gara: niente task o domande per il cliente reale; tolti T-09, T-65 (analytics/KPI) e T-70 (hardening) |
 | 27/10 | Perimetro = flussi utente 1–9 (§4.3), con priorità Must/Should/Could; i flussi 6–8 sono Could |
 | 27/10 | I giudici entrano con un codice cliente di prova che verifica subito il contatto (T-71); l'email per la conferma, se manca, la chiede l'assistente (T-26) |
-| 27/10 | Code freeze spostato al 28/10 ore 12:00 |
+| 28/10 | Si sviluppa fino alla scadenza Devpost; T-10 (ultimo deploy di `dev`) e la submission chiudono la giornata |
 | 27/10 | Prezzi mostrati al ristoratore (riepilogo con totale stimato) |
 | 27/10 | Pulsanti WhatsApp per chiarimenti e conferma (T-25) |
 | 27/10 | Repo pubblico (già pubblico, licenza MIT) |

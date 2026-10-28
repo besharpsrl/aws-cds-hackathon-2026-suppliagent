@@ -63,7 +63,11 @@ ORDER_TOOLS = frozenset(
         "orders___report_delivery_issue",
     }
 )
-KNOWN_TOOLS = frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH, HANDOFF}) | ORDER_TOOLS
+# FN-11, FN-20 (T-50): one suggestion per order (consent checked by the tool), rep briefings.
+RECO_TOOLS = frozenset({"reco___recommend_products", "reco___record_suggestion_outcome"})
+KNOWN_TOOLS = (
+    frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH, HANDOFF}) | ORDER_TOOLS | RECO_TOOLS
+)
 REQUEST_CONFIRMATION = "orders___request_order_confirmation"
 CONFIRM = "orders___confirm_order"
 # After these the summary shown earlier in the turn is no longer what the order is.

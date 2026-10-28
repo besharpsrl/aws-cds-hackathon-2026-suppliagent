@@ -1,180 +1,130 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* beSharp Brand Identity Guidelines v1.0: palette p.14-16, type p.24-27. */
 :root {
-  font-family: system-ui, sans-serif;
-  color: #1f2933;
+  --be-sharple: #7531af;
+  --light-sharple: #915abf;
+  --deep-sharple: #3b1958;
+  --white-not: #e8e4ec;
+  --black-rock: #130f19;
+
+  --radius: 0.5rem;
+  --background: #f1eff4;
+  --foreground: #130f19;
+  --card: #ffffff;
+  --card-foreground: #130f19;
+  --popover: #ffffff;
+  --popover-foreground: #130f19;
+  --primary: #7531af;
+  --primary-foreground: #ffffff;
+  --secondary: #e3d6ef;
+  --secondary-foreground: #3b1958;
+  --muted: #e8e4ec;
+  --muted-foreground: #5b5562;
+  --accent: #e3d6ef;
+  --accent-foreground: #3b1958;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --success: #16794a;
+  --success-soft: #dcf2e5;
+  --warning: #8a5300;
+  --warning-soft: #fdf0d2;
+  --border: #d1ccd5;
+  --input: #b9b4be;
+  --ring: #915abf;
+  --sidebar: #130f19;
+  --sidebar-foreground: #e8e4ec;
+  --sidebar-muted: #a29ca8;
+  --sidebar-accent: #2b2631;
+  --sidebar-primary: #915abf;
 }
-body {
-  margin: 0;
+
+@theme inline {
+  --font-sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  /* Gotham (licensed) is not bundled: Montserrat is its closest open substitute. */
+  --font-display: 'Montserrat', 'Sora', ui-sans-serif, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-deep-sharple: var(--deep-sharple);
 }
-.logo {
-  height: 32px;
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
 }
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0.75rem 1.5rem;
-  border-bottom: 1px solid #d9dee3;
-}
-.topbar nav {
-  flex: 1;
-}
-.topbar nav a {
-  color: inherit;
-  text-decoration: none;
-  font-weight: 600;
-}
-.topbar nav a.active {
-  text-decoration: underline;
-}
-.badge {
-  margin-left: 0.5rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: #fde68a;
-}
-.content {
-  padding: 1.5rem;
-}
-.login {
-  max-width: 22rem;
-  margin: 4rem auto;
-  display: grid;
-  gap: 1.5rem;
-  justify-items: center;
-}
-.login form {
-  display: grid;
-  gap: 1rem;
-  width: 100%;
-}
-.login label {
-  display: grid;
-  gap: 0.25rem;
-}
-[role='alert'] {
-  color: #b42318;
-}
-p.status {
-  padding: 1.5rem;
-}
-.notice {
-  padding: 0.5rem 0.75rem;
-  background: #fff7d6;
-  border-radius: 4px;
-}
-.filters {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-table.orders,
-table.lines {
-  width: 100%;
-  border-collapse: collapse;
-}
-table.orders th,
-table.orders td,
-table.lines th,
-table.lines td {
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid #e4e7eb;
-  text-align: left;
-  vertical-align: top;
-}
-span.status {
-  padding: 0.1rem 0.45rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  background: #e4e7eb;
-}
-.status-NEEDS_CLARIFICATION,
-.status-AMBIGUOUS,
-.status-UNMATCHED,
-.status-DELIVERY_ISSUE,
-.status-OUT_OF_STOCK {
-  background: #fde68a;
-}
-.status-CONFIRMED,
-.status-MATCHED,
-.status-DELIVERED,
-.status-SUBMITTED {
-  background: #c7f0d2;
-}
-.detail {
-  display: grid;
-  grid-template-columns: minmax(280px, 40%) 1fr;
-  gap: 1.5rem;
-  align-items: start;
-}
-.ticket {
-  position: sticky;
-  top: 1rem;
-  line-height: 0;
-}
-.ticket img {
-  width: 100%;
-  border-radius: 4px;
-}
-.region {
-  position: absolute;
-  padding: 0;
-  border: 2px solid rgba(37, 99, 235, 0.35);
-  background: transparent;
-  cursor: pointer;
-}
-.region[data-corrected='true'] {
-  border-color: rgba(22, 163, 74, 0.7);
-}
-.region[data-active='true'] {
-  border-color: #2563eb;
-  background: rgba(37, 99, 235, 0.2);
-}
-table.lines tr {
-  cursor: pointer;
-}
-table.lines tr[aria-selected='true'] {
-  background: #eaf1ff;
-}
-table.lines tr[data-corrected='true'] td:first-child {
-  border-left: 4px solid #16a34a;
-}
-.candidates {
-  margin: 0.4rem 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.25rem;
-}
-.thread {
-  list-style: none;
-  padding: 0;
-  display: grid;
-  gap: 0.5rem;
-  max-width: 40rem;
-}
-.bubble {
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  background: #f1f5f9;
-}
-.bubble-outbound {
-  background: #e0f2fe;
-}
-.bubble p {
-  margin: 0.25rem 0 0;
-  white-space: pre-wrap;
-}
-.bubble .meta {
-  font-size: 0.8rem;
-  color: #475467;
-}
-.reply {
-  display: grid;
-  gap: 0.5rem;
-  max-width: 40rem;
-  margin: 1rem 0;
-}
-.reply textarea {
-  width: 100%;
+
+@layer components {
+  /* Brand titles: heavy display face, always all caps. */
+  .page-title {
+    @apply font-display text-2xl font-black uppercase tracking-tight text-foreground;
+  }
+
+  /* Ticket photo with one clickable box per order line. */
+  .ticket {
+    @apply relative leading-none;
+  }
+  .ticket img {
+    @apply w-full rounded-md;
+  }
+  .region {
+    @apply absolute rounded-sm border-2 border-primary/40 bg-transparent p-0 transition-colors;
+  }
+  .region:hover {
+    @apply bg-primary/10;
+  }
+  .region[data-corrected='true'] {
+    @apply border-success/70;
+  }
+  .region[data-active='true'] {
+    @apply border-primary bg-primary/20;
+  }
 }

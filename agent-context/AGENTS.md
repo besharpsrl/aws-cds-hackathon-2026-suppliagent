@@ -17,7 +17,7 @@
 
 | Vincolo | Implicazione per il codice |
 |---|---|
-| Consegna **28/10/2026 21:00 (ora italiana)**, submission interna entro le 15:00; code freeze interno **28/10 ore 12:00** (calendario in `START_HERE.md` §3) | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
+| Consegna **28/10/2026 21:00 (ora italiana)**: si sviluppa fino alla scadenza (calendario in `START_HERE.md` §3) | Priorità ai **Must** (03 §4.1); niente refactoring non richiesti |
 | Il codice deve **importare e chiamare** almeno un client CDS valido | Usare **solo**: `socialmessaging` (`SendWhatsAppMessage`), `pinpoint-sms-voice-v2` (`SendRcsMessage`, `SendTextMessage`), `sesv2` (`SendEmail`). **Vietati**: `pinpoint` (v1), `pinpoint-email`, EUM Push |
 | Lavoro **nuovo** (dal 14/09/2026) | Non copiare codice preesistente senza dichiararlo nel README (sezione "Pre-existing code") |
 | Repo con **licenza open source** visibile | Non rimuovere `LICENSE` |
@@ -104,7 +104,7 @@ Non creare nuove cartelle di primo livello senza motivo; se servono, aggiorna qu
 | IaC | AWS CDK v2 (TypeScript), Node.js 22 LTS, `cdk-nag` (AwsSolutions) |
 | Lambda & agent | Python 3.12, ARM64, `boto3`, **AWS Lambda Powertools** (logger, tracer, metrics, idempotency), `pydantic` v2 |
 | Agent | Strands Agents + AgentCore SDK; tool esposti via AgentCore Gateway (MCP) |
-| Console | React + Vite + TypeScript, Amplify Auth (Cognito) solo lato client |
+| Console | React + Vite + TypeScript, Tailwind CSS v4 + shadcn/ui (tema beSharp), Amplify Auth (Cognito) solo lato client |
 | Python tooling | `uv` (dipendenze), `ruff` (lint+format), `mypy`, `pytest`, `moto` per i mock AWS |
 | TS tooling | `npm` workspaces, `eslint`, `prettier`, `vitest` (anche per le CDK assertions) |
 
@@ -124,7 +124,7 @@ npm run format         # prettier --write + ruff format
 
 # Infra
 cd infra && npx cdk diff -c env=dev
-npx cdk deploy --all -c env=dev                      # unico ambiente; dopo il code freeze solo con conferma (§11)
+npx cdk deploy --all -c env=dev                      # unico ambiente; dopo la submission solo con conferma (§11)
 
 # Console (scaffold in T-61)
 npm run dev -w console | npm run build -w console | npm test -w console
@@ -206,7 +206,7 @@ Per l'agente: ogni modifica a prompt o tool va verificata con gli **eval** in `a
 
 ## 11. Cosa NON fare senza chiedere
 
-- Deploy su `dev` **dopo il code freeze** (è l'ambiente dei giudici) o modifiche a risorse condivise (numero WhatsApp, dominio SES, agente RCS, template Meta).
+- Deploy su `dev` **dopo l'invio della submission** (è l'ambiente dei giudici) o modifiche a risorse condivise (numero WhatsApp, dominio SES, agente RCS, template Meta).
 - Cambiare **region**, modello o inference profile (deve restare `eu.`).
 - Aggiungere servizi con **costo fisso** (OpenSearch, NAT Gateway, RDS, istanze sempre accese) o fuori dai crediti.
 - Usare client CDS non ammessi o rimuovere l'uso reale di quelli ammessi.

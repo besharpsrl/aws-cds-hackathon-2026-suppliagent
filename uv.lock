@@ -21,6 +21,7 @@ members = [
     "suppliagent-tool-inventory-pricing",
     "suppliagent-tool-order-intake",
     "suppliagent-tool-orders",
+    "suppliagent-tool-reco",
     "suppliagent-turn-dispatcher",
 ]
 
@@ -2045,6 +2046,7 @@ dependencies = [
     { name = "suppliagent-tool-inventory-pricing" },
     { name = "suppliagent-tool-order-intake" },
     { name = "suppliagent-tool-orders" },
+    { name = "suppliagent-tool-reco" },
     { name = "suppliagent-turn-dispatcher" },
 ]
 
@@ -2075,6 +2077,7 @@ requires-dist = [
     { name = "suppliagent-tool-inventory-pricing", editable = "services/tools/inventory_pricing" },
     { name = "suppliagent-tool-order-intake", editable = "services/tools/order_intake" },
     { name = "suppliagent-tool-orders", editable = "services/tools/orders" },
+    { name = "suppliagent-tool-reco", editable = "services/tools/reco" },
     { name = "suppliagent-turn-dispatcher", editable = "services/turn_dispatcher" },
 ]
 
@@ -2280,6 +2283,17 @@ requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 name = "suppliagent-tool-orders"
 version = "0.1.0"
 source = { editable = "services/tools/orders" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
+name = "suppliagent-tool-reco"
+version = "0.1.0"
+source = { editable = "services/tools/reco" }
 dependencies = [
     { name = "suppliagent-shared" },
 ]

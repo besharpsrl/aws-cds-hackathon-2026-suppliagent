@@ -10,7 +10,7 @@
 
 Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di accettazione e stream responsabile: base per **validare il perimetro** e **dividere il lavoro**.
 
-**Priorità (MoSCoW, scadenza 28/10)**: **M** Must · **S** Should · **C** Could · **W** Won't.
+**Priorità (MoSCoW, scadenza 28/10 ore 21:00)**: **M** Must · **S** Should · **C** Could · **W** Won't.
 **Stream**: **AG** Agent & AgentCore · **CH** Canali CDS · **CO** Console & Analytics · **IN** Infra, Dati & Materiali.
 **Criteri di gara**: TE (Technical Execution 40%), VI (Value/Impact 20%), DP (Demo 20%), CR (Creativity 10%), FU (Functionality 10%), WA (premio WhatsApp).
 
@@ -55,7 +55,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-08 | Chiarimenti con pulsanti interattivi | M | AG + CH | DP, WA | F-05 | ✅ T-25 (pulsanti per una domanda alla volta; più domande in un messaggio: opzioni numerate nel testo) |
 | FN-09 | Disponibilità, sostituti, multipli e minimi | M | AG | VI | F-06 | ✅ |
 | FN-10 | Data di consegna e cut-off | M | AG | FU | F-06 | ✅ |
-| FN-11 | Suggerimento contestuale (max 1 per ordine) | S | AG | VI, CR | F-07 | ◐ T-50 |
+| FN-11 | Suggerimento contestuale (max 1 per ordine) | S | AG | VI, CR | F-07 | ✓ T-50 |
 | FN-12 | Riepilogo e conferma esplicita | M | AG | FU | F-07 | ✅ |
 | FN-13 | ERP adapter (mock) e numero d'ordine | M | IN | TE | F-07 | ✅ |
 | FN-14 | Email di conferma con PDF | M | CH | TE | F-07, F-11 | ✅ T-26 (da provare su `dev`) |
@@ -141,9 +141,9 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [ ] Ordine dopo il cut-off → nuova data proposta e confermata dal cliente.
 
 #### FN-11 – Suggerimento contestuale · **S** · AG
-- [ ] Al massimo 1 suggerimento per ordine, solo con consenso, sempre motivato ("di solito lo ordini", "in promozione questa settimana").
-- [ ] Rifiuto registrato; nessuna insistenza.
-- [ ] Valore dei suggerimenti accettati tracciato per i KPI.
+- [x] Al massimo 1 suggerimento per ordine, solo con consenso, sempre motivato ("di solito lo ordini", "in promozione questa settimana") (T-50, `recommend_products`).
+- [x] Rifiuto registrato; nessuna insistenza (T-50: escluso per 30 giorni).
+- [x] Valore dei suggerimenti accettati tracciato per i KPI (T-50: `Orders.suggestion.value`, evento `order.suggestion`).
 
 #### FN-12 – Riepilogo e conferma esplicita · **M** · AG
 - [ ] Nessun ordine inviato senza tap/risposta di conferma.
@@ -182,7 +182,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [ ] Conversione delle proposte tracciata.
 
 #### FN-20 – Copilota: consigli e briefing · **M** · AG
-- [ ] "Cosa propongo al cliente X?" → 3 proposte motivate (riordini scaduti, prodotti smessi, gap vs locali simili, promo).
+- [x] "Cosa propongo al cliente X?" → 3 proposte motivate (riordini scaduti, prodotti smessi, gap vs locali simili, promo) (T-50, `recommend_products` con `customerId`).
 - [ ] Il briefing include ultimi ordini, trend e problemi aperti.
 - [ ] Cliente fuori portafoglio → rifiuto.
 

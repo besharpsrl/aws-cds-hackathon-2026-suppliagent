@@ -4,7 +4,7 @@ Le regole di progetto sono in `AGENTS.md` (caricato in automatico). Qui solo ci�
 
 ## Priorità delle fonti
 
-- **Backlog e azioni manuali: GitHub Issues** (`gh issue list`). **Stato, timeline, lavoro in parallelo, flussi e decisioni: `START_HERE.md`** (code freeze 28/10 ore 12:00, submission entro le 15:00 del 28/10). Comportamento e requisiti: `docs/`. `AGENTS.md` riassume: in caso di conflitto segnalalo e correggilo. `docs/OLD/` è solo storico.
+- **Backlog e azioni manuali: GitHub Issues** (`gh issue list`). **Stato, timeline, lavoro in parallelo, flussi e decisioni: `START_HERE.md`** (scadenza Devpost 28/10 ore 21:00: si sviluppa fino alla scadenza). Comportamento e requisiti: `docs/`. `AGENTS.md` riassume: in caso di conflitto segnalalo e correggilo. `docs/OLD/` è solo storico.
 - Presa e chiusura dei task come da `START_HERE.md` §1.2 (assegnazione dell'issue, `Closes #n` nella PR). Comando di lavoro: `/sa-next-task [T-xx] [loop]`. Le todo list della chat non sono un registro.
 
 ## Modo di lavorare

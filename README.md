@@ -8,7 +8,7 @@
 
 Built by [beSharp](https://www.besharp.it) for the **AWS Communication Developer Services (CDS) Agentic AI Partner Hackathon**, on a real use case of a beSharp customer: a food distributor serving the HoReCa channel (hotels, restaurants, cafés).
 
-> Status: 🚧 in development – submission deadline 28 Oct 2026.
+> Status: 🚧 in development – submission deadline 28 Oct 2026, 21:00 CET.
 >
 > **Team: start from [`START_HERE.md`](START_HERE.md)** (Italian) – single source for project status, timeline, task backlog, manual actions and decisions.
 
