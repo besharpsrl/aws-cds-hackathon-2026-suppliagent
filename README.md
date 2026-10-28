@@ -113,7 +113,10 @@ The console has a read-only `judge` role: judges can browse orders and see each 
 
 Judges using the same code share that venue (order history and orders). Orders may be cleared when the demo data is reset; your number stays registered.
 
-_Coming soon_: console URL and `judge` credentials.
+**Console (read-only `judge` role)**
+- URL: https://d3po2gqnlfcxyr.cloudfront.net
+- Email: `matteo.goretti+judge@besharp.it`
+- Password: `judgeAWSCDShackathon2026!`
 
 ## Pre-existing code
 
