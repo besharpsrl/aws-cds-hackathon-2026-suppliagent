@@ -49,7 +49,7 @@ Regole:
 
 ## 4. Architettura in breve
 
-Region **`eu-west-1`** · modello **Amazon Nova via inference profile `eu.`** (`eu.amazon.nova-pro-v1:0` per ragionamento e vision, `eu.amazon.nova-lite-v1:0` per classificazioni veloci; mai `global.` o `us.`). Decisione del 25/10: Claude non è abilitato sull'account (*channel program*); il passaggio a Claude, se sbloccato, sarà un task pianificato. Il codice legge il modello da configurazione (`MODEL_ID`/`FAST_MODEL_ID`), mai hard-coded · IaC **AWS CDK (TypeScript)** · agente **Strands Agents su Amazon Bedrock AgentCore**.
+Region **`eu-west-1`** · modello **Amazon Nova via inference profile `eu.`** (`eu.amazon.nova-2-lite-v1:0` per ragionamento e vision dal 28/10, prima `eu.amazon.nova-pro-v1:0`; `eu.amazon.nova-lite-v1:0` per classificazioni veloci; mai `global.` o `us.`). Decisione del 25/10: Claude non è abilitato sull'account (*channel program*); il passaggio a Claude, se sbloccato, sarà un task pianificato. Il codice legge il modello da configurazione (`MODEL_ID`/`FAST_MODEL_ID`), mai hard-coded · IaC **AWS CDK (TypeScript)** · agente **Strands Agents su Amazon Bedrock AgentCore**.
 
 ```
 Canali CDS (WhatsApp · SES in/out · SMS/RCS) ─► SNS ─► SQS inbound (standard + DLQ) ─► Inbound Router

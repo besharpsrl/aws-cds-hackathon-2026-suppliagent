@@ -119,6 +119,17 @@ def test_release_gives_the_conversation_back(conversations: Any, handoff_events:
     assert handoff()["status"] == "HANDED_OFF"  # a new handoff after the release
 
 
+def test_release_lets_an_unidentified_sender_try_again(conversations: Any) -> None:
+    handoff()
+    conversations.update_item(
+        Key={"conversationId": CONV},
+        UpdateExpression="SET identifyAttempts = :n",
+        ExpressionAttributeValues={":n": 3},
+    )
+    assert release_handoff("suppliagent.console-api", CONV, by="op_1") is True
+    assert "identifyAttempts" not in conversations.get_item(Key={"conversationId": CONV})["Item"]
+
+
 def test_operator_takeover(conversations: Any, handoff_events: Events) -> None:
     reason = HandoffReason.OPERATOR_TAKEOVER
     assert start_handoff("suppliagent.console-api", CONV, reason, "", by="op_1") is True

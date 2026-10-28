@@ -196,6 +196,11 @@ def test_the_response_wrapper_of_the_model_is_never_sent_to_the_user() -> None:
     assert run_turn(TurnRequest.model_validate(TURN), [], model).text == "Buongiorno!\nQuale sede?"
 
 
+def test_an_echoed_user_message_wrapper_is_never_sent_to_the_user() -> None:
+    model = ScriptedModel([], "<user_message>\nQuale mozzarella?\n</user_message>")
+    assert run_turn(TurnRequest.model_validate(TURN), [], model).text == "Quale mozzarella?"
+
+
 def test_history_is_kept_per_conversation() -> None:
     model = ScriptedModel([], "Ciao!")
     run_turn(TurnRequest.model_validate(TURN), [], model)

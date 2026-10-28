@@ -1,6 +1,6 @@
 """Scores `extract_order_lines` on the handwritten notes in `data/bigliettini/` (T-43, FN-05).
 
-    uv run python agent/evals/run_order_intake.py [--model eu.amazon.nova-pro-v1:0]
+    uv run python agent/evals/run_order_intake.py [--model eu.amazon.nova-2-lite-v1:0]
 
 Calls Bedrock (InvokeModel only, one call per note) with the current AWS credentials, region from
 `AWS_REGION`/`AWS_DEFAULT_REGION` (eu-west-1). A line counts as correct when a returned line is
@@ -79,7 +79,7 @@ def score(extraction: Extraction, expected: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="eu.amazon.nova-pro-v1:0")
+    parser.add_argument("--model", default="eu.amazon.nova-2-lite-v1:0")
     os.environ["MODEL_ID"] = parser.parse_args().model
     report: dict[str, Any] = {}
     for image in sorted(p for p in DATA.iterdir() if p.suffix in FORMATS):

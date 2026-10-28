@@ -226,6 +226,9 @@ def match_products(args: MatchProductsInput) -> dict[str, Any]:
             c["substitutes"] = (
                 stock.get_item(Key={"sku": c["sku"]}).get("Item", {}).get("substitutes", [])
             )
+    # options below the ask threshold are noise ("fior di latte" offered for "pelati"): only the
+    # lead stays, so UNMATCHED still says what came closest
+    top = top[:1] + [c for c in top[1:] if c["confidence"] >= ask]
     confidence = top[0]["confidence"] if top else 0.0
     status = "MATCHED" if confidence >= auto else "AMBIGUOUS" if confidence >= ask else "UNMATCHED"
     _emit(args.caller, status, confidence)

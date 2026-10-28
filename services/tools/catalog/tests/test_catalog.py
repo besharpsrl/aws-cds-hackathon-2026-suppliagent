@@ -81,6 +81,15 @@ def test_close_candidates_are_ambiguous_with_at_most_three(
     assert len(result["candidates"]) <= 3
 
 
+def test_options_below_the_ask_threshold_are_not_offered(
+    vectors: FakeVectors, history: Any
+) -> None:
+    history("cus_t1", [])
+    vectors.hits = [("FDL-PIZZA-1KG", 0.85), ("FDL-PIZZA-2KG", 0.84), ("BUFALA-250", 0.31)]
+    result = match("fior di latte")
+    assert [c["sku"] for c in result["candidates"]] == ["FDL-PIZZA-1KG", "FDL-PIZZA-2KG"]
+
+
 def test_previously_bought_candidate_comes_first(vectors: FakeVectors, history: Any) -> None:
     history("cus_t1", [["FDL-PIZZA-2KG"]])
     vectors.hits = [("FDL-PIZZA-1KG", 0.9), ("FDL-PIZZA-2KG", 0.9)]
