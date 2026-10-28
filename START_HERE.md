@@ -1,9 +1,9 @@
 # SuppliAgent – Da dove partire
 
-> **Punto di partenza** del progetto: stato, timeline, lavoro in parallelo, flussi utente, decisioni e registro del fatto.
+> **Punto di partenza** del team: come si lavora, stato, timeline, backlog, azioni manuali e decisioni.
 > **Backlog e azioni manuali: [GitHub Issues](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues)** (fonte unica dei task: sotto-issue per flusso, dipendenze, priorità, assegnatario).
-> Comportamento e requisiti: [`docs/`](./docs/README.md) · Regole per gli agenti di sviluppo: [`AGENTS.md`](./agent-context/AGENTS.md).
-> Aggiornato al **28/10/2026** · Scadenza Devpost **28/10 ore 21:00** (ora italiana): si sviluppa fino alla scadenza
+> Cosa fa il prodotto e come si comporta: [`docs/`](./docs/README.md) (indice di tutti i documenti) · Regole per gli agenti di sviluppo: [`AGENTS.md`](./agent-context/AGENTS.md).
+> Aggiornato al **28/10/2026** · Scadenza Devpost **28/10 ore 21:00** (ora italiana)
 
 **Team**: MG, MM, FZ (sviluppo) · PS (Team Representative su Devpost: invia la submission).
 
@@ -26,7 +26,7 @@
 
 ### 1.2 Come prendere e chiudere un task
 
-- **Backlog**: [issue aperte](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues) con etichette `must` / `should` / `could`, `stream:*`, `corsia:A|B|C`, `manual`; issue madri (etichetta `flusso`) con i task come sotto-issue; dipendenze come *blocked by*; milestone `Sviluppo`.
+- **Backlog**: [issue aperte](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues) con etichette (§4.1); issue madri (etichetta `flusso`) con i task come sotto-issue; dipendenze come *blocked by*.
   ```bash
   gh issue list --label corsia:B --state open --json number,title,assignees,labels   # i task della corsia
   gh issue view <n>                                                                   # descrizione, dipendenze, madre
@@ -47,19 +47,19 @@ Deploy dopo l'invio della submission, modifiche a risorse condivise (numero What
 - Se dopo un deploy una Lambda ha `CodeSize` di poche centinaia di byte, l'asset è stato pubblicato vuoto (sintesi concorrente tra worktree): ripubblicare lo zip corretto con la stessa chiave e aggiornare il codice.
 - Dopo un deploy di `agent`, le sessioni AgentCore già aperte restano sul codice vecchio: provare con una conversazione nuova.
 - `cdk synth` a volte fallisce senza motivo riproducibile: rilanciare.
-- Su `dev` l'invio è **reale** da T-68 (`notifierSandbox: 'false'` in `infra/config/environments.ts`, scritto in SSM dal deploy di `foundation`). Il simulatore (`scripts/simulate_channel.py`) funziona solo col sandbox acceso: per una prova si accende in SSM (`aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value true --overwrite`), lo si rispegne subito (`--value false`) e lo si annuncia in chat, perché nel frattempo i telefoni veri non ricevono risposte.
+- Su `dev` l'invio è **reale** (`notifierSandbox = false`): il simulatore funziona solo col sandbox acceso, da accendere e rispegnere subito annunciandolo in chat (comandi in [CHANNELS_SETUP §1.4](./docs/CHANNELS_SETUP.md)), perché nel frattempo i telefoni veri non ricevono risposte.
 
 ### 1.5 Lavoro in parallelo
 
-**Corsie** (punto di partenza, non un vincolo: chi resta senza lavoro prende un'issue libera di un'altra corsia annunciandolo). Dentro la corsia l'ordine è: prima i `must`, poi `should`, poi `could` (un task che blocca un `must` conta come `must`); le dipendenze *blocked by* fanno saltare i task non ancora pronti.
+**Corsie** (punto di partenza, non un vincolo: chi resta senza lavoro prende un'issue libera di un'altra corsia annunciandolo). Dentro la corsia: prima i `must`, poi `should`, poi `could`.
 
-| Corsia | Chi | Stack di cui fa il deploy | Ordine |
-|---|---|---|---|
-| **A – Canali ed e2e** | MG | `messaging`, `channels` | T-68 → T-26 → T-25 → T-29 → T-26b → T-67 → *could*: T-24 → T-27 |
-| **B – Agente** | MM | `agent`, `catalog` | T-71 → T-49 → T-48 → T-54 → T-05/T-53 → *could*: T-50 → T-51 → T-44b → T-52 |
-| **C – Console e materiali** | FZ | `console`, `proactive` | T-62 → T-11 → T-12 → T-63 (dopo T-49) → *could*: T-06b, T-08, T-64 → per ultimi T-10, T-72 |
+| Corsia | Chi | Stack di cui fa il deploy |
+|---|---|---|
+| **A – Canali ed e2e** | MG | `messaging`, `channels` |
+| **B – Agente** | MM | `agent`, `catalog` |
+| **C – Console e materiali** | FZ | `console`, `proactive` |
 
-Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08 (C); T-44b (B) aspetta T-06b (C). `foundation`, `data`, `seed/reset.py`, `notifierSandbox` e T-73 (security review): MG.
+`foundation`, `data`, `seed/reset.py`, `notifierSandbox` e T-73 (security review): MG.
 
 **Sessioni**
 - Al massimo **2 sessioni agente per persona**, ognuna in un **git worktree** proprio, aperto in una finestra VS Code separata (o `claude -w <nome>`):
@@ -79,66 +79,54 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 - Dopo il deploy: `CodeSize` delle Lambda non di poche centinaia di byte (§1.4); dopo `agent`, conversazione nuova.
 - Prove: ognuno dal **proprio telefono** registrato (M-02); nessuno lancia `seed/reset.py` tranne MG, su richiesta.
 
-**Subagent** (Copilot e Claude Code, definiti in `agent-context/claude/agents/`): `test-runner` per lint/test/synth con il solo riassunto degli errori; `aws-docs-researcher` prima di API nuove (Memory, Guardrail, messaggi interattivi, RCS, Knowledge Base); `code-reviewer` a fine task. `security-reviewer` solo in T-73, non a ogni task.
+**Subagent** (Copilot e Claude Code, definiti in `agent-context/claude/agents/`): `test-runner` per lint/test/synth con il solo riassunto degli errori; `aws-docs-researcher` prima di API nuove; `code-reviewer` a fine task. `security-reviewer` solo in T-73, non a ogni task.
 
 **Comandi** (`.github/prompts/` per Copilot, `agent-context/claude/commands/` per Claude Code): `/sa-next-task [A|B|C] [T-xx] [loop]` (ciclo completo, con un solo controllo completo per task) · `/sa-dod-check` (Definition of Done, solo per lavoro fatto senza `/sa-next-task`) · `/sa-cds-check` (requisiti CDS, prima della submission; le regole sui client e sugli invii sono anche in CI, `tests/test_cds_usage.py`).
 
-### 1.6 Mappa dei documenti
-
-| File | Contenuto |
-|---|---|
-| `START_HERE.md` | Questo file |
-| `README.md` | Presentazione in inglese per GitHub e giudici, setup, passi manuali, "Try it" |
-| `SUPPLIAGENT_SOLUTION.md` | Concept: problema, scenario demo, KPI, criteri di gara, rischi |
-| [`docs/README.md`](./docs/README.md) | Indice di `docs/` e convenzioni sugli ID |
-| `agent-context/` | Regole e strumenti per gli agenti di sviluppo (si modificano solo lì; `install.sh` li collega) |
-
 ---
 
-## 2. Stato del progetto (27/10 ore 18:00)
+## 2. Stato del progetto (28/10)
 
-**In sintesi**: la pipeline è completa su `dev` e un ordine va da messaggio a `CONFIRMED` → ERP mock → PDF **col simulatore**. WhatsApp reale riceve testo e foto fino all'agente, ma **la risposta sul telefono non è mai stata provata** (Notifier in sandbox). Mancano per la gara: e2e da telefono, ingresso dei giudici (T-71), email di conferma, console su dati reali, `dev` pronto per i giudici, materiali di submission. Poi, se c'è tempo, i flussi 6–8 (§4.3).
+**In sintesi**: tutti i flussi della gara sono su `dev` e provati da telefono (T-68): un ordine va dalla foto su WhatsApp a `CONFIRMED` → ERP mock → PDF via email, con conferma e avviso di consegna su RCS/SMS. Restano aperti: eval della lettura (T-05, T-53), copilota completo (T-51), chat web degli agenti (T-64), security review (T-73), video e invio Devpost (M-07, M-08). Stato per funzionalità: colonna *Gara* di [03 §4.1](./docs/03_FUNCTIONAL_SPEC.md).
 
 | Area | Stato | Dettaglio |
 |---|---|---|
 | Infra di base (CDK, CI, tag, KMS, dati) | ✅ | 9 stack su `dev`, CI verde, cdk-nag |
-| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template **`APPROVED`** il 28/10 pomeriggio (T-29); `reorder_suggestion` e `delivery_update` inviati dal Notifier (T-52); fuori finestra `order_pending_reminder` dall'`order-sweeper`, poi fallback su RCS/SMS (T-24); invio reale attivo da T-68 (dopo il deploy di `foundation` e `messaging`); flussi 2 e 3 provati il 28/10 col simulatore in IT ed EN fino a ERP mock, PDF, stato, modifica e annullo; prova dal telefono da fare (T-68) |
-| Email (SES) | ◐ | Dominio `suppliagent.stonecutters.besharp.net` verificato, fuori sandbox, ricezione ok; email di conferma con PDF e bounce fatti (T-26, #100); risposte nello stesso thread del cliente e modifica rispondendo all'email di conferma (T-26b); da provare su `dev` dopo il deploy di `channels`, `messaging`, `agent` |
-| SMS/RCS | ◐ | M-11 fatta (28/10): agente RCS di test attivo, tester Android verificato e messaggio di prova ricevuto; sender ID `SUPPLIAGENT` (IT, one-way); RCS non arriva su iPhone in Italia ([RCS_SMS_SETUP](docs/RCS_SMS_SETUP.md)). T-27: two-way su `sms-inbound`, Router SMS/RCS, Notifier con `SendRcsMessage` e fallback SMS (risposte, conferma breve, avviso di consegna) verso identità `SMS#` verificate; dopo il deploy di `foundation`, `channels`, `messaging` e il passo manuale dell'identità del tester |
-| Pipeline (Router, debounce, Dispatcher, Notifier base) | ✅ | Errori del turno: cortesia al primo, handoff `LOW_CONFIDENCE` al secondo, tetto di messaggi per turno (T-67, da deployare con `messaging`) |
-| Agente (AgentCore Runtime + Gateway + Memory, Strands, Nova `eu.`) | ✅ | Ruoli e tool ok; informativa e consenso al primo contatto (T-48); Memory per contatto, Guardrail, tracce OTel e messaggi come contenuto non fidato (T-54, dopo il deploy di `agent`) |
-| Identificazione di nuovi contatti | ✅ | Abbinamento ok; i contatti nuovi restano da verificare, tranne quelli dei clienti di prova dei giudici `C90001`–`C90003` (T-71, F-02.C7) |
-| Lettura bigliettini (`order_intake`) | ✅ | 62% di righe corrette sul corsivo (3 note): da migliorare (T-05, T-53) |
-| Matching catalogo (S3 Vectors) | ✅ | Schede tecniche: Knowledge Base su S3 Vectors con 12 schede sintetiche (T-06b, dopo il deploy di `catalog` e `seed.py`); tool `ask_product_sheets` con citazione della scheda (T-44b, dopo il deploy di `agent`) |
-| Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp (T-25) in PR, da provare sul telefono |
-| ERP mock + PDF ordine | ✅ | |
-| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Inbox, dettaglio e correzione riga su API reali (T-62, dopo il deploy di `console` e `scripts/deploy-console.sh`); conversazioni live e handoff in console (T-63: *Take over* / *Reply* / *Release*, polling 2 s; lato agente T-49); WebSocket e KPI da fare; dominio stabile `app.suppliagent.stonecutters.besharp.net` (CNAME → CloudFront, certificato ACM `us-east-1`, 28/10) |
-| Copilota agenti, riordino proattivo | ◐ | Could (flussi 6 e 7). Insight per cliente e selezione dei riordini scaduti in `ProactiveStack` (T-08, dopo il deploy di `proactive`): analisi notturna su `CustomerInsights`, al mattino `reorder.due`; il turno proattivo con il template è T-52. Suggerimenti `reco` (T-50, PR dopo il code freeze, da deployare solo con conferma di MG): 1 per ordine con consenso, fino a 3 nel briefing dell'agente di commercio |
+| WhatsApp (EUM Social) | ✅ | Numero +39 345 246 0472, invio reale; pulsanti (T-25); 8 template `APPROVED`, fuori finestra 24h template e fallback su RCS/SMS (T-24, T-29); flussi 2 e 3 da telefono in IT ed EN (T-68). Dettagli: [CHANNELS_SETUP](./docs/CHANNELS_SETUP.md) |
+| Email (SES) | ✅ | Dominio `suppliagent.stonecutters.besharp.net` fuori sandbox; conferma con PDF (T-26); ordine via email e risposte nello stesso thread (T-26b); allegati PDF/Excel no |
+| SMS/RCS | ✅ | Agente RCS di test con tester Android, sender ID `SUPPLIAGENT` one-way (M-11); conferma breve e avviso di consegna con *Ricevuto / Segnala problema* (T-27); RCS non arriva su iPhone in Italia |
+| Pipeline (Router, debounce, Dispatcher, Notifier) | ✅ | Errori del turno: cortesia al primo, handoff `LOW_CONFIDENCE` al secondo (T-67) |
+| Agente (AgentCore + Strands, Nova `eu.`) | ✅ | Ruoli e tool; informativa e consenso (T-48); Memory, Guardrail, tracce OTel (T-54) |
+| Identificazione e accesso giudici | ✅ | Clienti di prova `C90001`–`C90003` verificati subito (T-71); utente console `judge` (M-06) |
+| Lettura bigliettini (`order_intake`) | ◐ | 62% di righe corrette sul corsivo: eval da completare (T-05, T-53) |
+| Matching catalogo e schede tecniche | ✅ | S3 Vectors; Knowledge Base con 12 schede sintetiche e citazione (T-06b, T-44b) |
+| Ordine, ERP mock, PDF | ✅ | Stock, prezzi, consegne, stato, modifica/annullo, sweeper |
+| Console | ◐ | Inbox, dettaglio con bigliettino, correzione riga (T-62); conversazioni e handoff con polling 2 s (T-63); dominio `app.suppliagent.stonecutters.besharp.net`; chat web agenti aperta (T-64) |
+| Copilota agenti | ◐ | Suggerimenti `reco` (T-50); briefing, agenda e ordine per conto del cliente aperti (T-51) |
+| Riordino proattivo | ✅ | Insight notturni e `reorder.due` (T-08), turno proattivo con template (T-52) |
 | Analytics e KPI | – | Tolti (§4.4) |
-| `dev` pronto per i giudici, README giudici | ☐ | T-10 |
-| Materiali (diagramma, testi, video, ACE, Devpost) | ☐ | T-11, T-12, §5 |
+| Submission | ◐ | README giudici e deploy (T-10), diagramma e testi (T-11), copione (T-12) fatti; video (M-07) e Devpost (M-08) aperti |
+| Security review | ☐ | T-73 |
 
 **Limiti noti** (da tenere presenti nella demo):
 - il matcher chiede conferma per "farina tipo 00 da 25 kg" (due candidati vicini); Nova a volte non converte "5 kg di farina" in sacchi da 25 kg;
-- sui bigliettini difficili Nova legge male parte delle righe e può fare più di 5 domande in un messaggio (T-05, T-53); a volte chiude il turno con "ti faccio sapere" senza chiamare i tool (prompt corretto in T-68, rispondere "ok" lo sblocca);
+- sui bigliettini difficili Nova legge male parte delle righe e può fare più di 5 domande in un messaggio (T-05, T-53); a volte chiude il turno con "ti faccio sapere" senza chiamare i tool (rispondere "ok" lo sblocca);
 - nessun controllo di stock al momento della conferma (solo prima); `cancel_order` non avvisa l'ERP;
-- fuori dalla finestra 24h di WhatsApp niente template né fallback di canale;
-- rischi di sicurezza accettati fino alla demo: [INFRASTRUCTURE_DESIGN §12](./docs/INFRASTRUCTURE_DESIGN.md).
+- fuori dalla finestra 24h di WhatsApp la risposta dell'operatore dalla console non parte (`409 channel_unavailable`, [02 F-14](./docs/02_TECHNICAL_FLOWS.md));
+- rischi di sicurezza accettati: [INFRASTRUCTURE_DESIGN §12](./docs/INFRASTRUCTURE_DESIGN.md).
 
 ---
 
 ## 3. Timeline
 
-| Quando | Sviluppo (MG, MM, FZ) | Azioni manuali (§5) |
-|---|---|---|
-| ✅ 12/10–26/10 | Concept, documenti, P0, pipeline, agente, ordini, console su mock | Devpost, account AWS, SES, WABA |
-| **Mar 27/10 sera** | Must: **T-68 per primo** (e2e da telefono), T-71, T-26, T-62, T-11, T-12; poi Should: T-25, T-48, T-49, T-54 | M-01 foto bigliettini, M-02 numeri tester, M-05 ACE, M-11 registrazioni SMS/RCS |
-| **Mer 28/10** | Sviluppo fino alla scadenza: Should (T-63, T-67, T-26b, T-05 + T-53, T-29), correzioni da T-68, T-73 security review su `main`, poi Could (flussi 6–8). Per ultimi: T-10 (ultimo deploy di `dev` da `main`, reset, prova del flusso 9) e T-72 (documenti) | M-06 utente `judge`, M-07 registrazione e upload video, M-08 Devpost compilato e **inviato** (PS), M-09 controllo link |
-| 28/10 ore 21:00 | | Scadenza Devpost |
-| fino al 12/11 17:00 PT | | M-10 ambiente attivo, costi sotto controllo |
-| ~19/11 | | Annuncio vincitori |
-
-Se T-68 non è verde: si ferma tutto il resto e si lavora solo sull'e2e. Si taglia prima dal Could, poi dal Should.
+| Quando | Cosa |
+|---|---|
+| ✅ 12/10–27/10 | Concept, documenti, P0, pipeline, agente, ordini, console, canali reali |
+| **Mer 28/10** | Sviluppo fino alla scadenza; T-73 security review su `main`; M-07 video, M-08 Devpost compilato e **inviato** (PS) |
+| 28/10 ore 21:00 | Scadenza Devpost: da qui deploy su `dev` solo con conferma di MG |
+| fino al 12/11 17:00 PT (13/11 02:00 IT) | M-10: `dev` attivo per i giudici, costi sotto controllo |
+| dal 14/11 | Spegnimento dell'ambiente: [TEARDOWN](./docs/TEARDOWN.md) |
+| ~19/11 | Annuncio vincitori |
 
 ---
 
@@ -148,41 +136,30 @@ Il backlog è su **[GitHub Issues](https://github.com/besharpsrl/aws-cds-hackath
 
 ### 4.1 Etichette e priorità
 
-- **`must`**: senza, la demo o la submission non stanno in piedi (flussi 1, 2, 5a, 9 e materiali) · **`should`**: completa i flussi 2–5 e la qualità tecnica · **`could`**: flussi 6–8, si iniziano solo quando tutti i `must` sono presi; quello che non è pronto per il video ci va come "prossimi passi".
+- **`must`**: senza, la demo o la submission non stanno in piedi (flussi 1, 2, 5a, 9 e materiali) · **`should`**: completa i flussi 2–5 e la qualità tecnica · **`could`**: flussi 6–8; quello che non è pronto per il video ci va come "prossimi passi".
 - **`stream:CH|AG|CO|IN`**: area (canali, agente, console, infra/dati/materiali) · **`corsia:A|B|C`**: corsia di default (§1.5) · **`manual`**: azione manuale · **`flusso`**: issue madre.
 - **Stato**: aperta senza assegnatario = libera · assegnata con PR draft = in corso · chiusa = fatta (PR mergiata).
 - **Milestone**: `Sviluppo` · `Submission` · `Judging fino al 12/11`.
 
 ### 4.2 Issue madri
 
-| Issue | Flussi | Task |
-|---|---|---|
-| [#37](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/37) | 1 e 9 – primo contatto, identificazione, prova dei giudici | T-71, T-48 |
-| [#38](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/38) | 2 e 3 – ordine da foto e dopo l'ordine | T-68, T-26, T-25, T-29 |
-| [#39](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/39) | 4 – ordine via email | T-26b |
-| [#40](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/40) | 5 – supervisione in console | T-62, T-49, T-63, T-67 |
-| [#41](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/41) | 6 – copilota per l'agente di commercio | T-08, T-50, T-51, T-06b, T-44b, T-64 |
-| [#42](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/42) | 7 – riordino proattivo | T-24, T-52 |
-| [#43](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/43) | 8 – consegna SMS/RCS | T-27 |
-| [#44](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/44) | Qualità tecnica | T-54, T-05, T-53, T-73 |
-| [#45](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/45) | Demo e submission | T-11, T-12, T-10, T-72 |
-| [#46](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/46) | Azioni manuali | M-01…M-11 |
+Ogni flusso utente ha la sua issue madre (colonna *Madre* di §4.3). Le altre: [#44](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/44) qualità tecnica (T-54, T-05, T-53, T-73) · [#45](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/45) demo e submission (T-11, T-12, T-10, T-72) · [#46](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/46) azioni manuali (M-01…M-12).
 
-### 4.3 I flussi utente
+### 4.3 I flussi utente (perimetro della gara)
 
-Utenti: **ristoratore** (WhatsApp +39 345 246 0472 o email `ordini@…`), **agente di commercio** (WhatsApp o chat in console), **back office** (console), **giudice** (console in sola lettura + WhatsApp come un ristoratore). Ogni messaggio passa da: raccolta dei messaggi ravvicinati → un turno dell'agente (Amazon Nova su AgentCore) con i suoi tool → una sola risposta, inviata dal Notifier.
+Utenti: **ristoratore** (WhatsApp +39 345 246 0472 o email `ordini@…`), **agente di commercio** (WhatsApp o chat in console), **back office** (console), **giudice** (console in sola lettura + WhatsApp come un ristoratore). Ogni messaggio passa da: raccolta dei messaggi ravvicinati → un turno dell'agente (Amazon Nova su AgentCore) con i suoi tool → una sola risposta, inviata dal Notifier. Lo stato è in §2.
 
-| # | Flusso | Passi | Stato oggi |
-|---|---|---|---|
-| 1 | Primo contatto e identificazione | Numero sconosciuto → l'assistente si presenta, chiede nome del locale e codice cliente → collega il numero al locale; informativa e consenso alle proposte | ◐ abbinamento ok; i clienti di prova `C90001`–`C90003` sono verificati subito (T-71); informativa e consenso da fare (T-48) |
-| 2 | Ordine da foto | Foto del bigliettino (+ vocale) → righe lette → abbinamento al catalogo con lo storico → chiarimenti sulle righe incerte → sostituti, multipli, data di consegna e cut-off → riepilogo con totale → *Confermo* → ERP mock, numero d'ordine, PDF → email con PDF | ✅ col simulatore, mai da telefono (T-68); ☐ email (T-26), pulsanti (T-25) |
-| 3 | Dopo l'ordine | Stato dell'ordine; modifica o annullo fino al cut-off del giorno prima; promemoria della bozza dopo 2 h, scadenza a mezzanotte | ✅ nei tool, mai da telefono (T-68) |
-| 4 | Ordine via email | Email a `ordini@…` con testo o foto → stesso flusso, risposte via email | ◐ ricezione e risposta ok; risposte nel thread, ordine e "Ordine aggiornato" rispondendo all'email di conferma (T-26b, da provare su `dev`); allegati PDF/Excel no |
-| 5 | Supervisione in console | 5a elenco ordini e dettaglio con il bigliettino accanto alle righe · 5b correzione di una riga · 5c handoff: l'operatore prende la conversazione, risponde, la restituisce | ◐ elenco e dettaglio su dati finti (T-62); ✓ handoff lato agente (T-49) e in console (T-63, dopo il deploy di `console` e `messaging`) |
-| 6 | Copilota per l'agente di commercio | "Cosa propongo alla Trattoria X?", briefing prima della visita, domande sulle schede tecniche, ordine per conto del cliente | ☐ (solo il ruolo e i permessi) |
-| 7 | Riordino proattivo | L'assistente scrive per primo ("di solito riordinate l'olio ogni 10 giorni…") → riordino con un tap | ◐ template `reorder_suggestion` dal Notifier su `reorder.due` e tap gestiti dall'agente (T-52, dopo il deploy di `messaging` e `agent`); da provare su `dev` |
-| 8 | Consegna | Avviso via SMS/RCS il giorno della consegna con *Ricevuto / Segnala problema* | ◐ su WhatsApp: template `delivery_update` all'uscita per la consegna (ERP mock `advance` → `OUT_FOR_DELIVERY`, T-52); RCS con fallback SMS per i contatti con identità `SMS#` (T-27, da provare dal tester Android) |
-| 9 | Prova dei giudici | Dal README: numero WhatsApp e codice di prova → ordine da foto → console in sola lettura con il proprio ordine | ◐ console e pagina demo ✅; ingresso coi codici di prova `C90001`–`C90003` (T-71), da provare da telefono (T-68) |
+| # | Flusso | Passi | Madre | Task |
+|---|---|---|---|---|
+| 1 | Primo contatto e identificazione | Numero sconosciuto → l'assistente si presenta, chiede nome del locale e codice cliente → collega il numero al locale; informativa e consenso alle proposte | [#37](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/37) | T-71, T-48 |
+| 2 | Ordine da foto | Foto del bigliettino (+ vocale) → righe lette → abbinamento al catalogo con lo storico → chiarimenti sulle righe incerte → sostituti, multipli, data di consegna e cut-off → riepilogo con totale → *Confermo* → ERP mock, numero d'ordine, PDF → email con PDF | [#38](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/38) | T-68, T-26, T-25, T-29 |
+| 3 | Dopo l'ordine | Stato dell'ordine; modifica o annullo fino al cut-off del giorno prima; promemoria della bozza dopo 2 h, scadenza a mezzanotte | [#38](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/38) | T-68 |
+| 4 | Ordine via email | Email a `ordini@…` con testo o foto → stesso flusso, risposte via email nello stesso thread | [#39](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/39) | T-26b |
+| 5 | Supervisione in console | 5a elenco ordini e dettaglio con il bigliettino accanto alle righe · 5b correzione di una riga · 5c handoff: l'operatore prende la conversazione, risponde, la restituisce | [#40](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/40) | T-62, T-49, T-63, T-67 |
+| 6 | Copilota per l'agente di commercio | "Cosa propongo alla Trattoria X?", briefing prima della visita, domande sulle schede tecniche, ordine per conto del cliente | [#41](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/41) | T-08, T-50, T-51, T-06b, T-44b, T-64 |
+| 7 | Riordino proattivo | L'assistente scrive per primo ("di solito riordinate l'olio ogni 10 giorni…") → riordino con un tap | [#42](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/42) | T-24, T-52 |
+| 8 | Consegna | Avviso il giorno della consegna (RCS con fallback SMS, oppure template WhatsApp) con *Ricevuto / Segnala problema* | [#43](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/43) | T-27 |
+| 9 | Prova dei giudici | Dal README: numero WhatsApp e codice di prova → ordine da foto → console in sola lettura con il proprio ordine | [#37](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/37) | T-71, T-10 |
 
 ### 4.4 Tolti dal backlog
 
@@ -196,7 +173,7 @@ Task sullo stesso stack non testabili da soli: una PR, un commit per task. Finor
 
 ## 5. Azioni manuali
 
-Sono le issue con etichetta **`manual`**, sotto-issue di [#46](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/46): accessi, Meta, AWS Partner Central, registrazioni, video, Devpost. Le più urgenti: [#76](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/76) numeri dei tester (sblocca T-68), [#85](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/85) registrazioni SMS/RCS, [#79](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/79) opportunità ACE, [#75](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/75) foto dei bigliettini. Submission: [#81](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/81) video, [#82](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/82) Devpost (PS), [#83](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/83) controllo dei link.
+Sono le issue con etichetta **`manual`**, sotto-issue di [#46](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/46). Aperte al 28/10: [#81](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/81) M-07 video, [#82](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/82) M-08 Devpost (PS), [#84](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/84) M-10 ambiente per i giudici, [#75](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/75) M-01 foto dei bigliettini (per T-05), [#95](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues/95) M-12 URL dell'informativa privacy.
 
 ```bash
 gh issue list --label manual --state open
@@ -206,27 +183,26 @@ gh issue list --label manual --state open
 
 ## 6. Decisioni
 
-**Aperte**
-
-Nessuna per la gara.
+**Aperte**: nessuna per la gara.
 
 **Prese**
 
 | Data | Decisione |
 |---|---|
+| 28/10 | Documentazione consolidata: concept in `docs/01`, setup dei canali in `docs/CHANNELS_SETUP.md`, parametri solo in `docs/02` §7, mappa dei documenti solo in `docs/README.md` |
+| 28/10 | CI solo su PR pronte e su `main`; review automatica di Copilot sulle PR; merge da soli per le PR a basso rischio (§1.2); un solo controllo completo per task |
+| 28/10 | Si sviluppa fino alla scadenza Devpost; T-10 (ultimo deploy di `dev`) e la submission chiudono la giornata |
 | 27/10 | Backlog e azioni manuali su GitHub Issues (sotto-issue per flusso, dipendenze *blocked by*); si prende un task assegnandosi l'issue, si chiude con `Closes #n` nella PR |
 | 27/10 | Lavoro in parallelo su tre corsie (§1.5), max 2 sessioni per persona in worktree separati; comandi `/sa-next-task`, `/sa-dod-check`, `/sa-cds-check` nel repo |
 | 27/10 | Gli agenti non attendono conferma sul piano se l'issue ha criteri chiari; ogni fine task riporta deploy e script con i comandi completi |
 | 27/10 | Security review una sola volta a fine iterazione (T-73), non a ogni task |
-| 28/10 | CI solo su PR pronte e su `main`; review automatica di Copilot sulle PR; merge da soli per le PR a basso rischio (§1.2); un solo controllo completo per task |
 | 27/10 | Un solo ambiente, `dev`, per sviluppo, video e giudici: l'ambiente `demo` è stato tolto da codice e documenti |
 | 27/10 | Il repo serve solo alla gara: niente task o domande per il cliente reale; tolti T-09, T-65 (analytics/KPI) e T-70 (hardening) |
 | 27/10 | Perimetro = flussi utente 1–9 (§4.3), con priorità Must/Should/Could; i flussi 6–8 sono Could |
 | 27/10 | I giudici entrano con un codice cliente di prova che verifica subito il contatto (T-71); l'email per la conferma, se manca, la chiede l'assistente (T-26) |
-| 28/10 | Si sviluppa fino alla scadenza Devpost; T-10 (ultimo deploy di `dev`) e la submission chiudono la giornata |
 | 27/10 | Prezzi mostrati al ristoratore (riepilogo con totale stimato) |
 | 27/10 | Pulsanti WhatsApp per chiarimenti e conferma (T-25) |
-| 27/10 | Repo pubblico (già pubblico, licenza MIT) |
+| 27/10 | Repo pubblico (licenza MIT) |
 | 27/10 | Regole di consegna, cut-off (18:00), minimi e multipli: quelle sintetiche del seed |
 | 27/10 | Marchio del cliente non usato: brand fittizio, dati sintetici |
 | 27/10 | Ordine inserito dall'agente di commercio: basta la sua conferma |
@@ -242,36 +218,4 @@ Nessuna per la gara.
 
 ## 7. Fatto
 
-Dal 27/10 sera il fatto sono le [issue chiuse](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues?q=is%3Aissue+is%3Aclosed) con le loro PR. Qui sotto lo storico fino al 27/10 (dettagli in [`docs/OLD/DONE.md`](./docs/OLD/DONE.md)).
-
-| Data | Task | Cosa | PR |
-|---|---|---|---|
-| 27/10 | T-29 (invio) | 8 template WhatsApp inviati a Meta (`PENDING`); numero ed email d'ordine nel README e nella console | #33 |
-| 27/10 | – | WhatsApp reale su `dev`: WABA collegata, testo e foto fino all'agente; fix dimensione media | #31, #32 |
-| 27/10 | – | Deploy `dev` e prova e2e del flusso d'ordine col simulatore; fix nomi tool per Nova, prompt per ruolo, `seed/reset.py` | #30 |
-| 27/10 | T-45, T-46, T-47, T-04 | Stock, prezzi, consegne e cut-off; stato ordine, conferma idempotente, modifica/annullo, sweeper; catalogo e listini di prova | #29 |
-| 27/10 | T-07 | ERP adapter mock, PDF ordine, regola `order.confirmed` | #28 |
-| 27/10 | T-44 | Tool `catalog`: `match_products`, `search_catalog` | #27 |
-| 27/10 | T-14 | Simulatore canali (solo `dev`, Notifier in sandbox) | #26 |
-| 27/10 | T-06 | Indice prodotti S3 Vectors e `catalog_indexer` | #25 |
-| 27/10 | T-15 | `sesDomain` e `waPhoneNumberId` nella config per ambiente | #24 |
-| 27/10 | – | SES fuori dalla sandbox | #23 |
-| 26/10 | T-22, T-24 (base) | Debounce, Turn Dispatcher, Notifier con sandbox e idempotenza | #22 |
-| 26/10 | T-43 | Tool `order_intake`: lettura di foto, vocali e testo | #21 |
-| 26/10 | – | SES su `dev`: dominio, DNS, ricezione | #20 |
-| 26/10 | T-21, T-23 | `MessagingStack`, Inbound Router, media WhatsApp e allegati email su S3 | #16 |
-| 26/10 | T-40, T-41 (ridotti) | AgentCore Gateway + Runtime, agente Strands per ruolo | #15 |
-| 26/10 | T-66 | Ruolo `judge` in sola lettura, pagina demo | #13 |
-| 26/10 | – | Console online su `dev` (script di pubblicazione) | #12 |
-| 28/10 | – | Dominio custom `app.suppliagent.stonecutters.besharp.net` per la console (`consoleDomain`, `consoleCertificateArn`, `scripts/console-dns-records.sh`) | `feat/console-custom-domain` |
-| 26/10 | T-62 (UI) | Inbox e dettaglio ordine con bigliettino, su mock | #10 |
-| 26/10 | T-61 | Scaffold console React + Vite + Cognito | #9, #11 |
-| 26/10 | T-20 | `ChannelsStack`: topic SNS, SES configuration set e rule set | #7 |
-| 26/10 | T-60 | `ConsoleStack` ridotto: Cognito, CloudFront, API ordini | #4, #6, #8 |
-| 26/10 | T-42 | Tool `customers`: `identify_contact`, `get_customer_profile` | #5 |
-| 26/10 | T-04 (parte) | Dati sintetici: clienti, contatti, storico ordini | #3 |
-| 26/10 | T-28 | Testi dei template WhatsApp (IT/EN) | #2 |
-| 25/10 | – | Primo deploy `dev` (9 stack, 18 tabelle, CMK, event bus, SSM) | – |
-| 24/10 | T-13 | Tag obbligatori su tutte le risorse | `2b5d967` |
-| 23/10 | T-01, T-03, T-02 | Monorepo, app CDK con Foundation e Data, CI | `chore/p0-foundations` |
-| ≤ 16/10 | – | Concept, documenti 01/02/03, Infrastructure Design, backlog | – |
+Il fatto sono le [issue chiuse](https://github.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/issues?q=is%3Aissue+is%3Aclosed) con le loro PR (`git log --merges --oneline`). Storico dettagliato fino al 27/10: [`docs/OLD/DONE.md`](./docs/OLD/DONE.md).

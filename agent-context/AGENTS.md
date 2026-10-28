@@ -31,14 +31,15 @@ Leggi **prima di implementare** la parte che ti riguarda:
 
 | Documento | Quando leggerlo |
 |---|---|
-| `SUPPLIAGENT_SOLUTION.md` | Visione e scenario demo |
-| `docs/01_PROJECT_OVERVIEW.md` | Attori, perimetro, flusso ad alto livello |
+| `docs/README.md` | Mappa dei documenti e "dove sta cosa" |
+| `docs/01_PROJECT_OVERVIEW.md` | Visione, KPI, attori, perimetro, flusso ad alto livello, criteri di gara |
 | `docs/03_FUNCTIONAL_SPEC.md` | **Cosa** costruire: funzionalità `FN-xx`, priorità, **criteri di accettazione** |
 | `docs/02_TECHNICAL_FLOWS.md` | **Come** si comporta: stati, flussi `F-xx`, casi `F-xx.Cn`, errori `E-xx`, contratti JSON, parametri |
 | `docs/INFRASTRUCTURE_DESIGN.md` | Stack CDK, tabelle, code, IAM, sicurezza |
 | `docs/architecture.drawio` | Diagramma |
+| `docs/CHANNELS_SETUP.md` | Passi manuali dei canali (WABA, template Meta, RCS/SMS) |
 | GitHub Issues | **Backlog** (fonte unica): task `T-xx` e azioni manuali `M-xx`, sotto-issue della madre del flusso, dipendenze *blocked by*, priorità ed etichette. Si prende un task assegnandosi l'issue; la PR la chiude con `Closes #n` |
-| `START_HERE.md` | Punto di partenza: stato, timeline, lavoro in parallelo (corsie, sessioni, deploy, file caldi), flussi utente, decisioni, storico del fatto fino al 27/10 |
+| `START_HERE.md` | Punto di partenza: stato, timeline, lavoro in parallelo (corsie, sessioni, deploy, file caldi), flussi utente, decisioni |
 | `docs/OLD/` | Documenti superati (vecchi backlog, DONE, checklist, handoff): solo storico, non si aggiornano |
 
 Regole:
@@ -69,7 +70,6 @@ Stack CDK (ordine di dipendenza): `Foundation` → `Data` → `Catalog` → `Cha
 ```
 SuppliAgent/
 ├── agent-context/               # contesto per agenti di sviluppo (AGENTS.md, CLAUDE.md, kiro-steering/)
-├── SUPPLIAGENT_SOLUTION.md
 ├── docs/                        # documentazione (fonte di verità)
 ├── assets/brand/                # logo e icone
 ├── infra/                       # CDK app (TypeScript)

@@ -252,7 +252,7 @@ Tolta dal perimetro della gara il 27/10 (T-09 `AnalyticsStack`, T-65 dashboard):
 | NFR-03 | Scalabilità | Chat indipendenti in parallelo; nessuna capacità fissa |
 | NFR-04 | Residenza dati | `eu-west-1`, modelli Bedrock solo con profilo `eu.` (Amazon Nova) |
 | NFR-05 | Riproducibilità | Deploy da zero con README + `cdk deploy --all` |
-| NFR-06 | Costi | Entro crediti + budget interno, alert 25/50/80% |
+| NFR-06 | Costi | Pay-per-use, nessun servizio a costo fisso; costi isolati con i tag (account condiviso, nessun AWS Budget nel CDK) |
 | NFR-07 | Tono | Cordiale, conciso, professionale; messaggi brevi adatti a chi lavora in cucina |
 | NFR-08 | Affidabilità degli ordini | Nessun ordine duplicato o perso (idempotenza, DLQ, retry) |
 
@@ -263,22 +263,7 @@ Tolta dal perimetro della gara il 27/10 (T-09 `AnalyticsStack`, T-65 dashboard):
 - Pianificazione logistica reale, tracking GPS dei mezzi.
 - App mobile dedicata.
 
-## 7. Mappa funzionalità → stream (base per la divisione del lavoro)
-
-| Stream | Must | Should | Could |
-|---|---|---|---|
-| **AG – Agent & AgentCore** | FN-02, 03, 04, 05, 06 (logica), 07, 08 (logica), 09, 10, 12, 19 (turno proattivo), 20, 21 (prompt), 24 (logica), 25, 27, 32 (guardrail) | FN-11, 16, 17, 18 (logica), 22 | FN-23 |
-| **CH – Canali CDS** | FN-01, 06 (email), 08 (interactive), 14, 15, 26 | FN-18 (RCS) | FN-23 (email) |
-| **CO – Console** | FN-24 (UI), 28, 31 (console) | FN-29 | – |
-| **IN – Infra, Dati & Materiali** | FN-13, 19 (analyzer), 21 (KB + indice), 31 (ambiente, README), 32 (infra) | FN-33 (infra) | – |
-
-### Dipendenze principali
-- **Catalogo anonimizzato e storico ordini di prova** (IN) sbloccano FN-07, 09, 11, 19, 20: **prima priorità della settimana**.
-- FN-01 + FN-26 bloccanti per tutti i flussi end-to-end.
-- Catena demo: FN-05 → FN-07 → FN-08 → FN-09/10 → FN-12 → FN-13 → FN-14/15.
-- FN-28 può partire subito con dati mock.
-
-## 8. Scenari demo di riferimento (test di accettazione end-to-end)
+## 7. Scenari demo di riferimento (test di accettazione end-to-end)
 
 | # | Scenario | Funzionalità verificate |
 |---|---|---|
@@ -289,7 +274,3 @@ Tolta dal perimetro della gara il 27/10 (T-09 `AnalyticsStack`, T-65 dashboard):
 | S5 | Proposta di riordino proattiva → "Riordina uguale" | FN-19 |
 | S6 | Consegna con RCS → "Segnala problema" con foto → back office subentra | FN-18, 24, 28 |
 | S7 | Ordine via email (testo o foto), conferma via email | FN-06, 14 |
-
-## 9. Domande aperte
-
-Domande aperte e decisioni prese sono in [`START_HERE.md`](../START_HERE.md) §6 (fonte unica).

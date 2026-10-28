@@ -69,7 +69,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 > - **AgentCore**: L2 **stabili** in `aws-cdk-lib/aws-bedrockagentcore` (`Runtime`, `RuntimeEndpoint`, `Gateway`, `GatewayTarget`, `WorkloadIdentity`, `Memory`); il pacchetto `@aws-cdk/aws-bedrock-agentcore-alpha` serve solo per Policy e non si usa.
 > - **S3 Vectors**: solo L1 (`CfnVectorBucket`, `CfnIndex`). **Knowledge Base**: L1 `CfnKnowledgeBase` con `storageConfiguration.type = S3_VECTORS` (l'L2 alpha supporta solo OpenSearch).
 > - **cdk-nag v3** gira come plugin di policy validation (`Validations.of(app).addPlugins(...)`): un errore non riconosciuto fa fallire `cdk synth`; le eccezioni si dichiarano con `Validations.of(scope).acknowledge({ id, reason })`.
-> - Stack env-agnostic sull'account (region fissa `eu-west-1`), così `cdk synth` gira in CI senza credenziali. Gli stack 3–9 sono per ora vuoti e collegati nell'ordine di dipendenza.
+> - Stack env-agnostic sull'account (region fissa `eu-west-1`), così `cdk synth` gira in CI senza credenziali.
 
 ## 5. Dettaglio componenti
 
@@ -92,8 +92,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 #### RCS / SMS – AWS End User Messaging SMS v2
 - **Outbound**: `SendRcsMessage` (conferma d'ordine, avviso di consegna con **suggested replies** *Ricevuto / Segnala problema*, proposta di riordino per chi non usa WhatsApp) con **fallback** `SendTextMessage`.
 - **Inbound two-way** → SNS `suppliagent-sms-inbound` (risposte, postback, STOP).
-- Configuration set con event destinations (SNS). Agente RCS registrato, device tester invitati, registrazione Italia (`IT_RCS_LAUNCH_REGISTRATION`).
-- *Stato (M-11, 28/10)*: agente RCS **di test** `ACTIVE` con un tester Android verificato (solo tester, niente lancio verso gli operatori) e sender ID `SUPPLIAGENT` per IT (one-way); account SMS in sandbox. In Italia RCS non arriva su iPhone. Procedura, ID e vincoli: [RCS_SMS_SETUP.md](./RCS_SMS_SETUP.md).
+- Configuration set con event destinations (SNS). Agente RCS **di test** (solo device tester; il lancio verso gli operatori, `IT_RCS_LAUNCH_REGISTRATION`, è fuori dalla gara) e sender ID `SUPPLIAGENT` per IT (one-way); account SMS in sandbox; RCS non arriva su iPhone in Italia. Stato, ID, procedura e vincoli: [CHANNELS_SETUP §3](./CHANNELS_SETUP.md).
 - *Stato (T-27)*: `ChannelsStack` con topic `sms-inbound` (two-way dell'agente attivato da custom resource `UpdateRcsAgent`) e `sms-events` (configuration set `suppliagent-<env>-sms-cs`, tutti gli eventi), parametri SSM `rcsAgentArn` / `smsSenderId` / `smsConfigurationSet`. Il Router normalizza SMS e RCS (canale `SMS`; un tap su un suggested reply arriva come `messageBody` JSON `type = SUGGESTION` con il nostro `postbackData`, gli indicatori di scrittura si scartano). Il Notifier invia con `SendRcsMessage` dall'agente e `FallbackConfiguration` SMS dal sender ID: risposte sul canale `SMS` (opzioni come suggested reply, max 11, 25 caratteri), conferma breve accanto all'email (`order.pdf_ready`, chiave `order-sms#<orderId>#<revision>`, best effort) e avviso di consegna (F-12), solo verso un'identità `SMS#` verificata del contatto. Permessi: `sms-voice:SendRcsMessage` / `SendTextMessage` su agente, sender ID e configuration set.
 
 ### 5.2 Ingestion & Routing
@@ -111,11 +110,11 @@ SNS (wa-events | sms-inbound | mail-inbound)
 
 La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda `rep-chat`) e usa lo **stesso** TurnBuffer/Dispatcher, con `channel = WEB`.
 
-**Inbound Router** (`services/inbound_router`; stato al 26/10 tra parentesi)
+**Inbound Router** (`services/inbound_router`)
 1. **Normalizza** l'evento nel `NormalizedMessage` (WhatsApp ed email in T-21; SMS/RCS con T-27, chat web con T-64).
 2. **Risolve l'identità e il ruolo**: `ChannelIdentities` → `contactId`, `role` (`CUSTOMER_CONTACT` | `SALES_REP`), `customerIds[]` (un contatto può gestire più locali; un agente ha un portafoglio). Fail-closed come `caller_scope`: un contatto `PENDING_VERIFICATION` ha `customerIds` vuoto, altri stati → `UNKNOWN`. Email: identità solo con DMARC `PASS` e un solo indirizzo `From` uguale a quello valutato da SES (§5.3.2), altrimenti `senderVerified = false`; `orderId` da `ordine+<id>@` solo sul dominio SES e da mittente verificato. Una conversazione per contatto su tutti i canali (`conv_<contactId>`, F-15), oppure quella in cui l'indirizzo è stato identificato (`ChannelIdentities.conversationId`, scritto da `identify_contact`); mittenti sconosciuti: una per indirizzo, separata per le email non verificate; evento `conversation.started` alla creazione.
 3. **Idempotenza** su `providerMessageId` (E-01): `TransactWriteItems` del messaggio e di una guardia `dedup#<messageId>` con TTL nel TurnBuffer.
-4. **Media** → S3 `media/<contactId|conversationId>/<messageId>/`, **dentro il Router** (deciso il 26/10, T-23: niente Lambda Media Fetcher separata, così il messaggio entra nel TurnBuffer solo con i media già salvati e senza coordinamento asincrono col debounce). WhatsApp: `GetWhatsAppMessageMedia` per immagini, audio e documenti ammessi, max 10 MB (dimensione dell'oggetto scaricato su S3: il `fileSize` della risposta è in byte, non in KB come da documentazione API). Email: immagini JPEG/PNG/WebP/GIF/HEIC, PDF, XLSX, CSV, solo se la firma dei primi byte corrisponde al tipo, max 10 MB e 10 allegati, solo con virus scan SES `PASS`; chiave `<indice>.<estensione del tipo>` (mai il nome file), documenti con `Content-Disposition: attachment`. Niente SVG né `.xls`. Un allegato rifiutato resta senza `s3Uri` (E-13). Video e sticker non scaricati. **Media simulati** (T-14, `scripts/simulate_channel.py`): un `mediaId` del formato `sim_<32 hex>` non passa da EUM Social; il Router copia `sim/<mediaId>/<file>` in `media/<contactId|conversationId>/<messageId>/<mediaId>.<ext>` (stessa forma di un download vero, quindi il resto del flusso è quello reale) **solo se** SSM `notifierSandbox` è `true` (parametro assente = no, a differenza del Notifier); in `demo` il ramo non si attiva. Il Router ha `s3:GetObject`/`ListBucket` su `sim/*` (condizione sul prefisso). Download fallito → errore, retry SQS ×3, poi DLQ (E-02, allarme `suppliagent-<env>-inbound-dlq`); niente scritture prima del download. Testo email troncato a 4000 caratteri; dall'HTML sono tolti script, stili e commenti.
+4. **Media** → S3 `media/<contactId|conversationId>/<messageId>/`, **dentro il Router** (deciso il 26/10, T-23: niente Lambda Media Fetcher separata, così il messaggio entra nel TurnBuffer solo con i media già salvati e senza coordinamento asincrono col debounce). WhatsApp: `GetWhatsAppMessageMedia` per immagini, audio e documenti ammessi, max 10 MB (dimensione dell'oggetto scaricato su S3: il `fileSize` della risposta è in byte, non in KB come da documentazione API). Email: immagini JPEG/PNG/WebP/GIF/HEIC, PDF, XLSX, CSV, solo se la firma dei primi byte corrisponde al tipo, max 10 MB e 10 allegati, solo con virus scan SES `PASS`; chiave `<indice>.<estensione del tipo>` (mai il nome file), documenti con `Content-Disposition: attachment`. Niente SVG né `.xls`. Un allegato rifiutato resta senza `s3Uri` (E-13). Video e sticker non scaricati. **Media simulati** (T-14, `scripts/simulate_channel.py`): un `mediaId` del formato `sim_<32 hex>` non passa da EUM Social; il Router copia `sim/<mediaId>/<file>` in `media/<contactId|conversationId>/<messageId>/<mediaId>.<ext>` (stessa forma di un download vero, quindi il resto del flusso è quello reale) **solo se** SSM `notifierSandbox` è `true` (parametro assente = no, a differenza del Notifier). Il Router ha `s3:GetObject`/`ListBucket` su `sim/*` (condizione sul prefisso). Download fallito → errore, retry SQS ×3, poi DLQ (E-02, allarme `suppliagent-<env>-inbound-dlq`); niente scritture prima del download. Testo email troncato a 4000 caratteri; dall'HTML sono tolti script, stili e commenti.
 5. **Read receipt** WhatsApp per ogni messaggio nuovo: invoke asincrono del Notifier (unico che chiama le API di invio), best effort (un errore non fa riconsegnare il messaggio). Il Notifier lo invia solo se `providerMessageId` è un messaggio WhatsApp in ingresso di *quella* conversazione.
 6. **Handoff check**: `mode = HUMAN` → solo `Messages` e console (il Router non azzera mai `mode`). Stessa regola per le email con `senderVerified = false`: nessun turno, quindi nessuna risposta (backscatter).
 7. **Accoda nel TurnBuffer** e programma il flush (T-22): `Put` del messaggio, guardia di dedup e `Update` del TurnBuffer sono **una sola transazione**, quindi una riconsegna non aggiunge due volte il messaggio né lo perde. Il flush (`turn-flush`, `DelaySeconds` = debounce testo o media) parte anche su un duplicato: costa poco e copre un crash tra transazione e invio.
@@ -341,51 +340,9 @@ Stato (T-60, T-62, T-63, 28/10): implementati Cognito (utenti creati dall'admin;
 - AgentCore Observability: tracce per turno (T-54).
 - CloudWatch: dashboard unica e allarmi (DLQ, errori Notifier, errori ERP adapter). Log JSON (Powertools) con `conversationId`/`orderId`, senza contenuti dei messaggi.
 
-## 6. Flussi principali (sintesi)
+## 6. Flussi principali
 
-Dettaglio completo in [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md).
-
-### 6.1 Ordine da foto su WhatsApp
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant R as Ristoratore (WhatsApp)
-    participant WA as EUM Social
-    participant IN as Router + Dispatcher
-    participant A as AgentCore Runtime
-    participant G as Gateway (tool)
-    participant N as Notifier
-    participant ERP as ERP adapter (mock)
-    R->>WA: foto bigliettino + vocale
-    WA->>IN: eventi (raggruppati dal debounce)
-    IN->>A: un turno con foto + vocale
-    A->>G: identify_contact, get_customer_profile
-    A->>G: extract_order_lines (vision) + transcribe
-    A->>G: match_products, check_availability, get_prices, get_delivery_options
-    A->>G: create_order_draft
-    A->>N: riepilogo + pulsanti di chiarimento
-    N->>WA: SendWhatsAppMessage (interactive)
-    R->>WA: tap scelte + "Confermo"
-    WA->>IN: risposte
-    IN->>A: turno
-    A->>G: confirm_order
-    G->>ERP: order.confirmed → submitOrder
-    A->>N: conferma
-    N->>R: email con PDF (SES) + SMS/RCS
-```
-
-### 6.2 Copilota agente di commercio
-
-`Agente (WhatsApp o web) → "cosa propongo domani alla Trattoria X?" → get_customer_briefing + recommend_products + ask_product_sheets → risposta con 3 proposte motivate e link alle schede`
-
-### 6.3 Riordino proattivo
-
-`Scheduler notturno → Analyzer → CustomerInsights → Proactive Trigger → Agent (turno proattivo) → template reorder_suggestion → tap "Riordina uguale" → create_order_draft da ultimo ordine → conferma → flusso 6.1`
-
-### 6.4 Consegna e problemi
-
-`ERP mock: consegna pianificata → Notifier RCS (fascia oraria + "Ricevuto / Segnala problema") → tap → se problema: richiesta foto → report_delivery_issue → console`
+In [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) (sequence diagram dell'ordine da foto su WhatsApp in 02 §4).
 
 ## 7. Sicurezza e IAM
 
@@ -415,23 +372,11 @@ sequenceDiagram
 | CloudFront + WAF | costo fisso WAF | Basso |
 | Dominio custom console (ACM, CNAME) | gratis; fuori da CloudFormation, da rimuovere a mano allo spegnimento | Nullo |
 
-> Scelta deliberata di **S3 Vectors** invece di OpenSearch Serverless: nessun costo minimo orario, adatto ai crediti dell'hackathon.
+> Scelta deliberata di **S3 Vectors** invece di OpenSearch Serverless: nessun costo minimo orario, adatto a un ambiente demo a basso traffico.
 
-## 10. CI/CD e struttura del repository
+## 10. CI/CD
 
-```
-SuppliAgent/
-├── infra/                     # CDK app (TypeScript): 9 stack
-├── agent/                     # Strands agent (Python), prompt per ruolo in src/suppliagent_agent/prompts/, eval
-├── services/                  # Lambda: router (con media), dispatcher, notifier, pdf, erp-adapter,
-│                              #         tools/*, insights, proactive, console-api, rep-chat, broadcaster
-├── console/                   # React (Vite): back office + chat agenti
-├── seed/                      # catalogo anonimizzato, listini, clienti, storico ordini, bigliettini di test
-├── docs/
-├── .github/workflows/         # lint, test, cdk synth + cdk-nag, deploy
-├── LICENSE
-└── README.md
-```
+Struttura del repository: [AGENTS.md §5](../agent-context/AGENTS.md).
 
 - GitHub Actions: CI (T-02, `.github/workflows/ci.yml`) su PR e push su `main` con lint, type check, test e `cdk synth` + cdk-nag, senza credenziali AWS.
 - **Deploy da locale** (decisione del 25/10): `cd infra && npx cdk deploy --all -c env=<env>` con il profilo AWS dello sviluppatore; nessuna pipeline di deploy (OIDC) per l'hackathon. La CI resta un controllo automatico e non blocca il deploy.
@@ -443,26 +388,22 @@ SuppliAgent/
 | `env` / `region` | `dev` / `eu-west-1` |
 | `waPhoneNumberId` | ID numero WhatsApp su EUM Social (`infra/config/environments.ts` → SSM; `UNSET` finché non è valorizzato; `-c waPhoneNumberId=…` lo sovrascrive) |
 | `sesDomain` | `ordini.example.com` (`infra/config/environments.ts`, `-c sesDomain=…` lo sovrascrive: crea identity e rule set inbound; `dev` = `suppliagent.stonecutters.besharp.net`) |
-
 | `consoleDomain` / `consoleCertificateArn` | hostname della console (CNAME → CloudFront) e certificato ACM in `us-east-1` (`infra/config/environments.ts`; vanno impostati insieme; `dev` = `app.suppliagent.stonecutters.besharp.net`). Certificato e CNAME sono passi manuali (README, passo 7); senza i due valori la console resta su `*.cloudfront.net` |
-
-> `waPhoneNumberId` e `sesDomain` stanno nella config per ambiente (T-15): un deploy di `ChannelsStack` (anche indiretto) non li perde. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
 | `rcsAgentId` / `smsSenderId` | agente RCS / sender ID del fallback in `infra/config/environments.ts` (`dev`: `rcs-83650561df2543e1942ccb9a500fa736` / `SUPPLIAGENT/IT`), pubblicati in SSM come ARN (`rcsAgentArn`, `smsSenderId`) con `smsConfigurationSet` (T-27) |
 | `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |
-| `matchAutoThreshold` / `matchAskThreshold` | `0.85` / `0.5` |
-| `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | `3000` / `6000` / `15000` |
+
+`waPhoneNumberId` e `sesDomain` stanno nella config per ambiente (T-15): un deploy di `ChannelsStack` (anche indiretto) non li perde; valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`. I parametri di runtime (soglie, debounce, tempi, `notifierSandbox`) sono in [02 §7](./02_TECHNICAL_FLOWS.md).
 
 Prerequisiti non automatizzabili:
-1. WABA collegata a EUM Social; **template WhatsApp approvati**.
+1. WABA collegata a EUM Social; **template WhatsApp approvati** ([CHANNELS_SETUP §1–2](./CHANNELS_SETUP.md)).
 2. Dominio SES verificato, uscita dalla sandbox, MX per l'inbound.
-3. Agente RCS, inviti tester, origination identity SMS ([RCS_SMS_SETUP.md](./RCS_SMS_SETUP.md)).
-4. Accesso ai modelli Bedrock (Amazon Nova, Titan Embeddings) in eu-west-1: già disponibili sull'account `471112860008`. Claude richiede l'abilitazione tramite il distributore/AWS (vedi §12).
-5. **Export del catalogo dal cliente** (anonimizzato) e schede tecniche.
+3. Agente RCS, inviti tester, origination identity SMS ([CHANNELS_SETUP §3](./CHANNELS_SETUP.md)).
+4. Accesso ai modelli Bedrock (Amazon Nova, Titan Embeddings) in eu-west-1: già disponibili sull'account `471112860008`. Claude richiede l'abilitazione tramite il distributore/AWS (§2).
 
-## 12. Punti aperti
+## 12. Rischi di sicurezza accettati
 
-> Qui restano solo i **rischi di sicurezza accettati** (scelte di design). Hardening non pianificato (il repo serve solo alla gara, `START_HERE.md` §4.4); decisioni: `START_HERE.md` §6. Storico dei punti chiusi: [OLD/DONE.md](./OLD/DONE.md).
+> Scelte di design lasciate così fino alla fine del judging. Hardening non pianificato (il repo serve solo alla gara, `START_HERE.md` §4.4); decisioni: `START_HERE.md` §6. Storico dei punti chiusi: [OLD/DONE.md](./OLD/DONE.md).
 
 - [ ] **Rischi di sicurezza accettati** (revisione T-21/T-23, decisione del 26/10: si lasciano così fino alla demo):
   - i topic `wa-events` e `mail-inbound` accettano pubblicazioni da qualunque regola SES o WABA dell'account (condizione solo `aws:SourceAccount`, senza `aws:SourceArn`); il Router sceglie il parser dal contenuto, non dal `TopicArn`;
