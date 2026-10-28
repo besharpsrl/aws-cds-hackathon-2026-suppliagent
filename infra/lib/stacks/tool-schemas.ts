@@ -393,7 +393,7 @@ export const RECO_TOOLS: agentcore.ToolDefinition[] = [
   {
     name: 'recommend_products',
     description:
-      'Motivated product suggestions from the data. With orderId (an open order): at most one suggestion per order, only with the customer consent; a second call returns ALREADY_SUGGESTED. With customerId (sales reps only, briefing): up to 3. Each suggestion has sku, name, format, price and reason: REORDER_DUE (everyDays, lastOrderedAt, lastQuantity), DROPPED, SIMILAR_VENUES (note) or PROMOTION (promo). Status OK, or NONE with reason NO_CONSENT, ALREADY_SUGGESTED, ORDER_CLOSED, ORDER_REQUIRED or NOTHING_RELEVANT.',
+      'Motivated product suggestions from the data. With orderId (only after request_order_confirmation returned PENDING_CONFIRMATION): at most one suggestion per order, only with the customer consent; a second call returns ALREADY_SUGGESTED. With customerId (sales reps only, briefing): up to 3. Each suggestion has sku, name, format, price and reason: REORDER_DUE (everyDays, lastOrderedAt, lastQuantity), DROPPED, SIMILAR_VENUES (note) or PROMOTION (promo). Status OK, or NONE with reason NO_CONSENT, ALREADY_SUGGESTED, SUMMARY_FIRST, ORDER_CLOSED, ORDER_REQUIRED or NOTHING_RELEVANT.',
     inputSchema: {
       type: OBJECT,
       properties: {

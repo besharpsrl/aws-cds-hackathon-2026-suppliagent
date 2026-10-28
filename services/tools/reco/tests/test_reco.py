@@ -59,7 +59,7 @@ def put_order(aws: Any, order_id: str, customer: str, *lines: dict[str, Any], **
         Item={
             "orderId": order_id,
             "customerId": customer,
-            "status": "DRAFT",
+            "status": "PENDING_CONFIRMATION",
             "createdAt": "2026-10-28T08:55:00.000Z",
             "deliveryDate": "2026-10-29",
             "lines": list(lines),
@@ -158,6 +158,13 @@ def test_out_of_stock_skipped_then_promotion(aws: Any) -> None:
 def test_closed_order_gets_no_suggestion(aws: Any) -> None:
     put_order(aws, "ord_x1", "cus_001", line(1, "FDL-PIZZA-1KG", 25), status="CONFIRMED")
     assert recommend(LUCA, orderId="ord_x1")["reason"] == "ORDER_CLOSED"
+
+
+def test_no_suggestion_before_the_summary(aws: Any) -> None:
+    """A summary attempt that needed fixes must not use up the order's only suggestion."""
+    put_order(aws, "ord_d1", "cus_001", line(1, "FDL-PIZZA-1KG", 25), status="DRAFT")
+    assert recommend(LUCA, orderId="ord_d1")["reason"] == "SUMMARY_FIRST"
+    assert "suggestion" not in order_of(aws, "ord_d1")
 
 
 def test_customer_needs_an_order(aws: Any) -> None:

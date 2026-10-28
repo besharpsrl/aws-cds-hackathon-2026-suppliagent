@@ -4,8 +4,9 @@ Suggestions come from data only: the nightly `CustomerInsights` (expected reorde
 products, what similar venues buy; T-08) and the promotions valid today. Each one carries its reason
 as a code plus the figures behind it; the agent words it.
 
-- For an order (`orderId`): at most **one** suggestion per order, recorded on the order so a second
-  call never proposes another; for a customer contact only with the proactive consent, never a
+- For an order (`orderId`) whose summary was just produced (`PENDING_CONFIRMATION`): at most
+  **one** suggestion per order, recorded on the order so a second call never proposes another;
+  for a customer contact only with the proactive consent, never a
   product the customer turned down in the last 30 days. Priority: usual product the customer is due
   to reorder and left out > what similar venues buy > promotion (F-07 step 1).
 - For a sales rep's briefing (`customerId`, no order): up to 3 suggestions, one per kind first
@@ -42,6 +43,7 @@ SOURCE = "suppliagent.tool-reco"
 MAX_BRIEFING = 3
 REJECTED_DAYS = 30
 HISTORY_LIMIT = 30  # recent orders scanned for the last quantity of a product
+SUMMARY = "PENDING_CONFIRMATION"
 
 REORDER_DUE, DROPPED, SIMILAR_VENUES, PROMOTION = (
     "REORDER_DUE",
@@ -281,6 +283,9 @@ def _for_order(caller: CallerContext, order: dict[str, Any]) -> dict[str, Any]:
         return _none("ALREADY_SUGGESTED", orderId=order_id)  # FN-11: max 1 per order
     if order["status"] not in EDITABLE:
         return _none("ORDER_CLOSED", orderId=order_id)
+    if order["status"] != SUMMARY:
+        # the question closes the summary message: none until the summary exists
+        return _none("SUMMARY_FIRST", orderId=order_id)
     if caller.role is Role.CUSTOMER_CONTACT:
         contact = _item("contacts", contactId=str(caller.contactId)) or {}
         if contact.get("proactiveConsent") is not True:
@@ -320,12 +325,9 @@ def _for_order(caller: CallerContext, order: dict[str, Any]) -> dict[str, Any]:
         table("orders").update_item(
             Key={"orderId": order_id},
             UpdateExpression="SET suggestion = :s",
-            ConditionExpression="attribute_not_exists(suggestion) AND #status IN (:a, :b, :c)",
+            ConditionExpression="attribute_not_exists(suggestion) AND #status = :pending",
             ExpressionAttributeNames={"#status": "status"},
-            ExpressionAttributeValues={
-                ":s": record,
-                **{f":{k}": v for k, v in zip("abc", sorted(EDITABLE), strict=True)},
-            },
+            ExpressionAttributeValues={":s": record, ":pending": SUMMARY},
         )
     except ClientError as exc:
         if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
