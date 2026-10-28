@@ -10,7 +10,7 @@
 
 Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di accettazione e stream responsabile: base per **validare il perimetro** e **dividere il lavoro**.
 
-**Priorità (MoSCoW, scadenza 28/10)**: **M** Must · **S** Should · **C** Could · **W** Won't.
+**Priorità (MoSCoW, scadenza 28/10 ore 21:00)**: **M** Must · **S** Should · **C** Could · **W** Won't.
 **Stream**: **AG** Agent & AgentCore · **CH** Canali CDS · **CO** Console & Analytics · **IN** Infra, Dati & Materiali.
 **Criteri di gara**: TE (Technical Execution 40%), VI (Value/Impact 20%), DP (Demo 20%), CR (Creativity 10%), FU (Functionality 10%), WA (premio WhatsApp).
 

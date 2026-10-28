@@ -1,6 +1,6 @@
 # SuppliAgent – video demo script (≤ 3:00)
 
-> T-12 · Narration in English (the video is for the judges); production notes in Italian. Narration is about 330 words: at a calm pace it fills ~2:20, the rest is screen time. Fallbacks exist for every scene that depends on a task not yet on `dev`: record **only what works on a real phone**, never a simulation presented as real (the rules ask for the project running on a real device).
+> T-12 · Narration in English (the video is for the judges); production notes in Italian. Narration is about 330 words: at a calm pace it fills ~2:20, the rest is screen time. Fallbacks exist for every scene that depends on a task not yet on `dev`: record **only what works on a real phone**, never a simulation presented as real (the rules ask for the project running on a real device). Deadline: video uploaded and linked on Devpost by **28/10 21:00** (Italian time).
 
 ## Format
 
@@ -42,5 +42,5 @@
 - [ ] Console: account `judge` (M-06) per la scena a sola lettura; account `backoffice` per la correzione.
 - [ ] Nessun nome del distributore reale, nessun dato reale (AGENTS §8.10); nessuna musica.
 - [ ] Sottotitoli in inglese (file `.srt` o inseriti nel video); durata **≤ 3:00**.
-- [ ] Caricamento su YouTube o Vimeo, **pubblico**, titolo "SuppliAgent – AWS CDS Agentic AI Hackathon"; link nel form Devpost (M-07, M-08) e nel README.
+- [ ] Caricamento su YouTube o Vimeo, **pubblico**, titolo "SuppliAgent – AWS CDS Agentic AI Hackathon"; link nel form Devpost (M-07, M-08) e nel README, entro la consegna di **oggi 28/10 alle 21:00**.
 - [ ] Il testo del video non promette nulla che non sia su `dev`: stessa lista di `docs/SUBMISSION_TEXT.md` (_Verify before submitting_).
