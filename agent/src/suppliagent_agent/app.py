@@ -28,10 +28,8 @@ app = BedrockAgentCoreApp()
 
 # Long-term memory recalled at every user message: the namespaces of the strategies in the CDK
 # (AgentStack). Summaries are per session and the session's own events are already restored.
-MEMORY_RECALL = {
-    "/preferences/{actorId}": RetrievalConfig(top_k=5, relevance_score=0.3),
-    "/facts/{actorId}": RetrievalConfig(top_k=5, relevance_score=0.3),
-}
+RECALLED_NAMESPACES = ("preferences", "facts")
+RECALL = RetrievalConfig(top_k=5, relevance_score=0.3)
 
 
 def guardrail_config() -> dict[str, Any]:
@@ -46,6 +44,7 @@ def guardrail_config() -> dict[str, Any]:
         "guardrail_version": os.environ.get("GUARDRAIL_VERSION", "DRAFT"),
         "guardrail_latest_message": True,
         "guardrail_redact_input": True,
+        "guardrail_redact_input_message": "[message removed by the content filter]",
         "guardrail_trace": "enabled",
     }
 
@@ -55,11 +54,17 @@ def memory_config(turn: TurnRequest) -> AgentCoreMemoryConfig | None:
     memory_id = os.environ.get("MEMORY_ID")
     if not memory_id:
         return None
+    actor_id = memory_actor_id(turn)
+    recall = {f"/{name}/{{actorId}}": RECALL for name in RECALLED_NAMESPACES}
+    if turn.contactId and turn.contactId != actor_id:
+        # identified in a conversation that keeps the address actor: also the contact's own notes
+        contact = turn.contactId.replace("{", "{{").replace("}", "}}")
+        recall |= {f"/{name}/{contact}": RECALL for name in RECALLED_NAMESPACES}
     return AgentCoreMemoryConfig(
         memory_id=memory_id,
         session_id=turn.conversationId,
-        actor_id=memory_actor_id(turn),
-        retrieval_config=MEMORY_RECALL,
+        actor_id=actor_id,
+        retrieval_config=recall,
     )
 
 

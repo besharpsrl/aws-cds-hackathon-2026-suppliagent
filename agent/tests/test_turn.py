@@ -363,6 +363,9 @@ def test_with_memory_the_history_comes_from_the_session_manager_not_the_process(
     [
         ({}, "con_001"),
         ({"role": "UNKNOWN", "contactId": None}, None),
+        # identified inside a conversation started as unknown (F-02): the conversation keeps its
+        # actor, or the history before the identification would be lost
+        ({"conversationId": "conv_u0123456789abcdef"}, None),
     ],
 )
 def test_memory_actor_is_the_contact_or_a_hash_of_the_address(
@@ -377,6 +380,10 @@ def test_memory_actor_is_the_contact_or_a_hash_of_the_address(
         assert actor_id == turn_module.memory_actor_id(turn)
         other = TurnRequest.model_validate({**TURN, **patch, "channelAddress": "SMS#+39333"})
         assert turn_module.memory_actor_id(other) != actor_id
+        unknown = TurnRequest.model_validate(
+            {**TURN, **patch, "role": "UNKNOWN", "contactId": None}
+        )
+        assert turn_module.memory_actor_id(unknown) == actor_id
 
 
 @pytest.mark.parametrize(

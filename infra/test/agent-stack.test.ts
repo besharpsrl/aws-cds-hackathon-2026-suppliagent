@@ -106,7 +106,10 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     expect(runtime).toEqual(
       expect.arrayContaining(['bedrock-agentcore:CreateEvent', 'bedrock-agentcore:ListEvents']),
     );
-    expect(runtime.filter((a) => /Delete|CreateMemory|UpdateMemory/.test(a))).toEqual([]);
+    // DeleteEvent only: the guardrail redaction replaces a blocked message in the history
+    expect(runtime.filter((a) => /Delete|CreateMemory|UpdateMemory/.test(a))).toEqual([
+      'bedrock-agentcore:DeleteEvent',
+    ]);
   });
 
   it('applies a guardrail that does not filter the contact data needed to identify a caller (FN-32)', () => {

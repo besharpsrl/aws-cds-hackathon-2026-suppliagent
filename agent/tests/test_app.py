@@ -41,6 +41,7 @@ def test_guardrail_checks_only_the_latest_user_message(monkeypatch: pytest.Monke
     assert config["guardrail_id"] == "gr123" and config["guardrail_version"] == "3"
     assert config["guardrail_latest_message"] is True
     assert config["guardrail_redact_input"] is True  # a blocked message does not stay in history
+    assert "removed" in config["guardrail_redact_input_message"]
 
 
 def test_without_memory_env_there_is_no_memory(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -57,3 +58,18 @@ def test_memory_is_per_contact_and_conversation_and_recalls_long_term_notes(
     assert (config.memory_id, config.actor_id, config.session_id) == ("mem-1", "con_001", "conv_1")
     # the namespaces of the CDK strategies (infra/lib/stacks/agent-stack.ts)
     assert set(config.retrieval_config or {}) == {"/preferences/{actorId}", "/facts/{actorId}"}
+
+
+def test_a_contact_identified_in_an_unknown_conversation_also_recalls_its_own_notes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MEMORY_ID", "mem-1")
+    turn = TurnRequest.model_validate({**TURN, "conversationId": "conv_u0123456789abcdef"})
+    config = app.memory_config(turn)
+    assert config is not None and config.actor_id.startswith("addr-")
+    assert set(config.retrieval_config or {}) == {
+        "/preferences/{actorId}",
+        "/facts/{actorId}",
+        "/preferences/con_001",
+        "/facts/con_001",
+    }

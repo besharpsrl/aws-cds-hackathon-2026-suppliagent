@@ -431,6 +431,8 @@ export class AgentStack extends Stack {
     gateway.grantInvoke(this.runtime);
     memory.grantRead(this.runtime);
     memory.grantWrite(this.runtime);
+    // A message blocked by the guardrail is replaced in the history (new event, old one deleted).
+    memory.grant(this.runtime, 'bedrock-agentcore:DeleteEvent');
     this.runtime.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:ApplyGuardrail'],

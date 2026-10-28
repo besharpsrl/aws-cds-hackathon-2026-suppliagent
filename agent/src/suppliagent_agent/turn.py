@@ -208,10 +208,16 @@ def user_prompt(turn: TurnRequest) -> str:
     return "\n".join(lines) or "[empty message]"
 
 
+# Conversation of a sender that was unknown at the first message (inbound router): it keeps its id
+# after the identification.
+UNKNOWN_CONVERSATION_PREFIX = "conv_u"
+
+
 def memory_actor_id(turn: TurnRequest) -> str:
-    """AgentCore Memory actor (FN-25): the contact, the same on every channel. A caller not yet
-    identified has no contact: a hash of the address, so no phone number or email is stored."""
-    if turn.contactId:
+    """AgentCore Memory actor (FN-25): the contact, the same on every channel. A conversation that
+    started from an unknown sender keeps one actor, a hash of the address (no phone number or email
+    stored), also after the identification: Memory keys the history on actor and session."""
+    if turn.contactId and not turn.conversationId.startswith(UNKNOWN_CONVERSATION_PREFIX):
         return turn.contactId
     return "addr-" + hashlib.sha256(turn.channelAddress.encode()).hexdigest()[:32]
 
