@@ -206,13 +206,15 @@ def _detail(order: dict[str, Any]) -> dict[str, Any]:
 
 
 def _visible_order(
-    groups: set[str], claims: dict[str, str], order_id: str
+    groups: set[str], claims: dict[str, str], order_id: str, *, write: bool = False
 ) -> dict[str, Any] | None:
-    order: dict[str, Any] | None = _table().get_item(Key={"orderId": order_id}).get("Item")
-    rep_id = claims.get("custom:repId")
-    allowed = bool(groups & READ_ALL_ROLES) or bool(
-        rep_id and order and order.get("repId") == rep_id
+    # Groups are additive: a `judge` who is also `sales_rep` still writes only in its portfolio.
+    all_orders = "backoffice" in groups if write else bool(groups & READ_ALL_ROLES)
+    order: dict[str, Any] | None = (
+        _table().get_item(Key={"orderId": order_id}, ConsistentRead=True).get("Item")
     )
+    rep_id = claims.get("custom:repId")
+    allowed = all_orders or bool(rep_id and order and order.get("repId") == rep_id)
     # Same answer for "missing" and "not yours": do not reveal other reps' order ids.
     return order if order and allowed else None
 
@@ -225,7 +227,7 @@ def _get_order(groups: set[str], claims: dict[str, str], order_id: str) -> dict[
 
 
 def _price(customer_id: str, sku: str, today: str) -> Decimal | None:
-    """Final unit price (list price, or the best valid promotion), None when not in the list."""
+    """Final unit price; keep in sync with `suppliagent_shared.pricing.price_of`."""
     customer = _table("CUSTOMERS_TABLE").get_item(Key={"customerId": customer_id}).get("Item")
     if not customer:
         return None
@@ -284,7 +286,7 @@ def _correct_line(
             raise TypeError(sku)
     except (ValueError, KeyError, TypeError):
         return _response(400, {"error": "invalid_body"})
-    order = _visible_order(groups, claims, order_id)
+    order = _visible_order(groups, claims, order_id, write=True)
     if not order:
         return _response(404, {"error": "not_found"})
     if order["status"] not in CORRECTABLE_ORDERS:
@@ -371,7 +373,13 @@ def _correct_line(
     }
     _emit(
         "order.line_corrected",
-        {"orderId": order_id, "lineId": line_id, "by": by, "fromSku": previous_sku, "toSku": sku},
+        {
+            "orderId": order_id,
+            "lineId": line_id,
+            "by": "BACKOFFICE" if by == "backoffice" else "SALES_REP",
+            "fromSku": previous_sku,
+            "toSku": sku,
+        },
     )
     if new_status != order["status"]:
         _emit(

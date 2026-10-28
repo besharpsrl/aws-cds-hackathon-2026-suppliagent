@@ -349,7 +349,7 @@ def test_correction_loses_against_a_concurrent_change(monkeypatch: pytest.Monkey
         UpdateExpression="SET version = :v",
         ExpressionAttributeValues={":v": 1},
     )
-    monkeypatch.setattr(h, "_visible_order", lambda *_: stale)  # read before the other write
+    monkeypatch.setattr(h, "_visible_order", lambda *_, **__: stale)  # read before the other write
     status, body = correct("backoffice", body={"sku": "PAN-0100"})
     assert (status, body["error"]) == (409, "conflict")
     assert stored("ord_1")["lines"][1]["status"] == "AMBIGUOUS"
@@ -375,3 +375,10 @@ def test_sales_rep_without_rep_id_cannot_correct() -> None:
 def test_other_methods_on_the_line_are_not_allowed() -> None:
     status, _ = call(LINE, "backoffice", order_id="ord_1", line_id="l2", method="DELETE")
     assert status == 405
+
+
+def test_judge_who_is_also_sales_rep_writes_only_in_own_portfolio() -> None:
+    # Reading all orders is the judge's; writing is not: groups are additive but not for this.
+    assert correct("[judge sales_rep]", rep_id="rep_2", body={"sku": "PAN-0100"})[0] == 404
+    assert stored("ord_1")["version"] == 0
+    assert correct("[judge sales_rep]", rep_id="rep_1", body={"sku": "PAN-0100"})[0] == 200

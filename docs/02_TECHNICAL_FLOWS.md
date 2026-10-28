@@ -73,7 +73,7 @@ stateDiagram-v2
 | `REMOVED` | Riga eliminata dal cliente o non risolta |
 | `CONFIRMED` | Riga confermata nell'ordine finale |
 
-Ogni riga conserva: `rawText`, `rawQuantity`, `sourceMessageId`, eventuale `imageRegion` (per mostrarla in console), `candidates[]`, `sku`, `quantity`, `unit`, `confidence`, `correctedBy` (cliente/agente/back office).
+Ogni riga conserva: `rawText`, `rawQuantity`, `sourceMessageId`, eventuale `imageRegion` (per mostrarla in console), `candidates[]`, `sku`, `quantity`, `unit`, `confidence`, `correctedBy` (`customer` | `rep` | `backoffice`; scritto dalla console alla correzione di una riga). L'evento `order.line_corrected` porta `by` = ruolo (`CUSTOMER_CONTACT` | `SALES_REP` | `BACKOFFICE`).
 
 ## 3. Pipeline comune di ingresso
 
