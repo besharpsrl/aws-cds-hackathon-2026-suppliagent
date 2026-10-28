@@ -38,17 +38,23 @@ fallback of the sender ID): replies on the `SMS` channel (suggested replies for 
 short order confirmation next to the email, and the delivery message with *Received / Report a
 problem* for a contact who has a verified `SMS#` identity (otherwise the WhatsApp template).
 
-Not yet (T-24 complete): other templates outside the window, opt-out, channel fallback.
+T-24 (F-11, E-09): a `reply` may name an approved `template` (with its variables after the
+first, which is the contact's first name) that goes out when the WhatsApp 24 h window is closed;
+a reply that cannot go out on WhatsApp (window closed and no template, or still failing after the
+retries) goes on RCS/SMS to the contact's verified `SMS#` identity, if any. Transient errors of
+the send APIs are retried 3 times with backoff. No RCS/SMS to a number that sent STOP (the Router
+records it); no proactive message in the quiet hours (`QUIET_HOURS`, F-11.C6).
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `WA_PHONE_NUMBER_ID_PARAM`, `SES_FROM_PARAM`,
 `SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`, `DOCUMENTS_BUCKET`, `DELIVERY_CUTOFF`,
-`RCS_AGENT_PARAM`, `SMS_SENDER_PARAM`, `SMS_CONFIGURATION_SET_PARAM`.
+`RCS_AGENT_PARAM`, `SMS_SENDER_PARAM`, `SMS_CONFIGURATION_SET_PARAM`, `QUIET_HOURS`.
 """
 
 import json
 import os
 import re
 import time
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from functools import cache
 from typing import Any, Literal
@@ -62,7 +68,13 @@ from botocore.exceptions import ClientError
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.contacts import order_email
-from suppliagent_shared.delivery import calendar_closed, delivery_dates, parse_cutoff
+from suppliagent_shared.delivery import (
+    calendar_closed,
+    delivery_dates,
+    format_day,
+    parse_cutoff,
+    rome,
+)
 from suppliagent_shared.errors import (
     AccessDeniedError,
     ChannelUnavailableError,
@@ -142,6 +154,16 @@ class Interactive(BaseModel):
         return self
 
 
+class TemplateRef(BaseModel):
+    """Approved template for the same message outside the WhatsApp 24 h window (F-11.C2).
+    `params` are the variables from `{{2}}` on: `{{1}}` is the contact's first name, set here."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: Literal["order_pending_reminder", "order_confirmation"]
+    params: list[str] = Field(min_length=1, max_length=8)
+
+
 class Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -153,6 +175,7 @@ class Request(BaseModel):
     providerMessageId: str | None = None  # noqa: N815
     tsMessageId: str | None = None  # noqa: N815 - sort key of the received message
     interactive: Interactive | None = None
+    template: TemplateRef | None = None
 
 
 @cache
@@ -273,12 +296,24 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
         raise SendInProgressError  # a concurrent attempt may still fail: the caller retries
     sandbox = _sandbox()
     interactive = request.interactive if channel in ("WHATSAPP", "SMS") else None
+    template: str | None = None
     try:
         if sandbox:
             # A recorded id lets the simulator tap the buttons (scripts/simulate_channel.py --tap).
             provider_id = _sandbox_id(request.idempotencyKey) if interactive else None
         else:
-            provider_id, shown = _send(channel, address, request.text, conversation, interactive)
+            try:
+                provider_id, shown = _send(
+                    channel, address, request.text, conversation, interactive
+                )
+            except (ChannelUnavailableError, ClientError) as e:
+                # A transient error after the retries may still have delivered: never resend
+                # it on another channel (the caller retries with the same key).
+                if channel != "WHATSAPP" or (isinstance(e, ClientError) and _transient(e)):
+                    raise
+                provider_id, shown, channel, template = _fallback(
+                    request, conversation, interactive, e
+                )
             interactive = interactive if shown else None
     except Exception:
         _unclaim(request.idempotencyKey)
@@ -288,8 +323,8 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
     _done(request.idempotencyKey)
     status = "SANDBOX" if sandbox else "SENT"
     try:
-        _record(request, channel, provider_id, status, interactive)
-        _event("notification.sent", request.conversationId, channel, sandbox)
+        _record(request, channel, provider_id, status, interactive, template)
+        _event("notification.sent", request.conversationId, channel, sandbox, template)
     except Exception:
         logger.exception("sent, but not recorded")  # losing the record beats a second message
     if interactive and interactive.kind == "ORDER_SUMMARY" and interactive.orderId and provider_id:
@@ -297,6 +332,57 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
     # Never log the text, the number or the address (AGENTS §7).
     logger.info("reply sent", channel=channel, sandbox=sandbox)
     return {"status": status}
+
+
+def _fallback(
+    request: Request,
+    conversation: dict[str, Any],
+    interactive: Interactive | None,
+    error: Exception,
+) -> tuple[str | None, bool, str, str | None]:
+    """A WhatsApp reply that could not go out (E-09, F-11.C2/C3/C7): the approved template if the
+    window is closed and the request has one, otherwise RCS/SMS to the contact's verified `SMS#`
+    identity. Returns (provider id, options shown, channel, template)."""
+    address = str(conversation["lastInboundFrom"])
+    contact_id = str(conversation.get("contactId") or "")
+    contact = (
+        table("contacts").get_item(Key={"contactId": contact_id}).get("Item")
+        if contact_id.startswith("con_")
+        else None
+    ) or {}
+    if (
+        isinstance(error, ChannelUnavailableError)
+        and request.template
+        and _window_closed(conversation.get("lastWhatsappInboundAt"))
+    ):
+        name = request.template.name
+        language = _lang(contact) if contact else _locale_language(conversation)
+        customer = (
+            table("customers").get_item(Key={"customerId": contact["customerId"]}).get("Item")
+            if contact.get("customerId")
+            else None
+        )
+        params = [_first_name(contact, customer or {}), *request.template.params]
+        if not params[0]:
+            raise error  # a template variable cannot be empty
+        buttons = TEMPLATE_BUTTONS[name][language]
+        return (
+            _whatsapp(_template_message(address, name, language, params, buttons)),
+            False,
+            ("WHATSAPP"),
+            name,
+        )
+    sms = _sms_address(contact_id) if contact_id.startswith("con_") else None
+    if not sms:
+        raise error
+    logger.info("whatsapp unavailable: reply on rcs/sms", error=type(error).__name__)
+    options = [(o.id, o.title) for o in interactive.options] if interactive else []
+    provider_id, shown = _send_rcs(sms, request.text or "", options)
+    return provider_id, shown, "SMS", None
+
+
+def _locale_language(conversation: dict[str, Any]) -> str:
+    return "en" if str(conversation.get("lastInboundLocale", "")).startswith("en") else "it"
 
 
 def _event(
@@ -367,8 +453,10 @@ def _send(
         _send_email(address, text, conversation)
         return None, False
     if channel == "SMS":
+        if _opted_out(address):  # F-11.C5: the number sent STOP
+            raise ChannelUnavailableError
         options = [(o.id, o.title) for o in interactive.options] if interactive else []
-        return _send_rcs(address, text, options), bool(options)
+        return _send_rcs(address, text, options)
     raise ChannelUnavailableError
 
 
@@ -378,12 +466,16 @@ def whatsapp_markup(text: str) -> str:
     return _MD_BOLD.sub(r"*\1*", text)
 
 
-def _check_window(last_inbound: str | None) -> None:
-    # Free text only inside the 24 h window; templates arrive with T-29 (F-11.C2).
-    if (
+def _window_closed(last_inbound: str | None) -> bool:
+    return (
         not last_inbound
         or datetime.now(UTC) - datetime.fromisoformat(last_inbound) >= WHATSAPP_WINDOW
-    ):
+    )
+
+
+def _check_window(last_inbound: str | None) -> None:
+    # Free text only inside the 24 h window; outside it a template, if the request names one.
+    if _window_closed(last_inbound):
         raise ChannelUnavailableError
 
 
@@ -449,11 +541,44 @@ def _send_whatsapp_interactive(
     return _send_whatsapp(address, text, last_inbound), False
 
 
+# E-09: errors the service may not repeat on a retry; anything else (validation, access, a
+# timeout that may have sent) is not retried here.
+TRANSIENT_ERRORS = {
+    "ThrottlingException",
+    "TooManyRequestsException",
+    "InternalServerException",
+    "ServiceUnavailableException",
+    "TooManyRequests",
+}
+SEND_ATTEMPTS = 4  # the first try and 3 retries
+RETRY_BASE_SECONDS = 0.5
+
+
+def _transient(error: ClientError) -> bool:
+    status = int(error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0))
+    return error.response["Error"]["Code"] in TRANSIENT_ERRORS or status >= 500
+
+
+def _call(operation: Callable[[], Any]) -> Any:
+    """A send API call, retried with exponential backoff on transient errors (E-09)."""
+    for attempt in range(SEND_ATTEMPTS):
+        try:
+            return operation()
+        except ClientError as e:
+            if not _transient(e) or attempt == SEND_ATTEMPTS - 1:
+                raise
+            logger.warning("send throttled or failed: retrying", attempt=attempt + 1)
+            time.sleep(RETRY_BASE_SECONDS * 2**attempt)
+    raise AssertionError("unreachable")
+
+
 def _whatsapp(message: dict[str, Any]) -> str:
-    response = _social().send_whatsapp_message(
-        originationPhoneNumberId=_phone_number_id(),
-        message=json.dumps({"messaging_product": "whatsapp", **message}).encode(),
-        metaApiVersion="v20.0",
+    response = _call(
+        lambda: _social().send_whatsapp_message(
+            originationPhoneNumberId=_phone_number_id(),
+            message=json.dumps({"messaging_product": "whatsapp", **message}).encode(),
+            metaApiVersion="v20.0",
+        )
     )
     return str(response.get("messageId", ""))  # an empty id is simply not stored
 
@@ -478,11 +603,13 @@ def _send_email(address: str, text: str, conversation: dict[str, Any]) -> None:
             {"Name": "In-Reply-To", "Value": parent},
             {"Name": "References", "Value": parent},
         ]
-    _ses().send_email(
-        FromEmailAddress=sender,
-        Destination={"ToAddresses": [address]},
-        Content={"Simple": simple},
-        ConfigurationSetName=_param("SES_CONFIGURATION_SET_PARAM"),
+    _call(
+        lambda: _ses().send_email(
+            FromEmailAddress=sender,
+            Destination={"ToAddresses": [address]},
+            Content={"Simple": simple},
+            ConfigurationSetName=_param("SES_CONFIGURATION_SET_PARAM"),
+        )
     )
 
 
@@ -492,9 +619,12 @@ def _record(
     provider_id: str | None,
     status: str,
     interactive: Interactive | None = None,
+    template: str | None = None,
 ) -> None:
     """The outgoing message in the conversation history (console, KPIs)."""
     extra: dict[str, Any] = {"sentBy": request.sentBy} if request.sentBy else {}
+    if template:
+        extra["template"] = template
     if interactive:  # what the contact could tap (console, simulator)
         extra["interactive"] = interactive.model_dump(exclude_none=True)
     _store(
@@ -627,35 +757,37 @@ def _send_order_email(
     if sender == "UNSET":
         raise ChannelUnavailableError
     local, domain = sender.rsplit("@", 1)
-    _ses().send_email(
-        FromEmailAddress=sender,
-        Destination={"ToAddresses": [address]},
-        # Answers reach the Router with the order (F-15.C3): `ordine+<orderId>@` on our domain.
-        ReplyToAddresses=[f"{local}+{order_id}@{domain}"],
-        Content={
-            "Simple": {
-                "Subject": {"Data": email.subject, "Charset": "UTF-8"},
-                "Body": {
-                    "Text": {"Data": email.text, "Charset": "UTF-8"},
-                    "Html": {"Data": email.html, "Charset": "UTF-8"},
-                },
-                "Attachments": [
-                    {
-                        "RawContent": pdf,
-                        "FileName": f"{order_id}.pdf",
-                        "ContentType": "application/pdf",
-                        "ContentDisposition": "ATTACHMENT",
-                    }
-                ],
-            }
-        },
-        # Echoed in the SES events: the bounce handler finds the order and the contact.
-        EmailTags=[
-            {"Name": "template", "Value": ORDER_TEMPLATE},
-            {"Name": "orderId", "Value": order_id},
-            {"Name": "contactId", "Value": contact_id},
-        ],
-        ConfigurationSetName=_param("SES_CONFIGURATION_SET_PARAM"),
+    _call(
+        lambda: _ses().send_email(
+            FromEmailAddress=sender,
+            Destination={"ToAddresses": [address]},
+            # Answers reach the Router with the order (F-15.C3): `ordine+<orderId>@` on our domain.
+            ReplyToAddresses=[f"{local}+{order_id}@{domain}"],
+            Content={
+                "Simple": {
+                    "Subject": {"Data": email.subject, "Charset": "UTF-8"},
+                    "Body": {
+                        "Text": {"Data": email.text, "Charset": "UTF-8"},
+                        "Html": {"Data": email.html, "Charset": "UTF-8"},
+                    },
+                    "Attachments": [
+                        {
+                            "RawContent": pdf,
+                            "FileName": f"{order_id}.pdf",
+                            "ContentType": "application/pdf",
+                            "ContentDisposition": "ATTACHMENT",
+                        }
+                    ],
+                }
+            },
+            # Echoed in the SES events: the bounce handler finds the order and the contact.
+            EmailTags=[
+                {"Name": "template", "Value": ORDER_TEMPLATE},
+                {"Name": "orderId", "Value": order_id},
+                {"Name": "contactId", "Value": contact_id},
+            ],
+            ConfigurationSetName=_param("SES_CONFIGURATION_SET_PARAM"),
+        )
     )
 
 
@@ -770,32 +902,27 @@ TEMPLATE_BUTTONS: dict[str, dict[str, list[tuple[str, str]]]] = {
         "it": [("delivery_received", "Ricevuto"), ("delivery_issue", "Segnala problema")],
         "en": [("delivery_received", "Received"), ("delivery_issue", "Report a problem")],
     },
+    "order_pending_reminder": {
+        "it": [("order_show_summary", "Vedi riepilogo"), ("order_cancel_draft", "Annulla bozza")],
+        "en": [("order_show_summary", "View summary"), ("order_cancel_draft", "Cancel draft")],
+    },
+    "order_confirmation": {
+        "it": [("order_change", "Modifica ordine")],
+        "en": [("order_change", "Change order")],
+    },
 }
 MAX_REORDER_PRODUCTS = 3
-DAYS = {
-    "it": ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"),
-    "en": ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-}
-MONTHS = {
-    "it": (
-        "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
-        "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
-    ),
-    "en": (
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
-    ),
-}  # fmt: skip
 AND = {"it": " e ", "en": " and "}
+
+
+def _quiet() -> bool:
+    start, end = (parse_cutoff(part) for part in os.environ["QUIET_HOURS"].split("-"))
+    local = rome().time()
+    return local >= start or local < end  # the window crosses midnight
 
 
 def _lang(contact: dict[str, Any]) -> str:
     return "en" if str(contact.get("language", "it")).startswith("en") else "it"
-
-
-def _day(value: date, language: str, weekday: bool = False) -> str:
-    text = f"{value.day} {MONTHS[language][value.month - 1]}"
-    return f"{DAYS[language][value.weekday()]} {text}" if weekday else text
 
 
 def _first_name(contact: dict[str, Any], customer: dict[str, Any]) -> str:
@@ -819,6 +946,9 @@ def _reorder_due(detail: dict[str, Any]) -> dict[str, str]:
     status are read again: they may have changed since the trigger ran."""
     customer_id = str(detail.get("customerId", ""))
     logger.set_correlation_id(customer_id)
+    if _quiet():  # F-11.C6: a proactive message waits for the morning (the next trigger run)
+        logger.info("quiet hours: no reorder suggestion")
+        return {"status": "QUIET"}
     customer = table("customers").get_item(Key={"customerId": customer_id}).get("Item")
     skus = [str(s) for s in detail.get("skus", [])][:MAX_REORDER_PRODUCTS]
     if not customer or not skus:
@@ -865,8 +995,8 @@ def _reorder_due(detail: dict[str, Any]) -> dict[str, str]:
                 [
                     _first_name(contact, customer),
                     products,
-                    _day(last_date, language),
-                    _day(dates[0], language, weekday=True),
+                    format_day(last_date, language),
+                    format_day(dates[0], language, weekday=True),
                 ],
                 f"reorder#{customer_id}#{contact_id}#{date.today().isoformat()}",
                 {"customerId": customer_id},
@@ -930,6 +1060,32 @@ def _delivery_update(detail: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _template_message(
+    address: str, name: str, language: str, params: list[str], buttons: list[tuple[str, str]]
+) -> dict[str, Any]:
+    """A template message with its variables and our payload on each quick reply."""
+    return {
+        "to": address,
+        "type": "template",
+        "template": {
+            "name": name,
+            "language": {"code": language},
+            "components": [
+                {"type": "body", "parameters": [{"type": "text", "text": p} for p in params]},
+                *(
+                    {
+                        "type": "button",
+                        "sub_type": "quick_reply",
+                        "index": str(i),
+                        "parameters": [{"type": "payload", "payload": button_id}],
+                    }
+                    for i, (button_id, _) in enumerate(buttons)
+                ),
+            ],
+        },
+    }
+
+
 def _send_template(
     contact_id: str,
     name: str,
@@ -955,29 +1111,7 @@ def _send_template(
             provider_id: str | None = _sandbox_id(key)
         else:
             provider_id = _whatsapp(
-                {
-                    "to": conversation["lastInboundFrom"],
-                    "type": "template",
-                    "template": {
-                        "name": name,
-                        "language": {"code": language},
-                        "components": [
-                            {
-                                "type": "body",
-                                "parameters": [{"type": "text", "text": p} for p in params],
-                            },
-                            *(
-                                {
-                                    "type": "button",
-                                    "sub_type": "quick_reply",
-                                    "index": str(i),
-                                    "parameters": [{"type": "payload", "payload": button_id}],
-                                }
-                                for i, (button_id, _) in enumerate(buttons)
-                            ),
-                        ],
-                    },
-                }
+                _template_message(conversation["lastInboundFrom"], name, language, params, buttons)
             )
     except Exception:
         _unclaim(key)
@@ -1040,31 +1174,51 @@ def _sms_param(env_name: str) -> str:
     return value
 
 
-def _send_rcs(address: str, text: str, options: list[tuple[str, str]]) -> str:
+def _send_rcs(address: str, text: str, options: list[tuple[str, str]]) -> tuple[str, bool]:
     """An RCS text from the agent, with suggested replies for the options (their postback is the
     option id, back to the Router as `interactiveReply`); a phone without RCS gets the SMS
-    fallback from the sender ID, without the options."""
+    fallback from the sender ID, without the options. If RCS refuses the message outright (e.g.
+    a number that is not a tester of the test agent), the SMS goes out with `SendTextMessage`
+    (E-09). Returns the message id and whether the options went out."""
     content: dict[str, Any] = {"Content": {"TextMessage": {"Body": text[:RCS_TEXT_LIMIT]}}}
     if options:
         content["Suggestions"] = [
             {"Reply": {"Text": title[:RCS_SUGGESTION_LIMIT], "PostbackData": option_id}}
             for option_id, title in options[:RCS_MAX_SUGGESTIONS]
         ]
-    response = _sms().send_rcs_message(
-        DestinationPhoneNumber=address,
-        OriginationIdentity=_sms_param("RCS_AGENT_PARAM"),
-        RcsMessageContent=content,
-        MessageTrafficType="TRANSACTIONAL",
-        FallbackConfiguration={
-            "Channel": "SMS",
-            "OriginationIdentity": _sms_param("SMS_SENDER_PARAM"),
-            "MessageBody": text
-            if len(text) <= SMS_FALLBACK_LIMIT
-            else text[: SMS_FALLBACK_LIMIT - 1] + "…",
-        },
-        ConfigurationSetName=_sms_param("SMS_CONFIGURATION_SET_PARAM"),
+    sms_text = text if len(text) <= SMS_FALLBACK_LIMIT else text[: SMS_FALLBACK_LIMIT - 1] + "…"
+    sender = _sms_param("SMS_SENDER_PARAM")
+    configuration_set = _sms_param("SMS_CONFIGURATION_SET_PARAM")
+    try:
+        response = _call(
+            lambda: _sms().send_rcs_message(
+                DestinationPhoneNumber=address,
+                OriginationIdentity=_sms_param("RCS_AGENT_PARAM"),
+                RcsMessageContent=content,
+                MessageTrafficType="TRANSACTIONAL",
+                FallbackConfiguration={
+                    "Channel": "SMS",
+                    "OriginationIdentity": sender,
+                    "MessageBody": sms_text,
+                },
+                ConfigurationSetName=configuration_set,
+            )
+        )
+        return str(response.get("MessageId", "")), bool(options)
+    except ClientError as e:
+        if _transient(e):  # it may have gone out: the caller's retry (idempotent) decides
+            raise
+        logger.warning("rcs refused: plain sms", error=e.response["Error"]["Code"])
+    response = _call(
+        lambda: _sms().send_text_message(
+            DestinationPhoneNumber=address,
+            OriginationIdentity=sender,
+            MessageBody=sms_text,
+            MessageType="TRANSACTIONAL",
+            ConfigurationSetName=configuration_set,
+        )
     )
-    return str(response.get("MessageId", ""))
+    return str(response.get("MessageId", "")), False
 
 
 def _sms_address(contact_id: str) -> str | None:
@@ -1074,9 +1228,18 @@ def _sms_address(contact_id: str) -> str | None:
         IndexName="by-contactId", KeyConditionExpression=Key("contactId").eq(contact_id)
     )["Items"]
     for item in items:
-        if item.get("channel") == "SMS" and item.get("verified") is True:
+        if (
+            item.get("channel") == "SMS"
+            and item.get("verified") is True
+            and not item.get("optedOutAt")  # STOP (F-11.C5)
+        ):
             return str(item["channelAddress"]).removeprefix("SMS#")
     return None
+
+
+def _opted_out(address: str) -> bool:
+    item = table("channel-identities").get_item(Key={"channelAddress": f"SMS#{address}"})
+    return bool((item.get("Item") or {}).get("optedOutAt"))
 
 
 def _send_sms_message(
@@ -1096,7 +1259,11 @@ def _send_sms_message(
         raise SendInProgressError
     sandbox = _sandbox()
     try:
-        provider_id: str | None = _sandbox_id(key) if sandbox else _send_rcs(address, text, options)
+        if sandbox:
+            provider_id: str | None = _sandbox_id(key)
+        else:
+            provider_id, shown = _send_rcs(address, text, options)
+            options = options if shown else []
     except Exception:
         _unclaim(key)
         if not has_fallback:
@@ -1137,7 +1304,9 @@ def _order_sms(detail: dict[str, Any]) -> None:
         if not address:
             return
         language = "en" if _language(contact_id).startswith("en") else "it"
-        when = _day(date.fromisoformat(str(order["deliveryDate"])[:10]), language, weekday=True)
+        when = format_day(
+            date.fromisoformat(str(order["deliveryDate"])[:10]), language, weekday=True
+        )
         texts = SMS_UPDATED if detail.get("reason") == "updated" else SMS_CONFIRMATION
         revision = int(detail.get("revision", order.get("revision", 0)))
         _send_sms_message(

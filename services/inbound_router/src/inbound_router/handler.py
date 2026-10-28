@@ -7,7 +7,11 @@ goes through the Notifier (T-24: the only sender, AGENTS §8.7).
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `INBOUND_MAIL_BUCKET`, `ORDER_DOMAIN` (SES domain,
 empty = no order correlation), `TURN_FLUSH_QUEUE_URL`, `NOTIFIER_FUNCTION_NAME`,
-`DEBOUNCE_TEXT_MS`, `DEBOUNCE_MEDIA_MS`, plus those of `media`.
+`DEBOUNCE_TEXT_MS`, `DEBOUNCE_MEDIA_MS`, `MAX_RECEIVES` (the inbound queue's `maxReceiveCount`),
+plus those of `media`.
+
+STOP / START on SMS or RCS (F-11.C5, T-24) set or clear `optedOutAt` on the sender's `SMS#`
+identity (the Notifier then sends nothing there) and get no answer from the agent.
 """
 
 import hashlib
@@ -42,6 +46,8 @@ from inbound_router.normalize import (
 SOURCE = "suppliagent.inbound-router"
 LOCALES = {"it": "it-IT", "en": "en-GB"}
 DEDUP_TTL_SECONDS = 7 * 24 * 3600
+OPT_OUT = {"STOP", "STOPALL", "UNSUBSCRIBE", "ARRESTA", "BASTA"}
+OPT_IN = {"START", "UNSTOP", "AVVIA"}
 logger = Logger(service="inbound-router")
 
 
@@ -64,8 +70,10 @@ def handler(event: dict[str, Any], _context: Any) -> None:
     for record in event["Records"]:
         envelope = json.loads(record["body"])
         message = json.loads(envelope["Message"])
+        receives = int(record.get("attributes", {}).get("ApproximateReceiveCount", 1))
+        last_attempt = receives >= int(os.environ.get("MAX_RECEIVES", "3"))
         for raw in _raw_messages(message, str(envelope.get("Timestamp", ""))):
-            _store(raw)
+            _store(raw, last_attempt)
 
 
 def _raw_messages(event: dict[str, Any], published_at: str = "") -> list[RawMessage]:
@@ -95,13 +103,13 @@ def _read_mail(notification: dict[str, Any]) -> bytes:
     return body
 
 
-def _store(raw: RawMessage) -> None:
+def _store(raw: RawMessage, last_attempt: bool = False) -> None:
     identity = resolve(raw.channel, raw.sender) if raw.sender_verified else UNKNOWN
     conversation_id = _conversation_id(identity, raw)
     logger.set_correlation_id(conversation_id)
     message_id = "msg_" + uuid5(NAMESPACE_URL, raw.provider_message_id).hex
     # Before any write: a failed download is retried with nothing half-stored.
-    attachments = media.store(raw, identity.contact_id or conversation_id, message_id)
+    attachments = media.store(raw, identity.contact_id or conversation_id, message_id, last_attempt)
     created, mode = _touch_conversation(conversation_id, identity)
     _record_inbound(conversation_id, identity, raw)
     if created:
@@ -131,7 +139,9 @@ def _store(raw: RawMessage) -> None:
         }
     )
     # HUMAN: the agent stays silent (FN-24). Unverified sender: never answered (backscatter, T-24).
-    buffered = mode == "AGENT" and raw.sender_verified
+    # STOP / START: recorded also during a handoff, never answered (F-11.C5).
+    opt_keyword = raw.sender_verified and _opt_out_keyword(raw)
+    buffered = mode == "AGENT" and raw.sender_verified and not opt_keyword
     if _put_message(message, buffered):
         # Never log message content, numbers or addresses (AGENTS §7).
         logger.info("message stored", channel=raw.channel, role=identity.role)
@@ -173,6 +183,30 @@ def _read_receipt(conversation_id: str, provider_message_id: str, ts_message_id:
         )
     except Exception:
         logger.exception("read receipt not requested")
+
+
+def _opt_out_keyword(raw: RawMessage) -> bool:
+    """STOP / START on SMS or RCS: `optedOutAt` on the sender's `SMS#` identity, if it has one."""
+    word = (raw.text or "").strip().upper()
+    if raw.channel != "SMS" or word not in OPT_OUT | OPT_IN:
+        return False
+    update = (
+        ("SET optedOutAt = :at", {":at": raw.received_at})
+        if word in OPT_OUT
+        else ("REMOVE optedOutAt", {})
+    )
+    try:
+        table("channel-identities").update_item(
+            Key={"channelAddress": f"SMS#{raw.sender}"},
+            UpdateExpression=update[0],
+            ConditionExpression="attribute_exists(channelAddress)",
+            **({"ExpressionAttributeValues": update[1]} if update[1] else {}),
+        )
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+            raise
+    logger.info("sms opt-out keyword", optedOut=word in OPT_OUT)
+    return True
 
 
 def _conversation_id(identity: Identity, raw: RawMessage) -> str:

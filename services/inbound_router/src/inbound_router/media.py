@@ -90,17 +90,33 @@ def _looks_like(mime: str, content: bytes) -> bool:
     return False  # email audio and anything else: not accepted
 
 
-def store(raw: RawMessage, owner: str, message_id: str) -> tuple[Attachment, ...]:
+def store(
+    raw: RawMessage, owner: str, message_id: str, last_attempt: bool = False
+) -> tuple[Attachment, ...]:
     """Attachments of `raw`, with `s3Uri` where the file was stored. A rejected file stays in the
-    list without `s3Uri`, so the agent can tell the customer (E-13)."""
+    list without `s3Uri`, so the agent can tell the customer (E-13). A download that fails raises
+    (SQS retries the message), except on the `last_attempt` before the DLQ: then the media stays
+    without `s3Uri` and the agent asks the customer to send it again (E-02, T-24)."""
     bucket = os.environ["MEDIA_BUCKET"]
     prefix = f"media/{owner}/{message_id}/"
-    fetched = [_fetch(a, bucket, prefix) for a in raw.attachments]
+    fetched = [_fetch_or_give_up(a, bucket, prefix, last_attempt) for a in raw.attachments]
     uploaded = [
         _upload(f, f"{prefix}{i}", bucket, raw.files_scanned and i < MAX_ATTACHMENTS)
         for i, f in enumerate(raw.files)
     ]
     return tuple(fetched + uploaded)
+
+
+def _fetch_or_give_up(
+    attachment: Attachment, bucket: str, prefix: str, last_attempt: bool
+) -> Attachment:
+    try:
+        return _fetch(attachment, bucket, prefix)
+    except Exception:
+        if not last_attempt:
+            raise
+        logger.exception("media not downloaded after the retries: asking to send it again")
+        return attachment
 
 
 def _fetch(attachment: Attachment, bucket: str, prefix: str) -> Attachment:

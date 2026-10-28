@@ -297,3 +297,15 @@ def test_simulated_media_missing_from_the_bucket_fails_so_sqs_retries(
 
     with pytest.raises(SuppliAgentError):
         router.handler(sqs_event(simulated_photo(wa_event)), None)
+
+
+def test_on_the_last_attempt_a_failed_download_reaches_the_agent_without_file(
+    wa_media: Builder, social: Any
+) -> None:
+    social.fail = True  # E-02 after the retries: the agent asks to send it again (T-24)
+    event = sqs_event(wa_media("image", "image/jpeg"))
+    event["Records"][0]["attributes"] = {"ApproximateReceiveCount": "3"}
+    router.handler(event, None)
+    [item] = stored("conv_con001")
+    [attachment] = item["attachments"]
+    assert attachment["type"] == "image" and "s3Uri" not in attachment

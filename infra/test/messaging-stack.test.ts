@@ -9,7 +9,11 @@ const { context } = JSON.parse(readFileSync(new URL('../cdk.json', import.meta.u
 const stacks = buildApp(new App({ context }), getConfig('dev'));
 const template = Template.fromStack(stacks.messaging);
 
-type Statement = { Action: string | string[]; Resource: unknown };
+type Statement = {
+  Action: string | string[];
+  Resource: unknown;
+  Condition?: Record<string, Record<string, unknown>>;
+};
 const statements = (): Statement[] =>
   Object.values(template.findResources('AWS::IAM::Policy')).flatMap(
     (p) => p.Properties.PolicyDocument.Statement,
@@ -88,7 +92,18 @@ describe('MessagingStack – ingestion (T-21, FN-01)', () => {
     const writes = routerStatements().filter((s) =>
       [s.Action].flat().some((a) => /^dynamodb:(Put|Update)Item$/.test(a)),
     );
-    expect(JSON.stringify(writes)).not.toMatch(/ChannelIdentities|Contacts|SalesReps|Customers/);
+    // The only exception: `optedOutAt` of an SMS identity (STOP / START, T-24).
+    const [optOut, ...others] = writes.filter((s) =>
+      JSON.stringify(s).includes('ChannelIdentities'),
+    );
+    expect(others).toEqual([]);
+    expect(optOut.Action).toBe('dynamodb:UpdateItem');
+    expect(optOut.Condition?.['ForAllValues:StringEquals']['dynamodb:Attributes']).toEqual([
+      'channelAddress',
+      'optedOutAt',
+    ]);
+    const rest = writes.filter((s) => s !== optOut);
+    expect(JSON.stringify(rest)).not.toMatch(/ChannelIdentities|Contacts|SalesReps|Customers/);
   });
 
   it('does not touch the Foundation key policy (no Foundation -> Channels cycle)', () => {

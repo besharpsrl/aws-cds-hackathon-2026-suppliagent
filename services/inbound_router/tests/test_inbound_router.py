@@ -332,3 +332,49 @@ def test_sms_without_the_sns_timestamp_is_refused() -> None:
     event["Records"][0]["body"] = json.dumps(envelope)
     with pytest.raises(InvalidInputError):
         router.handler(event, None)
+
+
+def test_stop_on_sms_opts_the_number_out_without_an_answer(recorder: Any) -> None:
+    identities = boto3.resource("dynamodb").Table("suppliagent-test-channel-identities")
+    identities.put_item(
+        Item={
+            "channelAddress": "SMS#+393470000001",
+            "channel": "SMS",
+            "contactId": "con_001",
+            "role": "CUSTOMER_CONTACT",
+            "verified": True,
+        }
+    )
+    router.handler(sms_sqs_event("+393470000001", "Stop", "in-stop"), None)
+    item = identities.get_item(Key={"channelAddress": "SMS#+393470000001"})["Item"]
+    assert item["optedOutAt"] == "2026-10-28T09:00:00.123Z"
+    assert recorder.sent == []  # no turn: the agent does not answer
+    assert [m["text"] for m in stored("conv_con001")] == ["Stop"]
+
+    router.handler(sms_sqs_event("+393470000001", "START", "in-start"), None)
+    item = identities.get_item(Key={"channelAddress": "SMS#+393470000001"})["Item"]
+    assert "optedOutAt" not in item and recorder.sent == []
+
+
+def test_stop_from_an_unknown_number_is_only_stored(recorder: Any) -> None:
+    router.handler(sms_sqs_event("+393479999999", "STOP"), None)
+    assert recorder.sent == []
+
+
+def test_stop_during_a_handoff_is_still_recorded(recorder: Any) -> None:
+    identities = boto3.resource("dynamodb").Table("suppliagent-test-channel-identities")
+    identities.put_item(
+        Item={
+            "channelAddress": "SMS#+393470000001",
+            "channel": "SMS",
+            "contactId": "con_001",
+            "role": "CUSTOMER_CONTACT",
+            "verified": True,
+        }
+    )
+    boto3.resource("dynamodb").Table("suppliagent-test-conversations").put_item(
+        Item={"conversationId": "conv_con001", "mode": "HUMAN", "contactId": "con_001"}
+    )
+    router.handler(sms_sqs_event("+393470000001", "STOP"), None)
+    item = identities.get_item(Key={"channelAddress": "SMS#+393470000001"})["Item"]
+    assert "optedOutAt" in item and recorder.sent == []
