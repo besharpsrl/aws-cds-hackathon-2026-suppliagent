@@ -150,6 +150,8 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     for (const call of ['createLogGroup', 'associateKmsKey', 'putRetentionPolicy', 'tagResource']) {
       expect(calls).toContain(call);
     }
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('kms:DescribeKey');
   });
 
   it('lets the runtime invoke only the Nova Pro profile and its EU foundation models', () => {

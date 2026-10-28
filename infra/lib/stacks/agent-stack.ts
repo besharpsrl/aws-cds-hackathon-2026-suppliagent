@@ -657,6 +657,8 @@ function retainRuntimeLogs(
       ],
       resources: [logGroupArn, `${logGroupArn}:*`],
     }),
+    // CloudWatch Logs checks the CMK with the caller's identity on create/associate.
+    new iam.PolicyStatement({ actions: ['kms:DescribeKey'], resources: [key.keyArn] }),
   ]);
   const steps: [string, ReturnType<typeof call>][] = [
     [
