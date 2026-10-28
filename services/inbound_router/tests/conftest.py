@@ -205,10 +205,14 @@ def _raw_mail(
     body: str,
     sender: str = "Forno Antico <Ordini.FornoAntico@Example.com>",
     attachments: tuple[tuple[str, str, bytes], ...] = (),
+    subject: str = "Ordine",
+    message_id: str | None = None,
 ) -> bytes:
     """MIME mail; `attachments` are (filename, mime type, content)."""
     msg = EmailMessage()
-    msg["From"], msg["To"], msg["Subject"] = sender, "ordine@ordini.example.com", "Ordine"
+    msg["From"], msg["To"], msg["Subject"] = sender, "ordine@ordini.example.com", subject
+    if message_id:
+        msg["Message-ID"] = message_id
     msg.set_content(body)
     for filename, mime, content in attachments:
         maintype, subtype = mime.split("/")

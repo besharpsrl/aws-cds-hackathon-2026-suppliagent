@@ -205,7 +205,8 @@ def _touch_conversation(conversation_id: str, identity: Identity) -> tuple[bool,
 
 
 def _record_inbound(conversation_id: str, identity: Identity, raw: RawMessage) -> None:
-    """Where to answer (`lastInbound*`, the only address the Notifier uses) and, on WhatsApp, the
+    """Where to answer (`lastInbound*`, the only address the Notifier uses; for an email also the
+    thread, `lastEmail*`) and, on WhatsApp, the
     start of the 24 h window. Verified senders only, and only if this message is newer than what
     is stored: a redelivery or a redriven old message must not move them back. ponytail: the two
     updates are not atomic with each other; a crash between them leaves the older window start,
@@ -225,16 +226,18 @@ def _record_inbound(conversation_id: str, identity: Identity, raw: RawMessage) -
             if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
                 raise
 
-    newer(
-        "lastInboundAt",
-        [
-            "lastInboundAt = :at",
-            "lastInboundChannel = :channel",
-            "lastInboundFrom = :from",
-            "lastInboundLocale = :locale",
-        ],
-        {":channel": raw.channel, ":from": raw.sender, ":locale": LOCALES[identity.language]},
-    )
+    sets = [
+        "lastInboundAt = :at",
+        "lastInboundChannel = :channel",
+        "lastInboundFrom = :from",
+        "lastInboundLocale = :locale",
+    ]
+    values = {":channel": raw.channel, ":from": raw.sender, ":locale": LOCALES[identity.language]}
+    if raw.channel == "EMAIL":
+        # The Notifier answers in this thread; empty when missing, so an older one is not reused.
+        sets += ["lastEmailSubject = :subject", "lastEmailMessageId = :mid"]
+        values |= {":subject": raw.email_subject or "", ":mid": raw.email_message_id or ""}
+    newer("lastInboundAt", sets, values)
     if raw.channel == "WHATSAPP":
         newer("lastWhatsappInboundAt", ["lastWhatsappInboundAt = :at"], {})
 

@@ -23,6 +23,10 @@ QUOTE_START = re.compile(
     r"^(>|-+ ?(original message|messaggio originale)|(on|il) .+ (wrote|ha scritto):?$)",
     re.IGNORECASE,
 )
+# "Re:", "R:", "Rif:", "AW:", "SV:": the subject of a reply only repeats the thread's.
+REPLY_SUBJECT = re.compile(r"^\s*(re|r|rif|aw|sv)\s*:", re.IGNORECASE)
+# Kept to thread our answer (In-Reply-To): printable ASCII, as SES accepts in a header value.
+MESSAGE_ID = re.compile(r"^<[!-~]{1,900}>$")
 
 
 @dataclass(frozen=True)
@@ -49,6 +53,9 @@ class RawMessage:
     order_id: str | None = None
     # False when the channel cannot vouch for `sender`: the router then treats it as UNKNOWN.
     sender_verified: bool = True
+    # Email only: the reply goes out in the same thread (subject "Re: …", In-Reply-To).
+    email_subject: str | None = None
+    email_message_id: str | None = None
 
 
 def is_whatsapp(event: dict[str, Any]) -> bool:
@@ -135,9 +142,10 @@ def email_message(notification: dict[str, Any], raw: bytes, order_domain: str = 
     mail = notification["mail"]
     receipt = notification.get("receipt", {})
     msg = message_from_bytes(raw, policy=policy.default)
-    subject = str(msg.get("Subject", "")).strip()
+    subject = " ".join(str(msg.get("Subject", "")).split())
     body = _clean_body(msg)
-    text = "\n".join(part for part in (subject, body) if part) or None
+    shown_subject = "" if REPLY_SUBJECT.match(subject) else subject
+    text = "\n".join(part for part in (shown_subject, body) if part) or None
     if text and len(text) > MAX_TEXT_CHARS:
         text = text[:MAX_TEXT_CHARS] + " […]"
     sender = parseaddr(str(msg.get("From", "")))[1].lower()
@@ -147,6 +155,7 @@ def email_message(notification: dict[str, Any], raw: bytes, order_domain: str = 
         for d in mail.get("destination", [])
         if (m := ORDER_ADDRESS.match(d)) and order_domain and m.group(2).lower() == order_domain
     )
+    message_id = str(msg.get("Message-ID", "")).strip()
     return RawMessage(
         channel=Channel.EMAIL,
         provider_message_id=mail["messageId"],
@@ -157,6 +166,8 @@ def email_message(notification: dict[str, Any], raw: bytes, order_domain: str = 
         files_scanned=receipt.get("virusVerdict", {}).get("status") == "PASS",
         order_id=next(order_ids, None) if verified else None,
         sender_verified=verified,
+        email_subject=subject[:200] or None,
+        email_message_id=message_id if MESSAGE_ID.match(message_id) else None,
     )
 
 

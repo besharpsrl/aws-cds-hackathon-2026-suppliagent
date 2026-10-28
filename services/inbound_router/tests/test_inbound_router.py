@@ -173,6 +173,21 @@ def test_email_order_is_read_from_s3(events: list[Any], mail: Builder, raw_mail:
     )
 
 
+def test_email_reply_thread_is_kept_on_the_conversation(
+    events: list[Any], mail: Builder, raw_mail: Builder
+) -> None:
+    raw = raw_mail("10 kg farina", subject="Ordine per domani", message_id="<m1@example.com>")
+    router.handler(sqs_event(mail(raw)), None)
+
+    conversations: Any = boto3.resource("dynamodb").Table("suppliagent-test-conversations")
+    item = conversations.get_item(Key={"conversationId": "conv_con001"})["Item"]
+    assert (item["lastInboundChannel"], item["lastEmailSubject"], item["lastEmailMessageId"]) == (
+        "EMAIL",
+        "Ordine per domani",
+        "<m1@example.com>",
+    )
+
+
 def test_spoofed_email_from_a_known_contact_gets_no_identity(
     events: list[Any], mail: Builder, raw_mail: Builder
 ) -> None:
