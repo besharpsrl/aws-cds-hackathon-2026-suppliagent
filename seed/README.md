@@ -26,7 +26,7 @@ One JSON file per DynamoDB table; the file name is the table suffix (`suppliagen
 ## Usage
 
 ```bash
-uv run python seed/seed.py --env dev [--profile NAME]   # idempotent PutItem, does not delete items
+uv run python seed/seed.py --env dev [--profile NAME]   # idempotent PutItem, does not delete items; uploads data/sheets and starts the KB ingestion (--skip-sheets)
 uv run python seed/reset.py --env dev [--profile NAME]  # clears Orders/Deliveries/Issues, reseeds, rebuilds the product index
 ```
 

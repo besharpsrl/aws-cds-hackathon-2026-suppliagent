@@ -109,7 +109,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Agente (AgentCore Runtime + Gateway + Memory, Strands, Nova `eu.`) | ✅ | Ruoli e tool ok; informativa e consenso al primo contatto (T-48); Memory per contatto, Guardrail, tracce OTel e messaggi come contenuto non fidato (T-54, dopo il deploy di `agent`) |
 | Identificazione di nuovi contatti | ✅ | Abbinamento ok; i contatti nuovi restano da verificare, tranne quelli dei clienti di prova dei giudici `C90001`–`C90003` (T-71, F-02.C7) |
 | Lettura bigliettini (`order_intake`) | ✅ | 62% di righe corrette sul corsivo (3 note): da migliorare (T-05, T-53) |
-| Matching catalogo (S3 Vectors) | ✅ | Schede tecniche (Knowledge Base) Could (T-06b, T-44b) |
+| Matching catalogo (S3 Vectors) | ✅ | Schede tecniche: Knowledge Base su S3 Vectors con 12 schede sintetiche (T-06b, dopo il deploy di `catalog` e `seed.py`); tool `ask_product_sheets` da fare (T-44b) |
 | Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp (T-25) in PR, da provare sul telefono |
 | ERP mock + PDF ordine | ✅ | |
 | Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Inbox, dettaglio e correzione riga su API reali (T-62, dopo il deploy di `console` e `scripts/deploy-console.sh`); conversazioni live e handoff in console (T-63: *Take over* / *Reply* / *Release*, polling 2 s; lato agente T-49); WebSocket e KPI da fare |

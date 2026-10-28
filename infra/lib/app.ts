@@ -32,6 +32,7 @@ export function buildApp(app: App, config: EnvConfig) {
       ...common,
       key: foundation.key,
       productsTable: data.tables.Products,
+      catalogAssetsBucket: foundation.catalogAssetsBucket,
     }),
     foundation,
     data,

@@ -75,3 +75,65 @@ describe('CatalogStack (T-06, FN-07)', () => {
     expect(name).not.toContain('"Ref":"VectorBucket');
   });
 });
+
+describe('CatalogStack – technical sheets (T-06b, FN-21)', () => {
+  it('creates the product-sheets index with the Bedrock keys not filterable', () => {
+    template.hasResourceProperties('AWS::S3Vectors::Index', {
+      IndexName: 'product-sheets',
+      DataType: 'float32',
+      Dimension: 1024,
+      DistanceMetric: 'cosine',
+      MetadataConfiguration: {
+        NonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT', 'AMAZON_BEDROCK_METADATA'],
+      },
+    });
+  });
+
+  it('creates a Knowledge Base on S3 Vectors with Titan V2 and the sheets/ data source', () => {
+    template.hasResourceProperties('AWS::Bedrock::KnowledgeBase', {
+      Name: 'suppliagent-dev-product-sheets',
+      StorageConfiguration: {
+        Type: 'S3_VECTORS',
+        S3VectorsConfiguration: { IndexArn: Match.anyValue() },
+      },
+      KnowledgeBaseConfiguration: {
+        Type: 'VECTOR',
+        VectorKnowledgeBaseConfiguration: Match.objectLike({
+          EmbeddingModelConfiguration: {
+            BedrockEmbeddingModelConfiguration: { Dimensions: 1024, EmbeddingDataType: 'FLOAT32' },
+          },
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::Bedrock::DataSource', {
+      DataSourceConfiguration: {
+        Type: 'S3',
+        S3Configuration: Match.objectLike({ InclusionPrefixes: ['sheets/'] }),
+      },
+      DataDeletionPolicy: 'DELETE',
+    });
+  });
+
+  it('lets the Knowledge Base role read sheets/ only and use the sheets index only', () => {
+    const role = Object.entries(template.findResources('AWS::IAM::Role')).find(([id]) =>
+      id.startsWith('ProductSheetsKbRole'),
+    )!;
+    const trust = JSON.stringify(role[1].Properties.AssumeRolePolicyDocument);
+    expect(trust).toContain('aws:SourceAccount');
+    expect(trust).toContain('knowledge-base/*');
+    const policy = Object.entries(template.findResources('AWS::IAM::Policy')).find(([id]) =>
+      id.startsWith('ProductSheetsKbRole'),
+    )!;
+    const json = JSON.stringify(policy[1].Properties.PolicyDocument);
+    expect(json).toContain('/sheets/*');
+    expect(json).not.toContain('s3:PutObject');
+    expect(json).toContain('ProductSheetsIndex');
+    expect(json).not.toContain('ProductsIndex');
+  });
+
+  it('publishes the Knowledge Base and data source ids to SSM', () => {
+    for (const name of ['productSheetsKbId', 'productSheetsDataSourceId']) {
+      template.hasResourceProperties('AWS::SSM::Parameter', { Name: `/suppliagent/dev/${name}` });
+    }
+  });
+});

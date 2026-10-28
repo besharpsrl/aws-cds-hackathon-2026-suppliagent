@@ -227,7 +227,8 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 
 **Schede tecniche (Bedrock Knowledge Base)**
 - Data source S3 `catalog-assets/sheets/` (PDF schede tecniche, allergeni, conservazione).
-- Vector store **S3 Vectors**; chunking semantico; metadati `sku`, `category`.
+- Vector store **S3 Vectors**; chunking fisso (300 token, 10% di sovrapposizione: le schede sono brevi, una sezione per chunk); metadati `sku`, `category` dai sidecar `<file>.metadata.json`.
+- *Stato (T-06b)*: `CatalogStack` con indice `product-sheets` nello stesso vector bucket (1024, `float32`, cosine; `AMAZON_BEDROCK_TEXT` e `AMAZON_BEDROCK_METADATA` non filtrabili), `CfnKnowledgeBase` `suppliagent-<env>-product-sheets` (Titan Text Embeddings V2, `S3_VECTORS`), data source S3 `catalog-assets/sheets/` (`DataDeletionPolicy = DELETE`), ruolo dedicato (trust `bedrock.amazonaws.com` con `aws:SourceAccount` e `knowledge-base/*`; solo `InvokeModel` di Titan V2, `s3vectors` sull'indice `product-sheets`, lettura di `sheets/*`, CMK). Id in SSM `productSheetsKbId` / `productSheetsDataSourceId`. Le 12 schede **sintetiche** stanno in `seed/data/sheets/` (`<sku>.md` + sidecar); `seed/seed.py` le carica e avvia l'ingestion (`--skip-sheets` per saltarla). Nessun costo fisso. Il tool `ask_product_sheets` è T-44b.
 - `ask_product_sheets` usa `RetrieveAndGenerate`/`Retrieve` con filtro per SKU quando noto, risposta con **citazione della scheda**.
 
 ### 5.5 Ordini, ERP e outbound

@@ -182,3 +182,55 @@ def test_write_loads_every_item(dynamodb: Any) -> None:
     seed.write(dynamodb, "dev", DATA)  # idempotent: same items, no duplicates
     for stem, items in DATA.items():
         assert dynamodb.Table(f"suppliagent-dev-{stem}").scan()["Count"] == len(items)
+
+
+def test_every_technical_sheet_has_its_metadata_for_an_existing_product() -> None:
+    """T-06b: `<sku>.md` + `<sku>.md.metadata.json` (Bedrock sidecar, filters sku and category)."""
+    import json
+
+    products = {p["sku"]: p for p in DATA["products"]}
+    files = seed.sheet_files()
+    sheets = [p for p in files if p.suffix == ".md"]
+    assert len(sheets) >= 10 and len(files) == 2 * len(sheets)
+    for sheet in sheets:
+        sku = sheet.stem
+        meta = json.loads(sheet.with_name(sheet.name + ".metadata.json").read_text())
+        assert meta == {"metadataAttributes": {"sku": sku, "category": products[sku]["category"]}}
+        text = sheet.read_text(encoding="utf-8")
+        assert f"**Codice (SKU)**: {sku}" in text and "## Allergeni" in text
+        assert "sintetica" in text  # synthetic demo data, never a real producer's sheet
+
+
+def test_sheets_are_uploaded_and_the_ingestion_started(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    started: list[dict[str, Any]] = []
+
+    class FakeAgent:
+        def start_ingestion_job(self, **request: Any) -> dict[str, Any]:
+            started.append(request)
+            return {"ingestionJob": {"ingestionJobId": "job-1"}}
+
+    with mock_aws():
+        session = boto3.Session(region_name="eu-west-1")
+        account = session.client("sts").get_caller_identity()["Account"]
+        bucket = f"suppliagent-dev-catalog-assets-{account}"
+        session.client("s3").create_bucket(
+            Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"}
+        )
+        ssm = session.client("ssm")
+        ssm.put_parameter(Name="/suppliagent/dev/productSheetsKbId", Value="KB1", Type="String")
+        ssm.put_parameter(
+            Name="/suppliagent/dev/productSheetsDataSourceId", Value="DS1", Type="String"
+        )
+        real_client: Any = session.client
+
+        def client(name: str, **kwargs: Any) -> Any:
+            return FakeAgent() if name == "bedrock-agent" else real_client(name, **kwargs)
+
+        monkeypatch.setattr(session, "client", client)
+        assert seed.upload_sheets(session, "dev") == "job-1"
+        keys = {o["Key"] for o in real_client("s3").list_objects_v2(Bucket=bucket)["Contents"]}
+    assert "sheets/BURRATA-125.md" in keys and "sheets/BURRATA-125.md.metadata.json" in keys
+    assert started == [{"knowledgeBaseId": "KB1", "dataSourceId": "DS1"}]
