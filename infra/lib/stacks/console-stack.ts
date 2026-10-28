@@ -12,6 +12,7 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import type { ITableV2 } from 'aws-cdk-lib/aws-dynamodb';
+import type { IEventBus } from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -24,6 +25,14 @@ export interface ConsoleStackProps extends StackProps {
   readonly config: EnvConfig;
   readonly key: IKey;
   readonly ordersTable: ITableV2;
+  /** Read to enrich orders (names, handoff, ticket photo) and to price a corrected line. */
+  readonly customersTable: ITableV2;
+  readonly conversationsTable: ITableV2;
+  readonly messagesTable: ITableV2;
+  readonly productsTable: ITableV2;
+  readonly priceListsTable: ITableV2;
+  readonly promotionsTable: ITableV2;
+  readonly eventBus: IEventBus;
   readonly mediaBucket: s3.IBucket;
 }
 
@@ -159,9 +168,17 @@ export class ConsoleStack extends Stack {
       name: 'console-api',
       code: lambda.Code.fromAsset(consoleApiCode),
       handler: 'console_api.handler.handler',
-      environment: { ORDERS_TABLE: props.ordersTable.tableName },
+      environment: {
+        ORDERS_TABLE: props.ordersTable.tableName,
+        CUSTOMERS_TABLE: props.customersTable.tableName,
+        CONVERSATIONS_TABLE: props.conversationsTable.tableName,
+        MESSAGES_TABLE: props.messagesTable.tableName,
+        PRODUCTS_TABLE: props.productsTable.tableName,
+        PRICE_LISTS_TABLE: props.priceListsTable.tableName,
+        PROMOTIONS_TABLE: props.promotionsTable.tableName,
+        EVENT_BUS_NAME: props.eventBus.eventBusName,
+      },
     });
-    // Read-only by design: the console API never writes orders (corrections arrive with T-46).
     // Explicit statements instead of grantRead*: no Action wildcards, only the ones below.
     consoleApi.function.addToRolePolicy(
       new iam.PolicyStatement({
@@ -169,6 +186,35 @@ export class ConsoleStack extends Stack {
         resources: [props.ordersTable.tableArn, `${props.ordersTable.tableArn}/index/*`],
       }),
     );
+    // The only write of the API: a line correction (T-62). No Put/Delete, no index.
+    consoleApi.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['dynamodb:UpdateItem'],
+        resources: [props.ordersTable.tableArn],
+      }),
+    );
+    consoleApi.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['dynamodb:GetItem', 'dynamodb:BatchGetItem'],
+        resources: [
+          props.customersTable.tableArn,
+          props.conversationsTable.tableArn,
+          props.productsTable.tableArn,
+          props.priceListsTable.tableArn,
+        ],
+      }),
+    );
+    consoleApi.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['dynamodb:Query'],
+        resources: [
+          props.messagesTable.tableArn,
+          props.promotionsTable.tableArn,
+          `${props.promotionsTable.tableArn}/index/by-sku`,
+        ],
+      }),
+    );
+    props.eventBus.grantPutEventsTo(consoleApi.function);
     // ponytail: bucket-wide read (presigned image URLs); narrow to the media key prefix once T-22 fixes the layout.
     consoleApi.function.addToRolePolicy(
       new iam.PolicyStatement({
@@ -201,7 +247,7 @@ export class ConsoleStack extends Stack {
       defaultCorsPreflightOptions: {
         // Bearer-token API, no cookies: any origin is safe, and the CloudFront domain is not known here.
         allowOrigins: apigw.Cors.ALL_ORIGINS,
-        allowMethods: ['GET', 'OPTIONS'],
+        allowMethods: ['GET', 'PATCH', 'OPTIONS'],
         allowHeaders: ['Authorization', 'Content-Type'],
       },
     });
@@ -216,10 +262,37 @@ export class ConsoleStack extends Stack {
     };
     const orders = this.api.root.addResource('orders');
     orders.addMethod('GET', integration, methodOptions);
-    orders.addResource('{orderId}').addMethod('GET', integration, {
+    const order = orders.addResource('{orderId}');
+    order.addMethod('GET', integration, {
       ...methodOptions,
       requestParameters: { 'method.request.path.orderId': true },
     });
+    // Correction of a line (FN-28): the Lambda checks role, portfolio and candidate.
+    const correction = this.api.addModel('LineCorrection', {
+      contentType: 'application/json',
+      modelName: 'LineCorrection',
+      schema: {
+        schema: apigw.JsonSchemaVersion.DRAFT4,
+        type: apigw.JsonSchemaType.OBJECT,
+        required: ['sku'],
+        additionalProperties: false,
+        properties: {
+          sku: { type: apigw.JsonSchemaType.STRING, minLength: 1, maxLength: 64 },
+          quantity: { type: apigw.JsonSchemaType.NUMBER },
+        },
+      },
+    });
+    order
+      .addResource('lines')
+      .addResource('{lineId}')
+      .addMethod('PATCH', integration, {
+        ...methodOptions,
+        requestParameters: {
+          'method.request.path.orderId': true,
+          'method.request.path.lineId': true,
+        },
+        requestModels: { 'application/json': correction },
+      });
     const validator = this.api.addRequestValidator('Validator', {
       validateRequestParameters: true,
       validateRequestBody: true,

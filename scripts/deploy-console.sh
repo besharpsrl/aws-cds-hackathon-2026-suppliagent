@@ -20,8 +20,8 @@ BUCKET="$(output SiteBucketName)"
 export VITE_USER_POOL_ID="$(output UserPoolId)"
 export VITE_USER_POOL_CLIENT_ID="$(output UserPoolClientId)"
 export VITE_API_URL="$(output ApiUrl)"
-# ponytail: mock orders until the orders tool (T-46) is live; pass VITE_ORDERS_SOURCE=api to override.
-export VITE_ORDERS_SOURCE="${VITE_ORDERS_SOURCE:-mock}"
+# Published console on real orders; pass VITE_ORDERS_SOURCE=mock for a demo without data.
+export VITE_ORDERS_SOURCE="${VITE_ORDERS_SOURCE:-api}"
 DISTRIBUTION="$(aws cloudfront list-distributions \
   --query "DistributionList.Items[?Comment=='suppliagent-${ENV_NAME} console'].Id | [0]" --output text)"
 [ -n "$BUCKET" ] && [ "$DISTRIBUTION" != "None" ] || { echo "Stack outputs or distribution not found" >&2; exit 1; }

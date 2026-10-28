@@ -3,7 +3,7 @@ import { mockOrdersApi } from './mockApi';
 import type { OrderDetail, OrderSummary } from './types';
 
 export interface OrdersApi {
-  /** `mock` until the orders tool (T-46) writes real orders. */
+  /** `mock` is local development only; the published console uses `api`. */
   readonly source: 'mock' | 'api';
   listOrders(): Promise<OrderSummary[]>;
   getOrder(orderId: string): Promise<OrderDetail>;
@@ -11,18 +11,22 @@ export interface OrdersApi {
   correctLine(orderId: string, lineId: string, sku: string): Promise<void>;
 }
 
-/** console_api (T-60): read-only for now; corrections arrive with T-46. */
+/** console_api: list, detail and line correction (the API also checks role and portfolio). */
 export const httpOrdersApi: OrdersApi = {
   source: 'api',
   async listOrders() {
     return (await apiFetch<{ orders: OrderSummary[] }>('/orders')).orders;
   },
   getOrder: (orderId) => apiFetch<OrderDetail>(`/orders/${encodeURIComponent(orderId)}`),
-  async correctLine() {
-    throw new Error('Line corrections are not available yet (orders tool, T-46).');
+  async correctLine(orderId, lineId, sku) {
+    await apiFetch(`/orders/${encodeURIComponent(orderId)}/lines/${encodeURIComponent(lineId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sku }),
+    });
   },
 };
 
-/** `VITE_ORDERS_SOURCE=api` switches to the real API; mock is the default until T-46 is on main. */
+/** `VITE_ORDERS_SOURCE=api` uses the real API (what `scripts/deploy-console.sh` builds); mock is the local default. */
 export const defaultOrdersApi: OrdersApi =
   import.meta.env.VITE_ORDERS_SOURCE === 'api' ? httpOrdersApi : mockOrdersApi;

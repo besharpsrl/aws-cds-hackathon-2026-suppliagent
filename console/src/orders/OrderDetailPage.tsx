@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { isReadOnly } from '../auth/roles';
 import { useOrdersApi } from './OrdersApiContext';
@@ -48,7 +49,7 @@ export function OrderDetailPage() {
           Read-only access: you can browse the order and its ticket, but not correct lines.
         </p>
       )}
-      {correct.isError && <p role="alert">Could not apply the correction.</p>}
+      {correct.isError && <p role="alert">{correctionError(correct.error)}</p>}
       <div className="detail">
         {imageUrl ? (
           <TicketImage
@@ -86,6 +87,16 @@ export function OrderDetailPage() {
       </div>
     </>
   );
+}
+
+function correctionError(error: unknown): string {
+  if (error instanceof ApiError && error.status === 409) {
+    return 'The order changed in the meantime or is no longer editable: reload it.';
+  }
+  if (error instanceof ApiError && error.status === 400) {
+    return 'This line cannot be matched: its quantity is missing or the product is not available.';
+  }
+  return 'Could not apply the correction.';
 }
 
 interface RowProps {

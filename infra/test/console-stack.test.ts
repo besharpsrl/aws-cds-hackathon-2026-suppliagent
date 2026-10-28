@@ -61,14 +61,46 @@ describe('ConsoleStack (T-60, FN-28, FN-32)', () => {
     }
   });
 
-  it('gives console_api read-only access to Orders (no write actions)', () => {
+  it('lets console_api write only UpdateItem, and only on the Orders table (T-62)', () => {
     const statements = Object.values(template.findResources('AWS::IAM::Policy')).flatMap(
       (p) => p.Properties.PolicyDocument.Statement,
-    );
-    const actions = statements.flatMap((s: { Action: string | string[] }) => s.Action);
+    ) as { Action: string | string[]; Resource: unknown }[];
+    const actions = statements.flatMap((s) => s.Action);
     expect(actions).toContain('dynamodb:Query');
-    expect(actions.filter((a: string) => /^dynamodb:(Put|Update|Delete|Batch)/.test(a))).toEqual(
-      [],
-    );
+    expect(actions.filter((a) => /^dynamodb:(Put|Delete)/.test(a))).toEqual([]);
+    const writers = statements.filter((s) => [s.Action].flat().includes('dynamodb:UpdateItem'));
+    expect(writers).toHaveLength(1);
+    expect([writers[0].Action].flat()).toEqual(['dynamodb:UpdateItem']);
+    expect(JSON.stringify(writers[0].Resource)).not.toContain('/index/');
+  });
+
+  it('exposes the line correction as a validated PATCH behind the authorizer', () => {
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'PATCH',
+      AuthorizationType: 'COGNITO_USER_POOLS',
+      RequestModels: { 'application/json': Match.anyValue() },
+      RequestParameters: {
+        'method.request.path.orderId': true,
+        'method.request.path.lineId': true,
+      },
+    });
+    template.hasResourceProperties('AWS::ApiGateway::Model', {
+      Schema: Match.objectLike({ required: ['sku'], additionalProperties: false }),
+    });
+  });
+
+  it('allows PATCH in the CORS preflight', () => {
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'OPTIONS',
+      Integration: Match.objectLike({
+        IntegrationResponses: Match.arrayWith([
+          Match.objectLike({
+            ResponseParameters: Match.objectLike({
+              'method.response.header.Access-Control-Allow-Methods': "'GET,PATCH,OPTIONS'",
+            }),
+          }),
+        ]),
+      }),
+    });
   });
 });
