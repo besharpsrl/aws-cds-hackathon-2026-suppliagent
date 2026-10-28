@@ -100,9 +100,17 @@ The console has a read-only `judge` role: judges can browse orders and see each 
 **Order channels (`dev`)**
 - **WhatsApp**: send a message, a photo of a handwritten list or a voice note to **+39 345 246 0472** (display name "SuppliAgent"). Replies within 24 hours of your message are free-form; outside that window the agent uses Meta-approved templates.
 - **Email**: send the order (text or attached photo) to **ordini@suppliagent.stonecutters.besharp.net**.
-- The agent identifies you by your phone number or email address, so a test customer has to be registered first (see `seed/`).
+- The agent identifies you by your phone number or email address. The first time, it asks for your venue name and customer code: use one of the **test customers** below (pick one at random, so you are less likely to share it with another judge). They are verified at once so you can order right away; other customers' new contacts wait for the distributor's verification.
 
-_Coming soon_: console URL and `judge` credentials, test customer.
+| Venue name | Customer code | VAT number |
+|---|---|---|
+| Demo Bistro 1 | C90001 | IT90000000901 |
+| Demo Bistro 2 | C90002 | IT90000000902 |
+| Demo Bistro 3 | C90003 | IT90000000903 |
+
+Judges using the same code share that venue (order history and orders). Orders may be cleared when the demo data is reset; your number stays registered.
+
+_Coming soon_: console URL and `judge` credentials.
 
 ## Pre-existing code
 

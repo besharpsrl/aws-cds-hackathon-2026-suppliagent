@@ -275,7 +275,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 
 | Tabella | PK | SK | GSI | Note |
 |---|---|---|---|---|
-| `Customers` | `customerId` | – | `repId`, `zone` | locali: ragione sociale, tipologia, zona, giorni consegna, agente, listino |
+| `Customers` | `customerId` | – | `repId`, `zone` | locali: ragione sociale, tipologia, zona, giorni consegna, agente, listino; `autoVerifyContacts` solo per i clienti di prova dei giudici (F-02.C7) |
 | `Contacts` | `contactId` | – | `customerId` | persone: ruolo, lingua, preferenze, consenso |
 | `ChannelIdentities` | `channelAddress` (`channel#address`) | – | `contactId` | phone/email → contatto; include agenti di commercio |
 | `SalesReps` | `repId` | – | – | agenti: portafoglio, zona |
