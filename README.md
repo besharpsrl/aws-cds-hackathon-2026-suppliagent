@@ -80,7 +80,7 @@ Everything is deployed with AWS CDK from a single account and region (`eu-west-1
 6. *RCS and SMS* (step by step, in Italian: [docs/RCS_SMS_SETUP.md](docs/RCS_SMS_SETUP.md)): create an RCS agent with a `TEST_RCS_LAUNCH_REGISTRATION` (auto-approved in minutes), invite Android test devices (RCS for business does not reach iPhones on Italian carriers), and request the alphanumeric sender ID `SuppliAgent` for Italy (one-way). The SMS account stays in the sandbox: SMS only to verified numbers.
 7. *Demo page*: once the WhatsApp number and the order mailbox exist, republish the console with `VITE_DEMO_WHATSAPP="+39…" VITE_DEMO_ORDER_EMAIL="ordini@<sesDomain>" scripts/deploy-console.sh <env>`. For `dev` the values are in `console/.env.example`; the deploy script takes them from the environment variables above, not from `.env` files.
 
-**Deploy from scratch** (credentials for the target account in `AWS_PROFILE`; steps 1-2 and 5-7 of the manual steps above are done once, in parallel, as they depend on Meta and DNS):
+**Deploy from scratch** (credentials for the target account in `AWS_PROFILE`; manual steps 1, 2, 5, 6 and 7 depend on Meta and DNS and run alongside the deploy):
 
 ```bash
 npm ci && uv sync                                              # dependencies (npm workspaces + uv workspace)
