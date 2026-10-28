@@ -355,12 +355,13 @@ def test_agent_failure_keeps_the_messages_frees_the_lock_and_apologises(fakes: F
         flush()  # SQS redelivers the flush (after the visibility timeout: a delayed flush)
 
     item = buffer()
-    assert len(item["pending"]) == 1 and "lockUntil" not in item
-    assert item["turnFailures"] == 1
+    assert len(item["pending"]) == 1 and item["turnFailures"] == 1
+    assert item["lockUntil"] == NOW + LOCK_MS // 2  # backoff before the retry
     [courtesy] = fakes.notifications
     assert courtesy["idempotencyKey"] == "courtesy#msg_1"
     assert "tra un attimo" in courtesy["text"]
 
+    fakes.now = NOW + LOCK_MS // 2 + 1  # the SQS retry, after the visibility timeout
     fakes.agent_error = None
     flush()
     assert len(fakes.turns) == 2 and buffer()["pending"] == []
@@ -377,6 +378,7 @@ def test_second_failure_hands_over_to_a_colleague(fakes: Fakes) -> None:  # E-12
     fakes.agent_error = RuntimeError("ReadTimeoutError")
     with pytest.raises(RuntimeError):
         flush()
+    fakes.now = NOW + LOCK_MS // 2 + 1
 
     flush()  # the retry fails too: no exception, so the flush does not end in the DLQ
 
@@ -398,6 +400,7 @@ def test_courtesy_and_handoff_messages_follow_the_contact_language(fakes: Fakes)
     fakes.agent_error = AgentTurnError()
     with pytest.raises(AgentTurnError):
         flush()
+    fakes.now = NOW + LOCK_MS // 2 + 1
     flush()
     assert "moment" in fakes.notifications[0]["text"]
     assert "colleague" in fakes.notifications[1]["text"]
@@ -411,7 +414,22 @@ def test_a_failed_courtesy_message_does_not_hide_the_turn_error(fakes: Fakes) ->
     with pytest.raises(RuntimeError, match="ThrottlingException"):
         flush()
 
-    assert len(buffer()["pending"]) == 1 and "lockUntil" not in buffer()
+    assert len(buffer()["pending"]) == 1 and buffer()["turnFailures"] == 1
+
+
+def test_another_flush_of_the_burst_waits_for_the_backoff(fakes: Fakes) -> None:
+    conversation()
+    put_buffer([message("msg_1"), message("msg_2", ts="2026-10-26T10:00:01.000Z")])
+    fakes.agent_error = RuntimeError("ThrottlingException")
+    with pytest.raises(RuntimeError):
+        flush()
+
+    fakes.now = NOW + 2000  # the second message's own flush, seconds later
+    flush()
+
+    assert len(fakes.turns) == 1  # no immediate second attempt, so no early handoff
+    assert stored_conversation()["mode"] == "AGENT"
+    assert fakes.flushes[-1]["delay"] >= LOCK_MS // 2 // 1000 - 2  # back after the backoff
 
 
 def test_a_turn_takes_at_most_the_configured_number_of_messages(fakes: Fakes) -> None:
@@ -466,6 +484,7 @@ def test_failed_turn_keeps_the_after_turn_flag_for_the_retry(fakes: Fakes) -> No
     with pytest.raises(RuntimeError):
         flush()
 
+    fakes.now = NOW + LOCK_MS // 2 + 1  # after the backoff
     fakes.agent_error = None
     flush()
 
@@ -553,3 +572,16 @@ def test_conversation_handed_off_after_the_router_queued_the_messages_gets_no_tu
     assert fakes.turns == [] and fakes.notifications == []
     item = buffer()
     assert item["pending"] == [] and "lockUntil" not in item  # no replay after Release
+
+
+def test_handoff_drops_also_the_messages_over_the_cap(fakes: Fakes) -> None:
+    conversation()
+    put_buffer([message(f"msg_{i}", ts=f"2026-10-26T10:00:0{i}.000Z") for i in range(5)])
+    fakes.agent_error = RuntimeError("ThrottlingException")
+    with pytest.raises(RuntimeError):
+        flush()
+    fakes.now = NOW + LOCK_MS // 2 + 1
+    flush()
+
+    assert stored_conversation()["mode"] == "HUMAN"
+    assert buffer()["pending"] == [] and fakes.flushes == []

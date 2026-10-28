@@ -8,10 +8,12 @@ A flush is only a "look at this conversation" nudge: any number can be in flight
 one that finds the burst over and the lock free do nothing.
 
 A failed agent turn (T-67: Runtime error or throttling E-05, turn too long E-12) is counted in
-`turnFailures`: the first gets a courtesy message and SQS retries the flush after the visibility
-timeout; the second in a row hands the conversation over (`LOW_CONFIDENCE`), tells the contact and
-drops the messages from the buffer (the operator reads them in `Messages`), so nothing ends in the
-DLQ unanswered. A turn takes at most `TURN_MAX_MESSAGES` messages; the rest get the next turn.
+`turnFailures`. The first gets a courtesy message and keeps the lock for half `TURN_LOCK_TTL_MS`
+(the backoff: no other flush of the burst retries sooner), then SQS retries the flush after the
+visibility timeout. The second in a row hands the conversation over (`LOW_CONFIDENCE`), tells the
+contact and drops the messages from the buffer (the operator reads them in `Messages`), so nothing
+ends in the DLQ unanswered. A turn takes at most `TURN_MAX_MESSAGES` messages; the rest get the
+next turn.
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `TURN_FLUSH_QUEUE_URL`, `AGENT_RUNTIME_ARN`,
 `NOTIFIER_FUNCTION_NAME`, `DEBOUNCE_TEXT_MS`, `DEBOUNCE_MEDIA_MS`, `DEBOUNCE_MAX_MS`,
@@ -168,12 +170,24 @@ def _after_agent_failure(
                 by="AGENT",
             )
             _tell(conversation_id, f"handoff#{first}", HANDOFF[language])
-            _release(conversation_id, until, len(pending))
+            # All of them, also those over the per-turn cap: the operator reads them in Messages.
+            _release(conversation_id, until, len(item.get("pending", pending)))
             logger.warning("agent failed again: handed over", failures=failures)
             return True
         if failures is not None:
             # Once per burst: the key is its first message, a retry does not apologise twice.
             _tell(conversation_id, f"courtesy#{first}", COURTESY[language])
+            # Backoff: the other flushes of the burst find the lock held and come back after it,
+            # before the SQS retry (visibility timeout 120 s), so the retry is not immediate.
+            backoff = int(os.environ["TURN_LOCK_TTL_MS"]) // 2
+            if _release_update(
+                conversation_id,
+                until,
+                "SET lockUntil = :retry",
+                "",
+                {":retry": _now_ms() + backoff},
+            ):
+                return False
     except Exception:
         logger.exception("failure handling failed")  # keep the turn's own error for SQS
     try:

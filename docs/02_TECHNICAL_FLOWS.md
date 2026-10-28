@@ -397,7 +397,7 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 | E-02 | Download media fallito | Retry ×3 (riconsegna SQS), poi DLQ; richiesta di reinvio al cliente quando c'è il Notifier (T-24) |
 | E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
 | E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |
-| E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato (T-67: cortesia una volta per raffica, retry SQS dopo il visibility timeout di 120 s; il contatore `turnFailures` nel TurnBuffer si azzera al primo turno riuscito) |
+| E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato (T-67: cortesia una volta per raffica; il lock resta preso per metà di `turnLockTtlMs` (backoff di 60 s, così gli altri flush della raffica non riprovano subito), poi retry SQS dopo il visibility timeout di 120 s; il contatore `turnFailures` nel TurnBuffer si azzera al primo turno riuscito) |
 | E-06 | Guardrail interviene | Risposta sicura predefinita nella lingua del contatto ("non posso aiutarti con questa richiesta…"); il messaggio bloccato non resta nello storico |
 | E-07 | Errore indice prodotti / KB | Fallback su ricerca lessicale in DynamoDB; risposte sulle schede rimandate all'agente di commercio |
 | E-08 | ERP adapter non disponibile | Ordine `CONFIRMED`, retry con backoff, allarme; cliente informato della presa in carico |
