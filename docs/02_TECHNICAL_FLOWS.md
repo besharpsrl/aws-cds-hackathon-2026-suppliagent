@@ -176,7 +176,7 @@ Un indirizzo `UNKNOWN` riceve l'informativa nel primo messaggio (saluto + richie
 **Trigger**: `role = UNKNOWN`.
 
 1. L'agente chiede **nome del locale** e **codice cliente** (o P.IVA).
-2. `identify_contact(customerCode | vatNumber, venueName, address)`.
+2. `identify_contact(customerCode | vatNumber, venueName, address)`. Codice e P.IVA si confrontano senza spazi, punti e trattini (`IT-900…`, `P.IVA 900…` e `900…` sono la stessa P.IVA). Il nome vale sia come nome del locale sia come ragione sociale, anche abbreviato: tipo di locale, articoli e forma societaria non contano ("Da Nino" = "Trattoria Da Nino"; "pizzeria" da sola non basta).
 3. Se trovato: associa il nuovo indirizzo al cliente **in stato da confermare**; se il cliente ha un contatto già verificato, invia a quello una richiesta di conferma (o lo verifica il back office).
 
 | Caso | Comportamento |
