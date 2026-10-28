@@ -5,7 +5,7 @@ import type * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import type { IBucket } from 'aws-cdk-lib/aws-s3';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3vectors from 'aws-cdk-lib/aws-s3vectors';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
@@ -17,8 +17,6 @@ export interface CatalogStackProps extends StackProps {
   readonly config: EnvConfig;
   readonly key: IKey;
   readonly productsTable: dynamodb.ITableV2;
-  /** Technical sheets under `sheets/` (T-06b), uploaded by `seed/seed.py`. */
-  readonly catalogAssetsBucket: IBucket;
 }
 
 /** Embedding model of the product index (Titan Text Embeddings V2, 1024 dimensions). */
@@ -43,7 +41,7 @@ export class CatalogStack extends Stack {
 
   constructor(scope: Construct, id: string, props: CatalogStackProps) {
     super(scope, id, props);
-    const { config, key, productsTable, catalogAssetsBucket } = props;
+    const { config, key, productsTable } = props;
     const prefix = `suppliagent-${config.envName}`;
 
     // The name, not `bucket.ref`: for S3 Vectors the Ref is the bucket ARN, and the S3 Vectors API
@@ -123,6 +121,13 @@ export class CatalogStack extends Stack {
         nonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT', 'AMAZON_BEDROCK_METADATA'],
       },
     });
+    // The Foundation bucket by name, not by a cross-stack export: the sheets come later (seed.py)
+    // and Catalog does not need a Foundation deploy for an export it never had.
+    const catalogAssetsBucket = s3.Bucket.fromBucketName(
+      this,
+      'CatalogAssetsBucket',
+      `${prefix}-catalog-assets-${this.account}`,
+    );
     const kbName = `${prefix}-product-sheets`;
     const kbArn = this.formatArn({
       service: 'bedrock',
@@ -171,7 +176,7 @@ export class CatalogStack extends Stack {
     );
     key.grant(kbRole, 'kms:Decrypt', 'kms:GenerateDataKey', 'kms:DescribeKey');
     Validations.of(kbRole).acknowledge({
-      id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttCatalogAssetsBucket7B5F8F10ArnD47BEC48/${SHEETS_PREFIX}*]`,
+      id: `AwsSolutions-IAM5[Resource::arn:aws:s3:::${prefix}-catalog-assets-<AWS::AccountId>/${SHEETS_PREFIX}*]`,
       reason: 'The Knowledge Base reads every technical sheet under sheets/ (read-only).',
     });
     const kb = new bedrock.CfnKnowledgeBase(this, 'ProductSheetsKb', {

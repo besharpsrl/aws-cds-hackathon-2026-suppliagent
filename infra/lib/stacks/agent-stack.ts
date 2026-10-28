@@ -168,6 +168,12 @@ export class AgentStack extends Stack {
         'Job names are derived from the media key (ordint-<hash>), unknown at deploy time; this account and region only.',
     });
 
+    // Knowledge Base of the technical sheets (CatalogStack, T-06b): its id from SSM, resolved at
+    // deploy time, so this stack needs no new cross-stack export from Catalog.
+    const sheetsKbId = ssm.StringParameter.valueForStringParameter(
+      this,
+      `/suppliagent/${config.envName}/productSheetsKbId`,
+    );
     const catalog = new PythonLambda(this, 'CatalogTool', {
       config,
       key,
@@ -191,6 +197,7 @@ export class AgentStack extends Stack {
         INDEX_NAME: 'products',
         MATCH_AUTO_THRESHOLD: config.parameters.matchAutoThreshold,
         MATCH_ASK_THRESHOLD: config.parameters.matchAskThreshold,
+        KNOWLEDGE_BASE_ID: sheetsKbId,
       },
     });
     const catalogTool = catalog.function;
@@ -209,6 +216,11 @@ export class AgentStack extends Stack {
     allowCatalog(
       ['bedrock:InvokeModel'],
       `arn:aws:bedrock:${this.region}::foundation-model/amazon.titan-embed-text-v2:0`,
+    );
+    // ask_product_sheets (T-44b): Retrieve only (the agent writes the answer), this KB only.
+    allowCatalog(
+      ['bedrock:Retrieve'],
+      this.formatArn({ service: 'bedrock', resource: 'knowledge-base', resourceName: sheetsKbId }),
     );
     key.grant(catalogTool, 'kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey');
     eventBus.grantPutEventsTo(catalogTool);
@@ -356,7 +368,7 @@ export class AgentStack extends Stack {
     });
     gateway.addLambdaTarget('CatalogTarget', {
       gatewayTargetName: 'catalog',
-      description: 'Product matching with order history and catalog search (T-44).',
+      description: 'Product matching, catalog search and technical sheets (T-44, T-44b).',
       lambdaFunction: catalogTool,
       toolSchema: agentcore.ToolSchema.fromInline(CATALOG_TOOLS),
     });

@@ -52,6 +52,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         mcp_tool("order-intake___extract_order_lines"),
         mcp_tool("catalog___match_products"),
         mcp_tool("catalog___search_catalog"),
+        mcp_tool("catalog___ask_product_sheets"),
         mcp_tool("inventory-pricing___check_availability"),
         mcp_tool("orders___confirm_order"),
         mcp_tool("orders___handoff_to_human"),
@@ -74,6 +75,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         "order_intake___extract_order_lines",
         "catalog___match_products",
         "catalog___search_catalog",
+        "catalog___ask_product_sheets",
         "inventory_pricing___check_availability",
         "orders___confirm_order",
         "orders___handoff_to_human",
@@ -85,6 +87,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         "order_intake___extract_order_lines",
         "orders___confirm_order",
         "reco___recommend_products",
+        "catalog___ask_product_sheets",  # FN-21: every known role
     } <= {t.tool_name for t in rep}
     assert "customers___update_privacy" not in {t.tool_name for t in rep}  # F-01: staff
     assert "customers___set_order_email" not in {t.tool_name for t in rep}  # own contact only
