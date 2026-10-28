@@ -1,7 +1,7 @@
 # SuppliAgent – Flussi tecnici e casistiche
 
 > AWS CDS Agentic AI Partner Hackathon · Team beSharp
-> Stato: **v0.2 – bozza da validare con il team** · Data: 12/10/2026
+> Stato: **v1.0 – allineato alla submission** (T-72: solo le funzionalità della gara) · Data: 28/10/2026
 > Prerequisiti di lettura: [01 – Panoramica](./01_PROJECT_OVERVIEW.md) · [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md)
 > Riferimenti funzionali: gli ID `FN-xx` rimandano a [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md)
 
@@ -470,7 +470,9 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 }
 ```
 
-### 6.4 Eventi applicativi (EventBridge → Firehose)
+### 6.4 Eventi applicativi (EventBridge)
+
+Pubblicati sul bus applicativo: servono a collegare i componenti (regole EventBridge) e come traccia; l'export verso Firehose/Athena per i KPI è fuori dalla gara (T-09, T-65 tolti il 27/10). La colonna *Uso* dice a cosa servirebbero come metrica.
 
 | `detail-type` | Campi principali | Uso |
 |---|---|---|
@@ -554,6 +556,6 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 - Log JSON senza contenuto dei messaggi; contenuto in `Messages` (cifrato).
 - Tracce AgentCore per ogni turno.
 
-## 9. Punti da validare con il team (e con il cliente)
+## 9. Punti aperti
 
 Domande aperte e decisioni prese sono in [`START_HERE.md`](../START_HERE.md) §6 (fonte unica).

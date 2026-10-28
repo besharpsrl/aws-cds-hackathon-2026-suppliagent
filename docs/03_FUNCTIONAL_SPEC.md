@@ -1,7 +1,7 @@
 # SuppliAgent – Specifica funzionale
 
 > AWS CDS Agentic AI Partner Hackathon · Team beSharp
-> Stato: **v0.2 – bozza da validare con il team** · Data: 12/10/2026
+> Stato: **v1.0 – allineato alla submission** (T-72: solo le funzionalità della gara) · Data: 28/10/2026
 > Documenti collegati: [01 – Panoramica](./01_PROJECT_OVERVIEW.md) · [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) · [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md)
 
 ---
@@ -35,7 +35,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | J5 | Luca chiede su WhatsApp cosa proporre alla trattoria di Marco e se la burrata contiene lattosio | FN-20, 21 |
 | J6 | Luca fotografa in visita il bigliettino di un cliente e inserisce l'ordine per lui | FN-22 |
 | J7 | Elena vede in console un ordine con una riga non risolta, subentra nella chat e la risolve | FN-24, 28 |
-| J8 | Il giudice ordina dal numero WhatsApp di demo e guarda ordini e KPI in console | FN-28, 30, 31 |
+| J8 | Il giudice ordina dal numero WhatsApp di demo e guarda il proprio ordine in console | FN-28, 31 |
 
 ## 4. Catalogo delle funzionalità
 
@@ -74,10 +74,10 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-27 | Multilingua (IT/EN) | M | AG | FU, DP | – | ◐ T-54 |
 | FN-28 | Console back office in tempo reale | M | CO | DP, VI | – | ◐ T-62 ✓, T-63 ✓ (polling 2 s, senza WebSocket) |
 | FN-29 | Chat web per agenti di commercio | S | CO | TE | F-10 | ◐ T-64 |
-| FN-30 | Dashboard KPI di impatto | S | CO | VI, DP | – | ⬜ |
+| FN-30 | Dashboard KPI di impatto | W | – | – | – | tolta il 27/10 (T-65) |
 | FN-31 | Accesso giudici e ambiente della demo (`dev`) | M | IN + CO | FU | – | ◐ T-10 |
 | FN-32 | Sicurezza, privacy e autorizzazione per ruolo | M | IN + AG | TE | – | ✅ |
-| FN-33 | Osservabilità ed eventi | S | IN + CO | TE | §6.4 | ◐ T-54 (solo AgentCore Observability) |
+| FN-33 | Osservabilità ed eventi | S | IN | TE | §6.4 | ◐ eventi su EventBridge, AgentCore Observability (T-54), allarmi CloudWatch; niente Athena (T-09 tolto) |
 | FN-34 | Integrazione con l'ERP reale | W | – | – | – | – |
 | FN-35 | Pagamenti, fatturazione, fidi | W | – | – | – | – |
 
@@ -226,9 +226,8 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 #### FN-29 – Chat web per agenti di commercio · **S** · CO
 - [ ] Login `sales_rep`, chat con risposte in streaming, stesse capacità del copilota WhatsApp, cronologia condivisa.
 
-#### FN-30 – Dashboard KPI · **S** · CO
-- [ ] Tempo foto→conferma, % righe auto-abbinate, accuratezza, % ordini senza intervento, valore suggerimenti accettati, conversione riordini, delivery/read rate per canale, problemi di consegna.
-- [ ] Confronto con la baseline del processo attuale fornita dal cliente (o stima dichiarata).
+#### FN-30 – Dashboard KPI · **W**
+Tolta dal perimetro della gara il 27/10 (T-09 `AnalyticsStack`, T-65 dashboard): gli eventi di 02 §6.4 restano su EventBridge.
 
 #### FN-31 – Accesso giudici e ambiente della demo (`dev`) · **M** · IN + CO
 - [ ] README con numero WhatsApp, email ordini, credenziali console `judge`, **cliente di prova e bigliettino di esempio** scaricabile.
@@ -242,7 +241,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [ ] **Dati del cliente anonimizzati**; nessun dato personale reale.
 
 #### FN-33 – Osservabilità ed eventi · **S** · IN + CO
-- [ ] Eventi di 02 §6.4 pubblicati e interrogabili in Athena; tracce AgentCore per turno; allarmi su DLQ, Notifier, ERP adapter.
+- [ ] Eventi di 02 §6.4 pubblicati su EventBridge; tracce AgentCore per turno; allarmi su DLQ, Notifier, ERP adapter.
 
 ## 5. Requisiti non funzionali
 
@@ -260,6 +259,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 ## 6. Fuori perimetro (Won't)
 
 - Integrazione con l'ERP reale (FN-34), pagamenti, fatturazione, fidi (FN-35).
+- Dashboard KPI e analytics su Athena (FN-30, parte Firehose/Athena di FN-33).
 - Pianificazione logistica reale, tracking GPS dei mezzi.
 - App mobile dedicata.
 
@@ -269,7 +269,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 |---|---|---|---|
 | **AG – Agent & AgentCore** | FN-02, 03, 04, 05, 06 (logica), 07, 08 (logica), 09, 10, 12, 19 (turno proattivo), 20, 21 (prompt), 24 (logica), 25, 27, 32 (guardrail) | FN-11, 16, 17, 18 (logica), 22 | FN-23 |
 | **CH – Canali CDS** | FN-01, 06 (email), 08 (interactive), 14, 15, 26 | FN-18 (RCS) | FN-23 (email) |
-| **CO – Console & Analytics** | FN-24 (UI), 28, 31 (console) | FN-29, 30, 33 | – |
+| **CO – Console** | FN-24 (UI), 28, 31 (console) | FN-29 | – |
 | **IN – Infra, Dati & Materiali** | FN-13, 19 (analyzer), 21 (KB + indice), 31 (ambiente, README), 32 (infra) | FN-33 (infra) | – |
 
 ### Dipendenze principali
@@ -288,7 +288,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | S4 | Agente di commercio inserisce l'ordine di un cliente da foto | FN-22 |
 | S5 | Proposta di riordino proattiva → "Riordina uguale" | FN-19 |
 | S6 | Consegna con RCS → "Segnala problema" con foto → back office subentra | FN-18, 24, 28 |
-| S7 | Ordine via email con allegato Excel, conferma via email | FN-06, 14 |
+| S7 | Ordine via email (testo o foto), conferma via email | FN-06, 14 |
 
 ## 9. Domande aperte
 
