@@ -6,6 +6,10 @@ Two kinds of request, invoked by Lambda (the Dispatcher, the Router):
   address is never taken from the request: it is the verified one the Router stored on the
   conversation (`lastInbound*`), so a caller cannot make the Notifier write to an arbitrary number.
   Idempotent on `idempotencyKey`.
+  With `interactive` (T-25, FN-08, FN-12) the text goes out on WhatsApp as a message with reply
+  buttons (up to 3 short options) or a list (up to 10); on other channels the options are already
+  in the text. For an order summary (`ORDER_SUMMARY`) the id of the sent message is stored in
+  `Orders.summaryMessageId`: `confirm_order` accepts a tap only as a reply to that message.
 - `read_receipt`: WhatsApp "read" for an inbound message of that conversation.
 
 Sandbox (SSM `notifierSandbox`, default on when the parameter is missing): nothing is sent, the
@@ -31,7 +35,7 @@ import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities import parameters
 from botocore.exceptions import ClientError
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.errors import (
     AccessDeniedError,
@@ -46,6 +50,18 @@ WHATSAPP_TEXT_LIMIT = 4096
 CLAIM_SECONDS = 120  # an unfinished send can be retried after this
 DONE_SECONDS = 7 * 24 * 3600
 SUBJECTS = {"it-IT": "La tua richiesta", "en-GB": "Your request"}
+# WhatsApp interactive limits (Cloud API): body 1024, button title 20 (max 3 buttons), list row
+# title 24 (max 10 rows), list button label 20.
+INTERACTIVE_BODY_LIMIT = 1024
+BUTTON_TITLE_LIMIT = 20
+MAX_BUTTONS = 3
+ROW_TITLE_LIMIT = 24
+# Body of the interactive message when the text is too long for it and goes out first on its own.
+SHORT_BODY = {
+    "ORDER_SUMMARY": {"it": "Confermi l'ordine?", "en": "Do you confirm the order?"},
+    "CHOICE": {"it": "Scegli un'opzione:", "en": "Choose an option:"},
+}
+LIST_BUTTON = {"it": "Scegli", "en": "Choose"}
 logger = Logger(service="notifier")
 
 
@@ -53,6 +69,24 @@ class SendInProgressError(SuppliAgentError):
     """Another attempt with the same key is sending; retried by the caller."""
 
     code = "SEND_IN_PROGRESS"
+
+
+class Option(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=r"^[a-z0-9_]{1,40}$")
+    title: str = Field(min_length=1, max_length=ROW_TITLE_LIMIT)
+
+
+class Interactive(BaseModel):
+    """Options of the reply (T-25): an order summary's Confirm / Change, or one question's
+    choices. Built by the agent's code, not by the model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["ORDER_SUMMARY", "CHOICE"]
+    options: list[Option] = Field(min_length=1, max_length=10)
+    orderId: str | None = Field(None, pattern=r"^ord_[A-Za-z0-9]{1,40}$")  # noqa: N815
 
 
 class Request(BaseModel):
@@ -65,6 +99,7 @@ class Request(BaseModel):
     sentBy: Literal["OPERATOR"] | None = None  # noqa: N815 - set by the console: an operator's reply
     providerMessageId: str | None = None  # noqa: N815
     tsMessageId: str | None = None  # noqa: N815 - sort key of the received message
+    interactive: Interactive | None = None
 
 
 @cache
@@ -163,8 +198,13 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
             return {"status": "DUPLICATE"}
         raise SendInProgressError  # a concurrent attempt may still fail: the caller retries
     sandbox = _sandbox()
+    interactive = request.interactive if channel == "WHATSAPP" else None
     try:
-        provider_id = None if sandbox else _send(channel, address, request.text, conversation)
+        if sandbox:
+            # A recorded id lets the simulator tap the buttons (scripts/simulate_channel.py --tap).
+            provider_id = _sandbox_id(request.idempotencyKey) if interactive else None
+        else:
+            provider_id = _send(channel, address, request.text, conversation, interactive)
     except Exception:
         _unclaim(request.idempotencyKey)
         _event("notification.failed", request.conversationId, channel, sandbox)
@@ -173,10 +213,12 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
     _done(request.idempotencyKey)
     status = "SANDBOX" if sandbox else "SENT"
     try:
-        _record(request, channel, provider_id, status)
+        _record(request, channel, provider_id, status, interactive)
         _event("notification.sent", request.conversationId, channel, sandbox)
     except Exception:
         logger.exception("sent, but not recorded")  # losing the record beats a second message
+    if interactive and interactive.kind == "ORDER_SUMMARY" and interactive.orderId and provider_id:
+        _remember_summary(interactive.orderId, request.conversationId, provider_id)
     # Never log the text, the number or the address (AGENTS §7).
     logger.info("reply sent", channel=channel, sandbox=sandbox)
     return {"status": status}
@@ -195,31 +237,114 @@ def _event(detail_type: str, conversation_id: str, channel: str, sandbox: bool) 
     )
 
 
-def _send(channel: str, address: str, text: str, conversation: dict[str, Any]) -> str | None:
+def _sandbox_id(key: str) -> str:
+    return "wamid.sandbox_" + uuid5(NAMESPACE_URL, f"out#{key}").hex
+
+
+def _remember_summary(order_id: str, conversation_id: str, provider_id: str) -> None:
+    """Only on an order of this conversation still waiting for the answer: a summary message sent
+    for another conversation's order, or after the order moved on, changes nothing. A failure only
+    costs the tap (`CONFIRMATION_MISMATCH`, the customer confirms in words): logged, not raised."""
+    try:
+        table("orders").update_item(
+            Key={"orderId": order_id},
+            UpdateExpression="SET summaryMessageId = :m",
+            ConditionExpression="conversationId = :c AND #status = :pending",
+            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeValues={
+                ":m": provider_id,
+                ":c": conversation_id,
+                ":pending": "PENDING_CONFIRMATION",
+            },
+        )
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+            logger.exception("summary message not stored on the order")
+        else:
+            logger.warning("summary for an order not pending in this conversation")
+    except Exception:
+        logger.exception("summary message not stored on the order")
+
+
+def _send(
+    channel: str,
+    address: str,
+    text: str,
+    conversation: dict[str, Any],
+    interactive: Interactive | None = None,
+) -> str | None:
     if channel == "WHATSAPP":
-        return _send_whatsapp(address, text, conversation.get("lastWhatsappInboundAt"))
+        last_inbound = conversation.get("lastWhatsappInboundAt")
+        if interactive:
+            return _send_whatsapp_interactive(
+                address, text, last_inbound, interactive, conversation.get("lastInboundLocale")
+            )
+        return _send_whatsapp(address, text, last_inbound)
     if channel == "EMAIL":
         _send_email(address, text, conversation.get("lastInboundLocale"))
         return None
     raise ChannelUnavailableError  # SMS/RCS arrive with T-27
 
 
-def _send_whatsapp(address: str, text: str, last_inbound: str | None) -> str:
+def _check_window(last_inbound: str | None) -> None:
     # Free text only inside the 24 h window; templates arrive with T-29 (F-11.C2).
     if (
         not last_inbound
         or datetime.now(UTC) - datetime.fromisoformat(last_inbound) >= WHATSAPP_WINDOW
     ):
         raise ChannelUnavailableError
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": address,
-        "type": "text",
-        "text": {"body": text[:WHATSAPP_TEXT_LIMIT]},
-    }
+
+
+def _send_whatsapp(address: str, text: str, last_inbound: str | None) -> str:
+    _check_window(last_inbound)
+    return _whatsapp({"to": address, "type": "text", "text": {"body": text[:WHATSAPP_TEXT_LIMIT]}})
+
+
+def _send_whatsapp_interactive(
+    address: str,
+    text: str,
+    last_inbound: str | None,
+    interactive: Interactive,
+    locale: str | None,
+) -> str:
+    """Buttons when the options fit (at most 3, short titles), a list otherwise. A text longer
+    than the interactive body goes out first as a plain message; the buttons follow with a short
+    question. The id returned is the interactive message's: the one a tap replies to."""
+    _check_window(last_inbound)
+    language = "en" if (locale or "").lower().startswith("en") else "it"
+    body = text
+    if len(text) > INTERACTIVE_BODY_LIMIT:
+        _whatsapp({"to": address, "type": "text", "text": {"body": text[:WHATSAPP_TEXT_LIMIT]}})
+        body = SHORT_BODY[interactive.kind][language]
+    options = interactive.options
+    if len(options) <= MAX_BUTTONS and all(len(o.title) <= BUTTON_TITLE_LIMIT for o in options):
+        content: dict[str, Any] = {
+            "type": "button",
+            "body": {"text": body},
+            "action": {
+                "buttons": [
+                    {"type": "reply", "reply": {"id": o.id, "title": o.title}} for o in options
+                ]
+            },
+        }
+    else:
+        content = {
+            "type": "list",
+            "body": {"text": body},
+            "action": {
+                "button": LIST_BUTTON[language],
+                "sections": [
+                    {"rows": [{"id": o.id, "title": o.title} for o in options]},
+                ],
+            },
+        }
+    return _whatsapp({"to": address, "type": "interactive", "interactive": content})
+
+
+def _whatsapp(message: dict[str, Any]) -> str:
     response = _social().send_whatsapp_message(
         originationPhoneNumberId=_phone_number_id(),
-        message=json.dumps(payload).encode(),
+        message=json.dumps({"messaging_product": "whatsapp", **message}).encode(),
         metaApiVersion="v20.0",
     )
     return str(response.get("messageId", ""))  # an empty id is simply not stored
@@ -242,7 +367,13 @@ def _send_email(address: str, text: str, locale: str | None) -> None:
     )
 
 
-def _record(request: Request, channel: str, provider_id: str | None, status: str) -> None:
+def _record(
+    request: Request,
+    channel: str,
+    provider_id: str | None,
+    status: str,
+    interactive: Interactive | None = None,
+) -> None:
     """The outgoing message in the conversation history (console, KPIs)."""
     message_id = "msg_" + uuid5(NAMESPACE_URL, f"out#{request.idempotencyKey}").hex
     sent_at = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
@@ -258,6 +389,8 @@ def _record(request: Request, channel: str, provider_id: str | None, status: str
     }
     if request.sentBy:
         item["sentBy"] = request.sentBy
+    if interactive:  # what the contact could tap (console, simulator)
+        item["interactive"] = interactive.model_dump(exclude_none=True)
     if provider_id:  # a GSI key: cannot be empty
         item["providerMessageId"] = provider_id
     table("messages").put_item(Item=item)
