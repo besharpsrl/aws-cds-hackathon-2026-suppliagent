@@ -68,7 +68,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-21 | Copilota: catalogo e schede tecniche (Knowledge Base) | M | AG + IN | TE | F-10.B | ◐ T-06b, T-44b |
 | FN-22 | Copilota: ordine per conto del cliente | S | AG | VI | F-10.D | ◐ T-51 |
 | FN-23 | Copilota: agenda e briefing giornaliero | C | AG + CH | VI | F-10.C, F-10.E | ◐ T-51 |
-| FN-24 | Handoff verso back office | M | AG + CO | VI, FU | F-14 | ◐ T-49, T-63 |
+| FN-24 | Handoff verso back office | M | AG + CO | VI, FU | F-14 | ◐ T-63, T-54 |
 | FN-25 | Continuità cross-canale | M | AG | CR, TE | F-15 | ◐ T-54 |
 | FN-26 | Raggruppamento messaggi ravvicinati (risposta unica) | M | CH | FU, DP | §3.3 | ✅ |
 | FN-27 | Multilingua (IT/EN) | M | AG | FU, DP | – | ◐ T-54 |

@@ -200,7 +200,8 @@ export class AgentStack extends Stack {
     eventBus.grantPutEventsTo(catalogTool);
 
     // Stock, prices and delivery dates (T-45) and the order lifecycle (T-46): read-mostly tools that
-    // share the customer scope checks; only `orders` writes (Orders, Issues) and emits events.
+    // share the customer scope checks; only `orders` writes (Orders, Issues, and Conversations
+    // mode/handoff for handoff_to_human) and emits events.
     const allowScope = (fn: lambda.IFunction) => {
       const allowOn = (actions: string[], ...resources: string[]) =>
         fn.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
@@ -278,6 +279,8 @@ export class AgentStack extends Stack {
     allowOrders(['dynamodb:PutItem'], tables.Issues.tableArn);
     // Evidence that the customer answered after the summary (confirm_order): read-only.
     allowOrders(['dynamodb:Query'], tables.Messages.tableArn);
+    // handoff_to_human (T-49): table-level grant; the tool keys the update on caller.conversationId.
+    allowOrders(['dynamodb:UpdateItem'], tables.Conversations.tableArn);
     eventBus.grantPutEventsTo(ordersTool);
 
     const gateway = new agentcore.Gateway(this, 'Gateway', {

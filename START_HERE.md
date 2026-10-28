@@ -112,7 +112,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Matching catalogo (S3 Vectors) | ✅ | Schede tecniche (Knowledge Base) Could (T-06b, T-44b) |
 | Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp da fare (T-25) |
 | ERP mock + PDF ordine | ✅ | |
-| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Online su `dev` ma con **dati mock** (T-62); live e handoff da fare (T-49, T-63) |
+| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Online su `dev` ma con **dati mock** (T-62); live e handoff in console da fare (T-63; lato agente fatto, T-49) |
 | Copilota agenti, riordino proattivo | ☐ | Could (flussi 6 e 7) |
 | Analytics e KPI | – | Tolti (§4.4) |
 | `dev` pronto per i giudici, README giudici | ☐ | T-10 |
@@ -181,7 +181,7 @@ Utenti: **ristoratore** (WhatsApp +39 345 246 0472 o email `ordini@…`), **agen
 | 2 | Ordine da foto | Foto del bigliettino (+ vocale) → righe lette → abbinamento al catalogo con lo storico → chiarimenti sulle righe incerte → sostituti, multipli, data di consegna e cut-off → riepilogo con totale → *Confermo* → ERP mock, numero d'ordine, PDF → email con PDF | ✅ col simulatore, mai da telefono (T-68); ☐ email (T-26), pulsanti (T-25) |
 | 3 | Dopo l'ordine | Stato dell'ordine; modifica o annullo fino al cut-off del giorno prima; promemoria della bozza dopo 2 h, scadenza a mezzanotte | ✅ nei tool, mai da telefono (T-68) |
 | 4 | Ordine via email | Email a `ordini@…` con testo o foto → stesso flusso, risposte via email | ◐ ricezione e risposta ok (T-26b) |
-| 5 | Supervisione in console | 5a elenco ordini e dettaglio con il bigliettino accanto alle righe · 5b correzione di una riga · 5c handoff: l'operatore prende la conversazione, risponde, la restituisce | ◐ elenco e dettaglio su dati finti (T-62); ☐ handoff (T-49, T-63) |
+| 5 | Supervisione in console | 5a elenco ordini e dettaglio con il bigliettino accanto alle righe · 5b correzione di una riga · 5c handoff: l'operatore prende la conversazione, risponde, la restituisce | ◐ elenco e dettaglio su dati finti (T-62); ◐ handoff lato agente (T-49), ☐ in console (T-63) |
 | 6 | Copilota per l'agente di commercio | "Cosa propongo alla Trattoria X?", briefing prima della visita, domande sulle schede tecniche, ordine per conto del cliente | ☐ (solo il ruolo e i permessi) |
 | 7 | Riordino proattivo | L'assistente scrive per primo ("di solito riordinate l'olio ogni 10 giorni…") → riordino con un tap | ☐ |
 | 8 | Consegna | Avviso via SMS/RCS il giorno della consegna con *Ricevuto / Segnala problema* | ☐ |

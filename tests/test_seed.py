@@ -155,6 +155,28 @@ def test_reset_clears_orders_that_exist(dynamodb: Any) -> None:
         assert dynamodb.Table(f"suppliagent-dev-{table}").scan()["Count"] == 0
 
 
+def test_reset_releases_handed_off_conversations(dynamodb: Any) -> None:  # F-14, until T-63
+    conversations = dynamodb.create_table(
+        TableName="suppliagent-dev-conversations",
+        KeySchema=[{"AttributeName": "conversationId", "KeyType": "HASH"}],
+        AttributeDefinitions=[{"AttributeName": "conversationId", "AttributeType": "S"}],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    conversations.put_item(
+        Item={"conversationId": "conv_h", "mode": "HUMAN", "handoff": {"reason": "X"}}
+    )
+    conversations.put_item(Item={"conversationId": "conv_a", "mode": "AGENT", "role": "UNKNOWN"})
+    spec = importlib.util.spec_from_file_location("reset_script", SEED_PY.with_name("reset.py"))
+    assert spec and spec.loader
+    reset = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(reset)
+    assert reset.release_handoffs(dynamodb, "dev") == 1
+    released = conversations.get_item(Key={"conversationId": "conv_h"})["Item"]
+    assert released == {"conversationId": "conv_h", "mode": "AGENT"}
+    untouched = conversations.get_item(Key={"conversationId": "conv_a"})["Item"]
+    assert untouched["role"] == "UNKNOWN"
+
+
 def test_write_loads_every_item(dynamodb: Any) -> None:
     seed.write(dynamodb, "dev", DATA)
     seed.write(dynamodb, "dev", DATA)  # idempotent: same items, no duplicates
