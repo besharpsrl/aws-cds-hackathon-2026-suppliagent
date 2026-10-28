@@ -1175,12 +1175,14 @@ source = { editable = "services/console_api" }
 dependencies = [
     { name = "aws-lambda-powertools" },
     { name = "boto3" },
+    { name = "suppliagent-shared" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "aws-lambda-powertools", specifier = ">=3.37.0" },
     { name = "boto3", specifier = ">=1.43.118" },
+    { name = "suppliagent-shared", editable = "services/shared" },
 ]
 
 [[package]]

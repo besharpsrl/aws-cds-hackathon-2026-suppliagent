@@ -1,4 +1,4 @@
-"""Console REST API (T-60, T-62): orders for the back-office console and line corrections (FN-28).
+"""Console REST API (T-60, T-62, T-63): orders, line corrections, conversations and handoff (FN-28).
 
 Role comes from the Cognito authorizer claims, never from the request body (AGENTS.md §7).
 `backoffice` and `judge` read everything; `sales_rep` is limited to its own portfolio (`repId`).
@@ -21,6 +21,8 @@ from zoneinfo import ZoneInfo
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
+
+from console_api import conversations
 
 logger = logging.getLogger("console_api")
 READ_ALL_ROLES = {"backoffice", "judge"}
@@ -389,12 +391,37 @@ def _correct_line(
     return _response(200, _detail(updated))
 
 
+def _conversations(event: dict[str, Any], groups: set[str]) -> dict[str, Any]:
+    """Conversations and handoff (FN-24): read for backoffice and judge, writes for backoffice."""
+    resource, method = event["resource"], event["httpMethod"]
+    if method != "GET" and not groups & WRITE_ROLES:
+        return _response(403, {"error": "read_only"})  # `judge`, before any routing
+    if not groups & READ_ALL_ROLES or (method != "GET" and "backoffice" not in groups):
+        return _response(403, {"error": "forbidden"})
+    conversation_id = (event.get("pathParameters") or {}).get("conversationId", "")
+    actions = {
+        "/conversations/{conversationId}/takeover": conversations.take_over,
+        "/conversations/{conversationId}/release": conversations.release,
+    }
+    if method == "GET" and resource == "/conversations":
+        return _response(*conversations.list_conversations())
+    if method == "GET" and resource == "/conversations/{conversationId}":
+        return _response(*conversations.get_conversation(conversation_id))
+    if method == "POST" and resource in actions:
+        return _response(*actions[resource](conversation_id))
+    if method == "POST" and resource == "/conversations/{conversationId}/reply":
+        return _response(*conversations.reply(conversation_id, event.get("body")))
+    return _response(405, {"error": "method_not_allowed"})
+
+
 def handler(event: dict[str, Any], _context: object) -> dict[str, Any]:
     claims: dict[str, str] = event["requestContext"]["authorizer"]["claims"]
     groups = _groups(claims)
     if not groups & (READ_ALL_ROLES | {"sales_rep"}):
         return _response(403, {"error": "forbidden"})
     resource = event["resource"]
+    if resource.startswith("/conversations"):
+        return _conversations(event, groups)
     if event["httpMethod"] != "GET":
         # `judge` is read-only (FN-28): refused before routing, no write endpoint can skip it.
         if not groups & WRITE_ROLES:

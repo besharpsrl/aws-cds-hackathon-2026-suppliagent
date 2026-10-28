@@ -62,6 +62,7 @@ class Request(BaseModel):
     conversationId: str  # noqa: N815 - wire name
     idempotencyKey: str | None = None  # noqa: N815
     text: str | None = None
+    sentBy: Literal["OPERATOR"] | None = None  # noqa: N815 - set by the console: an operator's reply
     providerMessageId: str | None = None  # noqa: N815
     tsMessageId: str | None = None  # noqa: N815 - sort key of the received message
 
@@ -255,6 +256,8 @@ def _record(request: Request, channel: str, provider_id: str | None, status: str
         "sentAt": sent_at,
         "status": status,
     }
+    if request.sentBy:
+        item["sentBy"] = request.sentBy
     if provider_id:  # a GSI key: cannot be empty
         item["providerMessageId"] = provider_id
     table("messages").put_item(Item=item)
