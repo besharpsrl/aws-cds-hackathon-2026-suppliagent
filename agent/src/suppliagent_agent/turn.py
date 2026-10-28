@@ -99,7 +99,8 @@ ROLE_PROMPTS: dict[Role, list[str]] = {
 LANGUAGES = {"it": "Italian", "en": "English"}
 # Nova writes its reasoning inline and sometimes wraps the answer in <response>: never sent as is.
 THINKING = re.compile(r"<thinking>.*?(</thinking>|$)", re.DOTALL)
-RESPONSE_TAG = re.compile(r"</?response>")
+# Nova sometimes wraps its reply in <response> or echoes the <user_message> block it was given
+RESPONSE_TAG = re.compile(r"</?(response|user_message|user_context)>", re.IGNORECASE)
 ATTACHMENT_LABELS = {"image": "photo", "audio": "voice message", "document": "document"}
 TAP_ID = re.compile(r"[^A-Za-z0-9_]")
 # Message text is untrusted: delimited, and the sender cannot write the system's own tags
