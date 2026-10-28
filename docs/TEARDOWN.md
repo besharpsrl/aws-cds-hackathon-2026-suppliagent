@@ -56,7 +56,10 @@ aws s3vectors list-vector-buckets --query 'vectorBuckets[].vectorBucketName' --o
 
 # h) DNS: record aggiunti per SES nella zona di dominio (se è su Route 53)
 aws route53 list-hosted-zones-by-name --query 'HostedZones[].[Name,Id]' --output text
-# poi: aws route53 list-resource-record-sets --hosted-zone-id <id> | cerca _domainkey e MX inbound-smtp
+# poi: aws route53 list-resource-record-sets --hosted-zone-id <id> | cerca _domainkey, MX inbound-smtp, il CNAME `app.suppliagent…` (console) e il CNAME `_…acm-validations.aws`
+
+# i) Certificato ACM della console (CloudFront lo vuole in us-east-1)
+aws acm list-certificates --region us-east-1 --query 'CertificateSummaryList[].[DomainName,CertificateArn]' --output text
 ```
 
 Come leggere i risultati:
@@ -116,7 +119,8 @@ Queste NON spariscono con `cdk destroy` e alcune hanno un costo fisso mensile.
 | Numero WhatsApp / WABA collegato a End User Messaging Social | console AWS + Meta Business | numero Meta, non AWS | Scollega il WABA da AWS (`disassociate-whatsapp-business-account`) solo se non serve ad altri; il numero e i 8 template restano in Meta (`delete-whatsapp-message-template` se vuoi) |
 | Agente RCS e dispositivi di test | End User Messaging SMS/Voice | gratis in test | `aws pinpoint-sms-voice-v2 delete-rcs-agent` (e `delete-registration` per la `TEST_RCS_LAUNCH_REGISTRATION`) |
 | Sender ID `SuppliAgent` (IT), eventuali numeri di origine | End User Messaging SMS | **canone mensile** se c'è un numero | `release-phone-number` / `release-sender-id` |
-| Record DNS (DKIM CNAME, MX `inbound-smtp`) per `suppliagent.stonecutters.besharp.net` | zona Route 53 beSharp | zona condivisa | Rimuovi i record aggiunti; **non** cancellare la zona se è usata da altro |
+| Record DNS (DKIM CNAME, MX `inbound-smtp`) per `suppliagent.stonecutters.besharp.net`, CNAME `app.suppliagent…` verso CloudFront e CNAME di validazione ACM | zona Route 53 beSharp | zona condivisa | Rimuovi i record aggiunti; **non** cancellare la zona se è usata da altro |
+| Certificato ACM `app.suppliagent.stonecutters.besharp.net` (us-east-1) | ACM | gratis | Dopo `cdk destroy` della console (il certificato è in uso finché esiste la distribution): `aws acm delete-certificate --region us-east-1 --certificate-arn <arn>` |
 | Richiesta SES production access | account | — | Nulla da fare (resta, è a livello di account) |
 | Parametri SSM `/suppliagent/dev/*` creati a mano (`notifierSandbox`, `waPhoneNumberId`, `sesDomain`) | Parameter Store | gratis | `aws ssm delete-parameters` se rimasti (`aws ssm get-parameters-by-path --path /suppliagent/dev --recursive`) |
 | CloudWatch Log Group `/aws/lambda/suppliagent-dev-*`, AgentCore, Transaction Search | CloudWatch | storage | Se rimasti dopo lo stack: `aws logs delete-log-group` per ognuno |
