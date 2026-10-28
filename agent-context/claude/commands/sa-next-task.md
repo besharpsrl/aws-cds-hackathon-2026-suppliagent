@@ -52,7 +52,7 @@ Sei una sessione di sviluppo di SuppliAgent. Argomenti dell'utente: `$ARGUMENTS`
 - Durante lo sviluppo lancia **solo i controlli mirati** sui file toccati: `uv run pytest services/<pacchetto>` (o `agent`), `uv run ruff check <path>`, `uv run mypy <path>`, `npx vitest run <file>` nel workspace, `npx cdk synth -q -c env=dev` solo se tocchi `infra/`. Il controllo completo si fa **una volta** al punto 6.
 - File caldi di un'altra corsia: cambia solo il pezzo che ti serve e scrivilo nella PR.
 - Se il comportamento differisce dai documenti in `docs/`, aggiornali. Se cambia lo stato di un'area, aggiorna la riga in `START_HERE.md` §2. Non toccare il backlog in START_HERE (è sulle issue).
-- Lavoro nuovo o rinviato: `gh issue create --title "T-xx: …" --parent <madre> --label <priorità> --label stream:<…> --label corsia:<…> --milestone "Code freeze 28/10 12:00" --project "SuppliAgent – backlog hackathon" [--blocked-by <n>]`.
+- Lavoro nuovo o rinviato: `gh issue create --title "T-xx: …" --parent <madre> --label <priorità> --label stream:<…> --label corsia:<…> --milestone "Sviluppo" --project "SuppliAgent – backlog hackathon" [--blocked-by <n>]`.
 
 ## 6. Verifica
 

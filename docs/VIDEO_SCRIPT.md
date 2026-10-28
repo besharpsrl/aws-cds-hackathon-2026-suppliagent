@@ -21,7 +21,7 @@
 | 2:25–2:50 | Architecture diagram (`docs/architecture.png`), highlight the CDS services as they are named | "Under the hood: End User Messaging Social for WhatsApp, SES for email, an agent built with Strands on Amazon Bedrock AgentCore running Amazon Nova, tools behind AgentCore Gateway, S3 Vectors for the catalog, all deployed with AWS CDK. Authorization is enforced inside every tool, by role." |
 | 2:50–3:00 | Title card: repo URL and the WhatsApp number from the README | "Next: proactive reorders, a sales rep copilot and delivery notices by SMS and RCS. Try it with the number in our README." |
 
-## If a scene is not ready at the freeze (12:00)
+## If a scene is not ready at recording time
 
 | Scene | Depends on | Fallback |
 |---|---|---|
@@ -34,7 +34,7 @@
 
 ## Pre-recording checklist (Italiano)
 
-- [ ] `dev` aggiornato da `main` dopo il freeze (T-10) e dati ripristinati: `uv run python seed/reset.py --env dev` (solo MG, su richiesta).
+- [ ] `dev` aggiornato da `main` (T-10) e dati ripristinati: `uv run python seed/reset.py --env dev` (solo MG, su richiesta).
 - [ ] SSM `notifierSandbox` = `false`, così le risposte arrivano davvero sul telefono; il numero di prova è registrato come tester (M-02).
 - [ ] Il contatto del telefono è **verificato** per il cliente demo (T-71): provare prima l'intero flusso, due volte, con lo stesso bigliettino.
 - [ ] Una prova a secco cronometrata: foto → conferma sotto i 60 secondi di video dopo il taglio delle attese.

@@ -1,6 +1,6 @@
 # SuppliAgent – Devpost submission text (draft)
 
-> Draft for the Devpost form (T-11). In English on purpose: it is pasted as is. Diagram: [`architecture.png`](./architecture.png), source [`architecture.drawio`](./architecture.drawio). Written on 28/10 before the code freeze: check the **Verify before submitting** list at the end and cut or move to "What's next" whatever is not on `dev`.
+> Draft for the Devpost form (T-11). In English on purpose: it is pasted as is. Diagram: [`architecture.png`](./architecture.png), source [`architecture.drawio`](./architecture.drawio). Written on 28/10 while development continues: check the **Verify before submitting** list at the end and cut or move to "What's next" whatever is not on `dev`.
 
 ## Tagline
 
@@ -86,7 +86,7 @@ AWS End User Messaging Social, Amazon SES, Amazon Bedrock (Nova), Amazon Bedrock
 
 ## Verify before submitting
 
-Each line is a claim above. Keep it only if it is true on `dev` at the freeze (12:00):
+Each line is a claim above. Keep it only if it is true on `dev` when submitting:
 
 - [ ] Email confirmation **with the order PDF** is sent (T-26). If not: say "confirmation message" only and move the PDF to What's next.
 - [ ] Interactive clarification buttons and the "Confirm" button on WhatsApp (T-25). If not: the questions are plain text (the text above already says "short questions"); drop the sentence about button ids.

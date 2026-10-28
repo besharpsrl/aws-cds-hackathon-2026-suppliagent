@@ -10,10 +10,10 @@ Concept: [`../SUPPLIAGENT_SOLUTION.md`](../SUPPLIAGENT_SOLUTION.md)
 | 03 | [Specifica funzionale](./03_FUNCTIONAL_SPEC.md) | Catalogo FN-01…FN-35, priorità MoSCoW, criteri di accettazione, NFR, mappa per stream, scenari demo | v0.2 – da validare |
 | – | [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md) | Architettura AWS (eu-west-1), 9 stack CDK, catalog intelligence, dati, sicurezza, costi | v0.2 |
 | – | [architecture.drawio](./architecture.drawio) · [PNG](./architecture.png) | Diagramma architetturale (draw.io, in inglese; i componenti non ancora distribuiti sono sbiaditi). Il PNG si rigenera dal `.drawio` (aprilo in draw.io: *File → Export as → PNG*, scala 2x) | v0.3 |
-| – | [SUBMISSION_TEXT.md](./SUBMISSION_TEXT.md) | Bozza dei testi Devpost in inglese (problema, soluzione, servizi AWS, uso di EUM Social/WhatsApp, impatto) con la lista delle affermazioni da verificare al freeze | bozza |
+| – | [SUBMISSION_TEXT.md](./SUBMISSION_TEXT.md) | Bozza dei testi Devpost in inglese (problema, soluzione, servizi AWS, uso di EUM Social/WhatsApp, impatto) con la lista delle affermazioni da verificare prima dell'invio | bozza |
 | 09 | [Testi e template](./09_CONTENT_AND_TEMPLATES.md) | Template WhatsApp (fonte: JSON nel Notifier) e invio a Meta | v0.1 |
 | – | [Iscrizione WhatsApp (WABA)](./WABA_SETUP.md) | Procedura di collegamento del numero WhatsApp ad AWS End User Messaging Social | in uso |
-| – | [VIDEO_SCRIPT.md](./VIDEO_SCRIPT.md) | Copione del video demo (≤ 3 min), alternative per le scene non pronte al freeze e checklist di registrazione | bozza |
+| – | [VIDEO_SCRIPT.md](./VIDEO_SCRIPT.md) | Copione del video demo (≤ 3 min), alternative per le scene non pronte alla registrazione e checklist di registrazione | bozza |
 | – | [Agente RCS e mittente SMS](./RCS_SMS_SETUP.md) | Agente RCS di test, tester, sender ID SMS per l'Italia e vincoli (M-11) | in uso |
 | – | [OLD/](./OLD/) | Documenti superati (backlog, DONE, checklist submission, documenti da fare, handoff Claude Code): solo storico | archivio |
 

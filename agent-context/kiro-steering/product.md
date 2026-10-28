@@ -4,7 +4,7 @@ inclusion: always
 
 # Product – SuppliAgent
 
-SuppliAgent è un agente AI per gli **ordini HoReCa** di un distributore alimentare (cliente reale di beSharp), costruito per l'AWS CDS Agentic AI Partner Hackathon (consegna 28/10/2026, code freeze 28/10 ore 12:00; stato e backlog in `START_HERE.md`).
+SuppliAgent è un agente AI per gli **ordini HoReCa** di un distributore alimentare (cliente reale di beSharp), costruito per l'AWS CDS Agentic AI Partner Hackathon (consegna 28/10/2026 ore 21:00, si sviluppa fino alla scadenza; stato e backlog in `START_HERE.md`).
 
 ## Utenti
 - **Ristoratore**: ordina su WhatsApp (foto del bigliettino scritto a mano, vocale, testo) o via email; conferma con un tap; riceve conferma via email con PDF e SMS/RCS, avvisi di consegna, proposte di riordino.
