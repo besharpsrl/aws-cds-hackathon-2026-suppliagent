@@ -913,6 +913,7 @@ def _delivery_update(detail: dict[str, Any]) -> dict[str, str]:
                     ),
                     TEMPLATE_BUTTONS[DELIVERY_TEMPLATE][language],
                     {"orderId": order_id, "template": "delivery_update_rcs"},
+                    has_fallback=True,
                 )
             }
         except (ChannelUnavailableError, ClientError) as e:  # F-11.C7: the WhatsApp template
@@ -1057,7 +1058,9 @@ def _send_rcs(address: str, text: str, options: list[tuple[str, str]]) -> str:
         FallbackConfiguration={
             "Channel": "SMS",
             "OriginationIdentity": _sms_param("SMS_SENDER_PARAM"),
-            "MessageBody": text[:SMS_FALLBACK_LIMIT],
+            "MessageBody": text
+            if len(text) <= SMS_FALLBACK_LIMIT
+            else text[: SMS_FALLBACK_LIMIT - 1] + "…",
         },
         ConfigurationSetName=_sms_param("SMS_CONFIGURATION_SET_PARAM"),
     )
@@ -1083,8 +1086,10 @@ def _send_sms_message(
     text: str,
     options: list[tuple[str, str]],
     extra: dict[str, Any],
+    has_fallback: bool = False,
 ) -> str:
-    """One idempotent RCS/SMS send, recorded in the conversation (if any)."""
+    """One idempotent RCS/SMS send, recorded in the conversation (if any). With `has_fallback`
+    the caller sends on another channel when this fails: no `notification.failed`."""
     if not _claim(key):
         if _is_done(key):
             return "DUPLICATE"
@@ -1094,7 +1099,10 @@ def _send_sms_message(
         provider_id: str | None = _sandbox_id(key) if sandbox else _send_rcs(address, text, options)
     except Exception:
         _unclaim(key)
-        _event("notification.failed", conversation_id or "", "SMS", sandbox, extra.get("template"))
+        if not has_fallback:
+            _event(
+                "notification.failed", conversation_id or "", "SMS", sandbox, extra.get("template")
+            )
         raise
     _done(key)
     status = "SANDBOX" if sandbox else "SENT"

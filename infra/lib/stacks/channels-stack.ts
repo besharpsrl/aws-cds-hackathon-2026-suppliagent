@@ -85,6 +85,8 @@ export class ChannelsStack extends Stack {
           ...(enabled ? { TwoWayChannelArn: this.smsInboundTopic.topicArn } : {}),
         },
         physicalResourceId: cr.PhysicalResourceId.of(`${prefix}-rcs-two-way`),
+        // An agent already removed by hand must not block the stack deletion.
+        ...(enabled ? {} : { ignoreErrorCodesMatching: 'ResourceNotFoundException' }),
       });
       const rcsTwoWay = new cr.AwsCustomResource(this, 'RcsTwoWay', {
         onCreate: twoWay(true),

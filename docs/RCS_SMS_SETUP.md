@@ -80,7 +80,7 @@ Se il tester non riceve il messaggio subito dopo l'accettazione, attendere qualc
 ## Cablaggio (T-27)
 
 - `rcsAgentId` e `smsSenderId` (`SUPPLIAGENT/IT`) in `infra/config/environments.ts`; il `ChannelsStack` pubblica `rcsAgentArn`, `smsSenderId` (ARN) e `smsConfigurationSet` in SSM.
-- Topic `suppliagent-<env>-sms-inbound` sottoscritto alla coda `inbound`; il two-way dell'agente (`UpdateRcsAgent`, `TwoWayEnabled`, `TwoWayChannelArn`) lo attiva una custom resource del `ChannelsStack` (lo spegne alla cancellazione). Serve `sms-voice.amazonaws.com` nella key policy della CMK (`FoundationStack`).
+- Topic `suppliagent-<env>-sms-inbound` sottoscritto alla coda `inbound`; il two-way dell'agente (`UpdateRcsAgent`, `TwoWayEnabled`, `TwoWayChannelArn`) lo attiva una custom resource del `ChannelsStack` (lo spegne alla cancellazione; se cambia `rcsAgentId`, il two-way del vecchio agente va spento a mano con `update-rcs-agent --no-two-way-enabled`). Serve `sms-voice.amazonaws.com` nella key policy della CMK (`FoundationStack`).
 - Configuration set `suppliagent-<env>-sms-cs` con tutti gli eventi su `suppliagent-<env>-sms-events`.
 - Niente pool: il fallback è per messaggio (`SendRcsMessage` con `FallbackConfiguration` SMS dal sender ID).
 - **Passo manuale per la demo**: il telefono Android del tester riceve RCS solo se il suo contatto ha un'identità `SMS#` verificata (mai il numero WhatsApp: l'agente di test invia solo ai tester e gli SMS in sandbox solo ai numeri verificati). Il numero non va nel repo:
