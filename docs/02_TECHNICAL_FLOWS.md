@@ -511,7 +511,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `record_suggestion_outcome` | orderId, accepted | `RECORDED` (+ `value` se accettato e già nell'ordine) \| `ALREADY_RECORDED` \| `NO_SUGGESTION`; evento `order.suggestion`; un rifiuto esclude lo SKU dai suggerimenti al cliente per 30 giorni (F-07.C2) |
 | `create_order_draft` | customerId, lines[] (sku, quantity, rawText, status?, candidates?…), source, deliveryDate?, deliveryNotes? | `existing`, order. Nome, unità, prezzi e totale li calcola il tool, mai il modello; se la conversazione ha già una bozza aperta la restituisce invariata |
 | `update_order_draft` | orderId, ops[] (`add` \| `update` \| `remove` + campi della riga), deliveryDate?, deliveryNotes? | `status`, order. Modificare un riepilogo lo riporta a bozza; un ordine `CONFIRMED`/`SUBMITTED` si modifica fino al cut-off (`UPDATED`, evento `order.updated`, con `confirmationEmail`: se la conferma aggiornata parte via email a chi ha confermato; un flag, mai l'indirizzo), oltre `ORDER_LOCKED`; `NEEDS_FIXES` non salva |
-| `request_order_confirmation` | orderId | `PENDING_CONFIRMATION` + summary + `orderEmail` (dove andrà l'email di conferma, `null` = nessun indirizzo), oppure `NEEDS_FIXES` + issues[] (`UNRESOLVED_LINES`, `NO_LINES`, `NOT_A_MULTIPLE`, `NO_PRICE`, `NO_DELIVERY_DATE`, `INVALID_DELIVERY_DATE` con `options`, `BELOW_MINIMUM` con `missing`) |
+| `request_order_confirmation` | orderId | `PENDING_CONFIRMATION` + summary + `orderEmail` (dove andrà l'email di conferma, `null` = nessun indirizzo), oppure `NEEDS_FIXES` + issues[] (`UNRESOLVED_LINES`, `NO_LINES`, `NOT_A_MULTIPLE`, `NO_PRICE`, `NO_DELIVERY_DATE`, `INVALID_DELIVERY_DATE` con `options`, `BELOW_MINIMUM` con `missing`); su un ordine già confermato (`CONFIRMED`/`SUBMITTED`, anche dopo una modifica F-08.C2) `NOT_CONFIRMABLE` + `orderStatus` + `reason = ALREADY_CONFIRMED` (T-68: non va chiesta una nuova conferma) |
 | `confirm_order` | orderId, idempotencyKey?, interactiveReply? (`contextId`) | `CONFIRMED` \| `ALREADY_CONFIRMED` \| `NOT_CONFIRMABLE` (+ `orderStatus`) \| `NEEDS_FIXES`; errore `CONFIRMATION_MISMATCH` |
 | `cancel_order` | orderId | order (`CANCELLED`); errore `ORDER_LOCKED` oltre il cut-off o dopo la pianificazione |
 | `get_order_status` | customerId \| orderId (uno solo) | orders[] (ultimi 5, dal più recente): status, deliveryDate, erpOrderNumber, righe, totale, fascia di consegna |
@@ -541,7 +541,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `deliveryAutoConfirm` | true (fine giornata) |
 | `identificationMaxAttempts` | 3 |
 | `privacyNoticeUrl` / `privacyNoticeVersion` | `UNSET` (da impostare con l'URL dell'informativa del Distributore, azione manuale) / `2026-10-28` (registrata con ogni consenso) |
-| `notifierSandbox` | `true` = il Notifier registra le uscite invece di inviarle (simulatore); `false` = invio reale, necessario per i giudici (T-68). Il valore sta in `infra/config/environments.ts`: un deploy sovrascrive il parametro SSM |
+| `notifierSandbox` | `true` = il Notifier registra le uscite invece di inviarle (simulatore); `false` = invio reale, il valore su `dev` da T-68 (anche per i giudici). Il valore sta in `infra/config/environments.ts`: un deploy sovrascrive il parametro SSM |
 | `erpMockFailure` | `false` (con `true` l'ERP mock risponde "non disponibile": ordine resta `CONFIRMED`, retry e poi DLQ, E-08; letto a runtime, cache 60 s) |
 
 ## 8. Tracciabilità e logging

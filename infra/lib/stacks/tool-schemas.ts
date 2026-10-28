@@ -288,7 +288,7 @@ export const ORDERS_TOOLS: agentcore.ToolDefinition[] = [
   {
     name: 'request_order_confirmation',
     description:
-      'Call when the order is complete, before asking the customer to confirm. Checks it (unresolved lines, packs, delivery date and cut-off, minimum) and returns either NEEDS_FIXES with the issues, or status PENDING_CONFIRMATION with the summary to show: lines, prices, total, delivery date, notes, and orderEmail: where the confirmation email will go (null = no address on record). Without this call the order cannot be confirmed.',
+      'Call when the order is complete, before asking the customer to confirm. Checks it (unresolved lines, packs, delivery date and cut-off, minimum) and returns either NEEDS_FIXES with the issues, or status PENDING_CONFIRMATION with the summary to show: lines, prices, total, delivery date, notes, and orderEmail: where the confirmation email will go (null = no address on record). Without this call the order cannot be confirmed. Not needed after changing a confirmed order: it answers NOT_CONFIRMABLE with reason ALREADY_CONFIRMED (the change is already saved).',
     inputSchema: {
       type: OBJECT,
       properties: {

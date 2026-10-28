@@ -343,7 +343,12 @@ def test_summary_of_a_closed_state_order() -> None:
     out = request_order_confirmation(
         make(RequestConfirmationInput, caller=CUSTOMER, orderId=order_id)
     )
-    assert out == {"status": "NOT_CONFIRMABLE", "orderStatus": "CONFIRMED"}
+    # T-68: after a change of a confirmed order the model must not read this as "not changeable"
+    assert out == {
+        "status": "NOT_CONFIRMABLE",
+        "orderStatus": "CONFIRMED",
+        "reason": "ALREADY_CONFIRMED",
+    }
 
 
 # --- confirmation (FN-12) --------------------------------------------------------------------

@@ -515,6 +515,13 @@ def update_order_draft(args: UpdateOrderDraftInput) -> dict[str, Any]:
 
 def request_order_confirmation(args: RequestConfirmationInput) -> dict[str, Any]:
     order = _authorized(args.caller, args.orderId)
+    if order["status"] in AFTER_CONFIRMATION:
+        # T-68: a change after the confirmation stays confirmed; nothing to ask again
+        return {
+            "status": "NOT_CONFIRMABLE",
+            "orderStatus": order["status"],
+            "reason": "ALREADY_CONFIRMED",
+        }
     if order["status"] not in EDITABLE:
         return {"status": "NOT_CONFIRMABLE", "orderStatus": order["status"]}
     customer = _customer(order["customerId"])
