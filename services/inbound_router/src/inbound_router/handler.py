@@ -139,8 +139,9 @@ def _store(raw: RawMessage, last_attempt: bool = False) -> None:
         }
     )
     # HUMAN: the agent stays silent (FN-24). Unverified sender: never answered (backscatter, T-24).
-    # STOP / START: recorded, never answered (F-11.C5).
-    buffered = mode == "AGENT" and raw.sender_verified and not _opt_out_keyword(raw)
+    # STOP / START: recorded also during a handoff, never answered (F-11.C5).
+    opt_keyword = raw.sender_verified and _opt_out_keyword(raw)
+    buffered = mode == "AGENT" and raw.sender_verified and not opt_keyword
     if _put_message(message, buffered):
         # Never log message content, numbers or addresses (AGENTS §7).
         logger.info("message stored", channel=raw.channel, role=identity.role)

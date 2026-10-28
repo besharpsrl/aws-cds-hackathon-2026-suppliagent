@@ -359,3 +359,22 @@ def test_stop_on_sms_opts_the_number_out_without_an_answer(recorder: Any) -> Non
 def test_stop_from_an_unknown_number_is_only_stored(recorder: Any) -> None:
     router.handler(sms_sqs_event("+393479999999", "STOP"), None)
     assert recorder.sent == []
+
+
+def test_stop_during_a_handoff_is_still_recorded(recorder: Any) -> None:
+    identities = boto3.resource("dynamodb").Table("suppliagent-test-channel-identities")
+    identities.put_item(
+        Item={
+            "channelAddress": "SMS#+393470000001",
+            "channel": "SMS",
+            "contactId": "con_001",
+            "role": "CUSTOMER_CONTACT",
+            "verified": True,
+        }
+    )
+    boto3.resource("dynamodb").Table("suppliagent-test-conversations").put_item(
+        Item={"conversationId": "conv_con001", "mode": "HUMAN", "contactId": "con_001"}
+    )
+    router.handler(sms_sqs_event("+393470000001", "STOP"), None)
+    item = identities.get_item(Key={"channelAddress": "SMS#+393470000001"})["Item"]
+    assert "optedOutAt" in item and recorder.sent == []

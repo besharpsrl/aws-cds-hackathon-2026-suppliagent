@@ -307,7 +307,9 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
                     channel, address, request.text, conversation, interactive
                 )
             except (ChannelUnavailableError, ClientError) as e:
-                if channel != "WHATSAPP":
+                # A transient error after the retries may still have delivered: never resend
+                # it on another channel (the caller retries with the same key).
+                if channel != "WHATSAPP" or (isinstance(e, ClientError) and _transient(e)):
                     raise
                 provider_id, shown, channel, template = _fallback(
                     request, conversation, interactive, e
@@ -348,7 +350,11 @@ def _fallback(
         if contact_id.startswith("con_")
         else None
     ) or {}
-    if isinstance(error, ChannelUnavailableError) and request.template:
+    if (
+        isinstance(error, ChannelUnavailableError)
+        and request.template
+        and _window_closed(conversation.get("lastWhatsappInboundAt"))
+    ):
         name = request.template.name
         language = _lang(contact) if contact else _locale_language(conversation)
         customer = (
@@ -460,12 +466,16 @@ def whatsapp_markup(text: str) -> str:
     return _MD_BOLD.sub(r"*\1*", text)
 
 
-def _check_window(last_inbound: str | None) -> None:
-    # Free text only inside the 24 h window; templates arrive with T-29 (F-11.C2).
-    if (
+def _window_closed(last_inbound: str | None) -> bool:
+    return (
         not last_inbound
         or datetime.now(UTC) - datetime.fromisoformat(last_inbound) >= WHATSAPP_WINDOW
-    ):
+    )
+
+
+def _check_window(last_inbound: str | None) -> None:
+    # Free text only inside the 24 h window; outside it a template, if the request names one.
+    if _window_closed(last_inbound):
         raise ChannelUnavailableError
 
 
@@ -544,15 +554,18 @@ SEND_ATTEMPTS = 4  # the first try and 3 retries
 RETRY_BASE_SECONDS = 0.5
 
 
+def _transient(error: ClientError) -> bool:
+    status = int(error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0))
+    return error.response["Error"]["Code"] in TRANSIENT_ERRORS or status >= 500
+
+
 def _call(operation: Callable[[], Any]) -> Any:
     """A send API call, retried with exponential backoff on transient errors (E-09)."""
     for attempt in range(SEND_ATTEMPTS):
         try:
             return operation()
         except ClientError as e:
-            status = int(e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0))
-            transient = e.response["Error"]["Code"] in TRANSIENT_ERRORS or status >= 500
-            if not transient or attempt == SEND_ATTEMPTS - 1:
+            if not _transient(e) or attempt == SEND_ATTEMPTS - 1:
                 raise
             logger.warning("send throttled or failed: retrying", attempt=attempt + 1)
             time.sleep(RETRY_BASE_SECONDS * 2**attempt)
@@ -1193,6 +1206,8 @@ def _send_rcs(address: str, text: str, options: list[tuple[str, str]]) -> tuple[
         )
         return str(response.get("MessageId", "")), bool(options)
     except ClientError as e:
+        if _transient(e):  # it may have gone out: the caller's retry (idempotent) decides
+            raise
         logger.warning("rcs refused: plain sms", error=e.response["Error"]["Code"])
     response = _call(
         lambda: _sms().send_text_message(

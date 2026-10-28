@@ -576,7 +576,7 @@ def test_transient_errors_are_retried_then_the_reply_goes_out(
     assert calls["n"] == 3
 
 
-def test_whatsapp_still_failing_after_the_retries_falls_back_to_rcs(
+def test_whatsapp_still_failing_after_the_retries_is_not_resent_elsewhere(
     fakes: Fakes, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     whatsapp_conversation("2099-01-01T00:00:00.000Z")
@@ -590,8 +590,73 @@ def test_whatsapp_still_failing_after_the_retries_falls_back_to_rcs(
         raise ClientError(error, "SendWhatsAppMessage")  # type: ignore[arg-type]
 
     monkeypatch.setattr(fakes, "send_whatsapp_message", down)
+    # it may have been delivered: the caller retries with the same key, never a second channel
+    with pytest.raises(ClientError):
+        notifier.handler(reminder(), None)
+    assert calls["n"] == notifier.SEND_ATTEMPTS and fakes.rcs == []
+
+
+def test_whatsapp_refusing_the_message_falls_back_to_rcs(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    whatsapp_conversation("2099-01-01T00:00:00.000Z")
+    sms_identity()
+
+    def refused(**_request: Any) -> dict[str, str]:
+        error = {"Error": {"Code": "ValidationException", "Message": "not on WhatsApp"}}
+        raise ClientError(error, "SendWhatsAppMessage")  # type: ignore[arg-type]
+
+    monkeypatch.setattr(fakes, "send_whatsapp_message", refused)
     assert notifier.handler(reminder(), None) == {"status": "SENT"}
-    assert calls["n"] == notifier.SEND_ATTEMPTS and len(fakes.rcs) == 1
+    assert len(fakes.rcs) == 1
+
+
+def test_whatsapp_not_configured_inside_the_window_goes_on_rcs_not_template(
+    fakes: Fakes,
+) -> None:
+    parameters.clear_caches()  # type: ignore[no-untyped-call]
+    boto3.client("ssm").put_parameter(
+        Name="/suppliagent/test/waPhoneNumberId", Value="UNSET", Type="String", Overwrite=True
+    )
+    whatsapp_conversation("2099-01-01T00:00:00.000Z")
+    sms_identity()
+    assert notifier.handler(reminder(template=TEMPLATE), None) == {"status": "SENT"}
+    assert fakes.whatsapp == [] and len(fakes.rcs) == 1
+
+
+def test_the_rcs_fallback_skips_a_number_that_sent_stop(fakes: Fakes) -> None:
+    whatsapp_conversation()
+    put(
+        "channel-identities",
+        {
+            "channelAddress": "SMS#+393470000001",
+            "channel": "SMS",
+            "contactId": "con_001",
+            "role": "CUSTOMER_CONTACT",
+            "verified": True,
+            "optedOutAt": "2026-10-28T10:00:00Z",
+        },
+    )
+    with pytest.raises(ChannelUnavailableError):
+        notifier.handler(reminder(), None)
+    assert fakes.rcs == [] and fakes.sms == []
+
+
+def test_an_rcs_server_error_is_not_resent_as_sms(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _order()
+    sms_identity()
+    monkeypatch.setattr(notifier, "RETRY_BASE_SECONDS", 0)
+
+    def down(**_request: Any) -> dict[str, str]:
+        error = {"Error": {"Code": "ThrottlingException", "Message": "slow"}}
+        raise ClientError(error, "SendRcsMessage")  # type: ignore[arg-type]
+
+    monkeypatch.setattr(fakes, "send_rcs_message", down)
+    # the delivery message then goes on the WhatsApp template (its own channel decision)
+    notifier.handler(delivery_event(), None)
+    assert fakes.sms == []
 
 
 def test_validation_errors_are_not_retried(fakes: Fakes, monkeypatch: pytest.MonkeyPatch) -> None:
