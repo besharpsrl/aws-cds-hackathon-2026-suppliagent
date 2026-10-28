@@ -2,10 +2,11 @@
 
 A customer is proposed when, at the same time:
 - a reorder is overdue: now >= last order + `REORDER_DUE_FACTOR` x average interval;
-- a contact of it gave the proactive consent (C4: otherwise only `reorder.skipped`, for the rep);
 - it has no order in progress (C1);
-- no proposal in the last `REORDER_COOLDOWN_DAYS` days (C2): `lastProposalAt` on `CustomerInsights`,
-  claimed with a conditional write before the event, so two runs never propose twice;
+- no proposal (or skip) in the last `REORDER_COOLDOWN_DAYS` days (C2): `lastProposalAt` on
+  `CustomerInsights`, claimed with a conditional write before any event: two runs never emit twice;
+- a verified contact of it gave the proactive consent (C4: otherwise only `reorder.skipped`, for the
+  rep, under the same cooldown); pending contacts never count (no data before verification);
 - not during the quiet hours (`QUIET_HOURS`, Europe/Rome).
 For each one it emits `reorder.due` (customerId, contactIds, skus): the proactive turn with the
 `reorder_suggestion` template is T-52. Nothing is sent from here.
@@ -61,13 +62,20 @@ def overdue(insights: dict[str, Any], now: datetime, factor: float) -> list[str]
 
 
 def _order_in_progress(customer_id: str) -> bool:
-    page = table("orders").query(
-        IndexName="by-customerId",
-        KeyConditionExpression=Key("customerId").eq(customer_id),
-        ProjectionExpression="#s",
-        ExpressionAttributeNames={"#s": "status"},
-    )
-    return any(item.get("status") not in CLOSED for item in page["Items"])
+    kwargs: dict[str, Any] = {
+        "IndexName": "by-customerId",
+        "KeyConditionExpression": Key("customerId").eq(customer_id),
+        "ScanIndexForward": False,  # newest first: open orders are the recent ones
+        "ProjectionExpression": "#s",
+        "ExpressionAttributeNames": {"#s": "status"},
+    }
+    while True:
+        page = table("orders").query(**kwargs)
+        if any(item.get("status") not in CLOSED for item in page["Items"]):
+            return True
+        if "LastEvaluatedKey" not in page:
+            return False
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
 
 
 def _claim(customer_id: str, now: datetime, cooldown: timedelta) -> bool:
@@ -97,7 +105,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, int]:
     cooldown = timedelta(days=float(os.environ["REORDER_COOLDOWN_DAYS"]))
     consenting: dict[str, list[str]] = {}
     for contact in _scan("contacts"):
-        if contact.get("proactiveConsent") is True:
+        if contact.get("status") == "VERIFIED" and contact.get("proactiveConsent") is True:
             for customer_id in contact.get("customerIds", []):
                 consenting.setdefault(str(customer_id), []).append(str(contact["contactId"]))
     done: Counter[str] = Counter()
@@ -106,15 +114,15 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, int]:
         skus = overdue(insights, now, factor)
         if not skus:
             continue
-        if customer_id not in consenting:
+        if _order_in_progress(customer_id):
+            done["orderInProgress"] += 1
+        elif not _claim(customer_id, now, cooldown):
+            done["cooldown"] += 1
+        elif customer_id not in consenting:
             put_event(
                 SOURCE, "reorder.skipped", {"customerId": customer_id, "reason": "NO_CONSENT"}
             )
             done["noConsent"] += 1
-        elif _order_in_progress(customer_id):
-            done["orderInProgress"] += 1
-        elif not _claim(customer_id, now, cooldown):
-            done["cooldown"] += 1
         else:
             put_event(
                 SOURCE,

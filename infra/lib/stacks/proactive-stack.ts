@@ -80,7 +80,11 @@ export class ProactiveStack extends Stack {
 
     const analyzer = fn('InsightsAnalyzer', 'insights-analyzer', {});
     allow(analyzer, ['dynamodb:Scan'], [tables.customers.tableArn, tables.promotions.tableArn]);
-    allow(analyzer, ['dynamodb:Query'], [tables.orderHistory.tableArn]);
+    allow(
+      analyzer,
+      ['dynamodb:Query'],
+      [tables.orderHistory.tableArn, `${tables.orders.tableArn}/index/by-customerId`],
+    );
     allow(analyzer, ['dynamodb:UpdateItem'], [tables.customerInsights.tableArn]);
 
     const trigger = fn('ProactiveTrigger', 'proactive-trigger', {

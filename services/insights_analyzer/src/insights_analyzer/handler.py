@@ -1,6 +1,8 @@
 """Insights & Reorder Analyzer (T-08, FN-19, FN-20, F-13 step 1): nightly, one item per customer.
 
-Reads `Customers`, `OrderHistory` and `Promotions`, writes `CustomerInsights` (logic in `analysis`).
+Reads `Customers`, `OrderHistory` (the seeded past), the orders placed through SuppliAgent
+(`Orders`, confirmed or later: an accepted proposal resets the clock) and `Promotions`, writes
+`CustomerInsights` (logic in `analysis`).
 Only the computed attributes are set, so what the Proactive Trigger keeps on the item
 (`lastProposalAt`, the 7-day cooldown) survives the nightly run.
 Run on demand for the demo with `{"asOf": "2026-10-28T02:00:00Z"}` (deterministic on the seed).
@@ -14,10 +16,14 @@ from typing import Any
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key
 from suppliagent_shared.aws import table
+from suppliagent_shared.orders import ACTIVE_LINES
 
 from insights_analyzer.analysis import analyze
 
 logger = Logger(service="insights-analyzer")
+PLACED = frozenset(
+    {"CONFIRMED", "SUBMITTED", "SCHEDULED", "OUT_FOR_DELIVERY", "DELIVERED", "DELIVERY_ISSUE"}
+)
 
 
 def _scan(name: str) -> list[dict[str, Any]]:
@@ -31,15 +37,32 @@ def _scan(name: str) -> list[dict[str, Any]]:
         kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
 
 
-def _history(customer_id: str) -> list[dict[str, Any]]:
+def _query(name: str, customer_id: str, **extra: Any) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    kwargs: dict[str, Any] = {"KeyConditionExpression": Key("customerId").eq(customer_id)}
+    kwargs: dict[str, Any] = {"KeyConditionExpression": Key("customerId").eq(customer_id), **extra}
     while True:
-        page = table("order-history").query(**kwargs)
+        page = table(name).query(**kwargs)
         items += page["Items"]
         if "LastEvaluatedKey" not in page:
             return items
         kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+
+
+def _history(customer_id: str) -> list[dict[str, Any]]:
+    """Seeded history plus the orders placed through SuppliAgent, as `{date, lines[sku]}`."""
+    history = _query("order-history", customer_id)
+    for order in _query("orders", customer_id, IndexName="by-customerId"):
+        if order.get("status") not in PLACED:
+            continue
+        lines = [
+            {"sku": line["sku"]}
+            for line in order.get("lines", [])
+            if line.get("sku") and line.get("status") in ACTIVE_LINES
+        ]
+        when = str(order.get("confirmedAt") or order["createdAt"])
+        if lines:
+            history.append({"date": when[:10], "lines": lines})
+    return history
 
 
 def _as_of(event: dict[str, Any]) -> datetime:

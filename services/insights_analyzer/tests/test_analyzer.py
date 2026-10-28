@@ -121,17 +121,33 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
             "customers": ["customerId"],
             "promotions": ["promoId"],
             "customer-insights": ["customerId"],
+            "orders": ["orderId"],
             "order-history": ["customerId", "dateOrderId"],
         }.items():
-            resource.create_table(
-                TableName=f"suppliagent-test-{name}",
-                KeySchema=[
+            spec: dict[str, Any] = {
+                "TableName": f"suppliagent-test-{name}",
+                "KeySchema": [
                     {"AttributeName": k, "KeyType": "HASH" if i == 0 else "RANGE"}
                     for i, k in enumerate(keys)
                 ],
-                AttributeDefinitions=[{"AttributeName": k, "AttributeType": "S"} for k in keys],
-                BillingMode="PAY_PER_REQUEST",
-            )
+                "AttributeDefinitions": [{"AttributeName": k, "AttributeType": "S"} for k in keys],
+                "BillingMode": "PAY_PER_REQUEST",
+            }
+            if name == "orders":
+                spec["AttributeDefinitions"] += [
+                    {"AttributeName": a, "AttributeType": "S"} for a in ("customerId", "createdAt")
+                ]
+                spec["GlobalSecondaryIndexes"] = [
+                    {
+                        "IndexName": "by-customerId",
+                        "KeySchema": [
+                            {"AttributeName": "customerId", "KeyType": "HASH"},
+                            {"AttributeName": "createdAt", "KeyType": "RANGE"},
+                        ],
+                        "Projection": {"ProjectionType": "ALL"},
+                    }
+                ]
+            resource.create_table(**spec)
         yield resource
         reset_clients()
 
@@ -163,3 +179,46 @@ def test_handler_writes_insights_and_keeps_the_trigger_cooldown(aws: Any) -> Non
     assert item["lastProposalAt"] == "2026-10-25T08:00:00Z"
     assert item["expectedReorders"][0]["dueAt"] == "2026-10-22T09:00:00Z"
     assert item["updatedAt"] == "2026-10-28T01:00:00Z"
+
+
+def test_orders_placed_through_suppliagent_reset_the_clock(aws: Any) -> None:
+    """An accepted proposal (J4) moves `lastOrderedAt`: no new proposal for the same products."""
+    aws.Table("suppliagent-test-customers").put_item(Item={"customerId": "cus_001"})
+    for day in ("2026-10-01", "2026-10-08"):
+        aws.Table("suppliagent-test-order-history").put_item(
+            Item={
+                "customerId": "cus_001",
+                "dateOrderId": f"{day}#h",
+                "date": day,
+                "lines": [{"sku": "OIL"}],
+            }
+        )
+    orders = aws.Table("suppliagent-test-orders")
+    line = {"sku": "OIL", "status": "CONFIRMED"}
+    orders.put_item(
+        Item={
+            "orderId": "ord_ok",
+            "customerId": "cus_001",
+            "createdAt": "2026-10-15T07:00:00Z",
+            "confirmedAt": "2026-10-15T07:05:00Z",
+            "status": "DELIVERED",
+            "lines": [line, {"sku": "BURRATA", "status": "REMOVED"}],
+        }
+    )
+    for status in ("CANCELLED", "PENDING_CONFIRMATION"):
+        orders.put_item(
+            Item={
+                "orderId": f"ord_{status}",
+                "customerId": "cus_001",
+                "createdAt": "2026-10-27T07:00:00Z",
+                "status": status,
+                "lines": [line],
+            }
+        )
+    handler({"asOf": "2026-10-28T01:00:00Z"}, None)
+    item = aws.Table("suppliagent-test-customer-insights").get_item(Key={"customerId": "cus_001"})[
+        "Item"
+    ]
+    assert [(r["sku"], r["lastOrderedAt"]) for r in item["expectedReorders"]] == [
+        ("OIL", "2026-10-15T09:00:00Z")
+    ]

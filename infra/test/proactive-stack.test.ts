@@ -45,6 +45,7 @@ describe('ProactiveStack (T-08, FN-19, FN-20)', () => {
   it('lets the analyzer only update insights and the trigger only claim the cooldown and emit', () => {
     const analyzer = rolePolicy('insights-analyzer');
     expect(analyzer).toContain('dynamodb:UpdateItem');
+    expect(analyzer).toContain('index/by-customerId'); // orders placed through SuppliAgent
     expect(analyzer).not.toMatch(/dynamodb:(PutItem|DeleteItem)|events:PutEvents/);
     const trigger = rolePolicy('proactive-trigger');
     expect(trigger).toContain('index/by-customerId');

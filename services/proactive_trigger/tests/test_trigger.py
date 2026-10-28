@@ -59,10 +59,29 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
         )
         contacts = resource.Table("suppliagent-test-contacts")
         contacts.put_item(
-            Item={"contactId": "con_001", "customerIds": ["cus_001"], "proactiveConsent": True}
+            Item={
+                "contactId": "con_001",
+                "status": "VERIFIED",
+                "customerIds": ["cus_001"],
+                "proactiveConsent": True,
+            }
         )
         contacts.put_item(
-            Item={"contactId": "con_002", "customerIds": ["cus_002"], "proactiveConsent": False}
+            Item={
+                "contactId": "con_002",
+                "status": "VERIFIED",
+                "customerIds": ["cus_002"],
+                "proactiveConsent": False,
+            }
+        )
+        # a stranger who claimed cus_002 and said yes: not verified, never counts
+        contacts.put_item(
+            Item={
+                "contactId": "con_009",
+                "status": "PENDING_VERIFICATION",
+                "customerIds": ["cus_002"],
+                "proactiveConsent": True,
+            }
         )
         yield resource
         reset_clients()
@@ -129,7 +148,8 @@ def test_nothing_is_overdue_nothing_happens(aws: Any, events: list[Any]) -> None
 
 
 def test_no_consent_only_signals_the_rep(aws: Any, events: list[Any]) -> None:
-    """F-13.C4: no message, only `reorder.skipped` (consent false or never asked)."""
+    """F-13.C4: no message, only `reorder.skipped` (consent false, never asked or only from a
+    contact still to verify), once per cooldown."""
     insights(aws, "cus_002")
     insights(aws, "cus_003")
     assert run() == {"noConsent": 2}
@@ -137,11 +157,17 @@ def test_no_consent_only_signals_the_rep(aws: Any, events: list[Any]) -> None:
         ("reorder.skipped", {"customerId": "cus_002", "reason": "NO_CONSENT"}),
         ("reorder.skipped", {"customerId": "cus_003", "reason": "NO_CONSENT"}),
     ]
+    assert run("2026-10-29T08:30:00Z") == {"cooldown": 2}
+    assert len(events) == 2
 
 
 def test_order_in_progress_means_no_proposal(aws: Any, events: list[Any]) -> None:
-    """F-13.C1."""
+    """F-13.C1, with or without consent."""
     insights(aws)
+    insights(aws, "cus_002")
+    aws.Table("suppliagent-test-orders").put_item(
+        Item={"orderId": "ord_2", "customerId": "cus_002", "createdAt": "1", "status": "DRAFT"}
+    )
     orders = aws.Table("suppliagent-test-orders")
     orders.put_item(
         Item={
@@ -159,7 +185,7 @@ def test_order_in_progress_means_no_proposal(aws: Any, events: list[Any]) -> Non
             "status": "PENDING_CONFIRMATION",
         }
     )
-    assert run() == {"orderInProgress": 1}
+    assert run() == {"orderInProgress": 2}
     assert events == []
 
 
