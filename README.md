@@ -10,6 +10,8 @@ Built by [beSharp](https://www.besharp.it) for the **AWS Communication Developer
 
 > Status: 🚧 in development – submission deadline 28 Oct 2026, 21:00 CET.
 >
+> **Judges: start from [`JUDGES.md`](JUDGES.md)** – what it does, how it is built and how to test it in a few minutes.
+>
 > **Team: start from [`START_HERE.md`](START_HERE.md)** (Italian) – single source for project status, timeline, task backlog, manual actions and decisions.
 
 ---
