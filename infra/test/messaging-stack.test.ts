@@ -197,6 +197,14 @@ describe('MessagingStack – debounce and Notifier (T-22, T-24 base, FN-26, FN-0
     }
   });
 
+  it('lets the notifier only update orders, to store the summary message (T-25)', () => {
+    const policy = rolePolicy('notifier');
+    expect(policy).toMatch(
+      /"dynamodb:UpdateItem","Effect":"Allow","Resource":\{"Fn::ImportValue":"[^"]*Orders/,
+    );
+    expect(policy).not.toMatch(/dynamodb:(PutItem|DeleteItem)[^}]*Orders/);
+  });
+
   it('reads the sandbox switch and the sender settings from SSM at runtime', () => {
     expect(functionProps('notifier')?.Environment.Variables).toMatchObject({
       SANDBOX_PARAM: '/suppliagent/dev/notifierSandbox',
