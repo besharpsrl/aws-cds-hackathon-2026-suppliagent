@@ -66,7 +66,7 @@ def ask(question: str, sku: str | None = None, who: CallerContext = CUSTOMER) ->
 
 
 def test_passages_come_with_the_sheet_to_cite(kb: FakeKb) -> None:
-    kb.results = [hit("FDL-PIZZA-1KG", 0.81), hit("FDL-PIZZA-2KG", 0.4)]
+    kb.results = [hit("FDL-PIZZA-1KG", 0.81), hit("FDL-PIZZA-2KG", 0.61)]
     result = ask("Il fior di latte contiene lattosio?")
 
     assert result["status"] == "FOUND"
@@ -121,3 +121,10 @@ def test_an_invalid_sku_is_refused_by_the_handler(kb: FakeKb) -> None:
     event = {"caller": CUSTOMER.model_dump(), "question": "allergeni", "sku": "drop table"}
     assert lambda_handler(event, context) == {"error": "INVALID_INPUT"}
     assert kb.calls == []
+
+
+def test_a_lowercase_sku_is_accepted(kb: FakeKb) -> None:
+    kb.results = [hit("FDL-PIZZA-1KG", 0.7)]
+    ask("allergeni", sku=" fdl-pizza-1kg ")
+    search = kb.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]
+    assert search["filter"]["equals"]["value"] == "FDL-PIZZA-1KG"

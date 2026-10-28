@@ -16,7 +16,7 @@ from functools import cache
 from typing import Any
 
 import boto3
-from pydantic import Field
+from pydantic import Field, field_validator
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.models import Role
 
@@ -24,14 +24,20 @@ from suppliagent_tool_catalog.catalog import SOURCE, ToolInput, _require_custome
 
 MAX_PASSAGES = 3
 PASSAGE_CHARS = 2000
-# ponytail: first guess from the demo sheets (a matching sheet scores ~0.7-0.8, an unrelated
-# question ~0.4-0.5); calibrate with questions that have no answer in the sheets (FN-21).
-MIN_SCORE = 0.55
+# Measured on the demo KB (28/10): the right sheet scores 0.72-0.80, questions the sheets do not
+# answer ("orari del magazzino", "dipendenti del caseificio") ~0.61. A product without a sheet can
+# still hit a similar one (crudo -> cotto): the agent passes the sku and checks the product.
+MIN_SCORE = 0.65
 
 
 class AskProductSheetsInput(ToolInput):
     question: str = Field(min_length=1, max_length=500)
     sku: str | None = Field(None, pattern=r"^[A-Z0-9][A-Z0-9-]{0,39}$")
+
+    @field_validator("sku", mode="before")
+    @classmethod
+    def _upper(cls, value: object) -> object:
+        return value.strip().upper() if isinstance(value, str) else value  # "burrata-125" too
 
 
 @cache
