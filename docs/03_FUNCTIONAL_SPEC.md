@@ -58,7 +58,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-11 | Suggerimento contestuale (max 1 per ordine) | S | AG | VI, CR | F-07 | ◐ T-50 |
 | FN-12 | Riepilogo e conferma esplicita | M | AG | FU | F-07 | ✅ |
 | FN-13 | ERP adapter (mock) e numero d'ordine | M | IN | TE | F-07 | ✅ |
-| FN-14 | Email di conferma con PDF | M | CH | TE | F-07, F-11 | ◐ T-26 |
+| FN-14 | Email di conferma con PDF | M | CH | TE | F-07, F-11 | ✅ T-26 (da provare su `dev`) |
 | FN-15 | Conferma SMS/RCS | M | CH | TE | F-07, F-11 | ◐ T-27 |
 | FN-16 | Modifica e annullamento ordine | S | AG | FU | F-08 | ✅ |
 | FN-17 | Stato ordine e consegna | S | AG | VI | F-09 | ✅ |
@@ -157,8 +157,9 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [ ] ERP non disponibile → retry e cliente informato della presa in carico.
 
 #### FN-14 – Email di conferma con PDF · **M** · CH
-- [ ] Inviata entro 1 minuto dalla conferma, con PDF dell'ordine (righe, quantità, data consegna, note).
-- [ ] Rendering corretto su mobile e desktop; bounce gestito.
+- [x] Inviata entro 1 minuto dalla conferma, con PDF dell'ordine (righe, quantità, data consegna, note).
+- [x] Rendering corretto su mobile e desktop; bounce gestito.
+- [x] Se il contatto non ha un'email, l'assistente la chiede nel riepilogo (facoltativa) e la salva sul contatto, solo per le conferme d'ordine (T-26, F-07.C7).
 
 #### FN-15 – Conferma SMS/RCS · **M** · CH
 - [ ] Messaggio breve con numero d'ordine e data di consegna; RCS con branding su device tester, SMS altrimenti.

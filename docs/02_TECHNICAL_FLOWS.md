@@ -268,6 +268,7 @@ Un indirizzo `UNKNOWN` riceve l'informativa nel primo messaggio (saluto + richie
 2. **Riepilogo**: `request_order_confirmation(orderId)` controlla l'ordine (righe risolte, multipli di confezione, data di consegna valida e prima del cut-off, minimo d'ordine) e, se è a posto, lo porta a `PENDING_CONFIRMATION` restituendo il riepilogo: righe confermate (nome, formato, quantità, prezzo da listino), eventuali sostituti, data di consegna, note, **totale stimato**; l'agente chiede **Confermo / Modifica** (a parole finché non c'è T-25, poi pulsanti). Senza questo passaggio un ordine non si può confermare.
 3. **Conferma** → `confirm_order(orderId, idempotencyKey?, interactiveReply?)` solo da `PENDING_CONFIRMATION` → `CONFIRMED` → evento `order.confirmed` → ERP adapter → `SUBMITTED` con numero ordine. Un tap su pulsante vale solo se `interactiveReply.contextId` è il messaggio di riepilogo registrato sull'ordine (`summaryMessageId`): l'id del pulsante si può falsificare. `confirm_order` richiede inoltre, lato server, un messaggio inbound della conversazione arrivato dopo il riepilogo (`Messages`): nello stesso turno del riepilogo risponde `NOT_CONFIRMABLE` con `reason = NEEDS_CUSTOMER_REPLY`. Una conferma ripetuta restituisce `ALREADY_CONFIRMED` senza un secondo ordine né un secondo evento.
 4. **Notifiche di conferma**: WhatsApp (testo + PDF), **email SES con PDF** (Reply-To `ordine+<orderId>@`), **SMS/RCS** breve con numero ordine e data.
+   *Email (T-26)*: `order.confirmed` → Order PDF scrive il file ed emette `order.pdf_ready` → Notifier. Destinatario: chi ha confermato (`confirmedBy`; per un ordine dell'agente di commercio, l'agente): `Contacts.orderEmail` se c'è, altrimenti la sua identità `EMAIL#` verificata. HTML + testo nella lingua del contatto (IT/EN), PDF allegato, tag SES `orderId`/`contactId`; una sola email per revisione dell'ordine (dopo una modifica entro il cut-off, `order.updated` → nuovo PDF → email "Ordine aggiornato"). Nessun indirizzo → `notification.skipped` (C7).
 5. Notifica all'**agente di commercio** del cliente (WhatsApp o console).
 
 | Caso | Comportamento |
@@ -278,7 +279,7 @@ Un indirizzo `UNKNOWN` riceve l'informativa nel primo messaggio (saluto + richie
 | C4 nessuna risposta al riepilogo | Promemoria dopo 2h (`order_pending_reminder`); a fine giornata `EXPIRED` + messaggio. Li gestisce la Lambda `order-sweeper` (ogni 15 minuti, in silenzio nella fascia notturna); i messaggi escono dal Notifier a testo libero entro la finestra 24h (i template con T-29) |
 | C5 conferma doppia (doppio tap) | Idempotenza: un solo ordine |
 | C6 ERP non disponibile | Ordine `CONFIRMED`, invio in retry; il cliente riceve "ordine ricevuto, numero definitivo a breve" |
-| C7 cliente senza email | Conferma via WhatsApp + SMS; chiede se vuole indicare un'email |
+| C7 cliente senza email | `request_order_confirmation` restituisce `orderEmail = null`: nel riepilogo l'agente chiede un'email (facoltativa, non blocca la conferma) e la salva con `set_order_email` sul contatto, usata solo per le conferme d'ordine (mai un'identità di canale); senza, conferma solo in chat |
 
 ### F-08 – Modifica e annullamento (FN-16)
 
@@ -336,7 +337,7 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 | C4 RCS non supportato dal device | Fallback SMS automatico (opzioni numerate) |
 | C5 STOP su SMS | Opt-out registrato |
 | C6 Fascia notturna (21:00–07:00) | Proattivi rinviati; conferme d'ordine inviate comunque |
-| C7 Invio fallito / bounce | Retry, poi canale alternativo; per email bounce → richiesta nuovo indirizzo |
+| C7 Invio fallito / bounce | Retry, poi canale alternativo; per email bounce → richiesta nuovo indirizzo (T-26: bounce permanente dell'email di conferma → `orderEmail` cancellato, `orderEmailBouncedAt`, messaggio nella conversazione dell'ordine che chiede un altro indirizzo; la risposta arriva all'agente, che chiama `set_order_email`) |
 
 ### F-12 – Consegna e problemi (FN-18)
 
@@ -468,6 +469,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `conversation.started` | contactId, role, channel | KPI |
 | `contact.identified` | contactId, method | audit |
 | `contact.privacy_updated` | contactId, channel, noticeSent?, proactiveConsent? | audit del consenso (FN-02) |
+| `contact.order_email_set` | contactId (mai l'indirizzo) | email per le conferme (FN-14) |
 | `order.draft_created` | orderId, source (photo/voice/text/email/reorder/rep) | KPI |
 | `order.lines_extracted` | conversationId (l'`orderId` non esiste ancora: la bozza nasce dopo la lettura), source (photo/voice/text), lines, unreadable | qualità lettura |
 | `order.line_matched` | conversationId (l'`orderId`/`lineId` non esistono ancora: la bozza nasce dopo l'abbinamento), status, confidence | qualità matching |
@@ -476,12 +478,13 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `order.suggestion` | orderId, sku, reason, accepted | upsell |
 | `order.status_changed` | orderId, from, to, ts | tempi |
 | `order.confirmed` | orderId, value, lines, createdBy | KPI principali |
+| `order.pdf_ready` | orderId, reason (`confirmed` \| `updated`), revision | PDF scritto: parte l'email di conferma (T-26) |
 | `erp.submitted` / `erp.failed` | orderId, erpOrderNumber | integrazione |
 | `reorder.proposed` / `reorder.accepted` | customerId, orderId | proattività |
 | `delivery.issue_reported` | orderId, type | qualità consegne |
 | `rep.query` | repId, type (briefing, sheets, catalog, order) | uso copilota |
 | `handoff.started` / `handoff.released` | conversationId, reason, by (`AGENT` o operatore) | automazione |
-| `notification.sent` / `notification.failed` | channel, template | delivery |
+| `notification.sent` / `notification.failed` / `notification.skipped` | channel, template (+ orderId, reason `NO_EMAIL` \| `BOUNCED` per l'email di conferma) | delivery |
 | `agent.turn` | latencyMs, tokens, toolCount | costi e performance |
 
 ### 6.5 Tool (sintesi I/O)
@@ -490,6 +493,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 |---|---|---|
 | `identify_contact` | (indirizzo dal `caller`, INFRASTRUCTURE_DESIGN §5.3.2) \| customerCode \| vatNumber, venueName, privacyNoticeSent? | `status` (`KNOWN` \| `MATCHED` \| `NOT_FOUND` \| `IDENTIFICATION_FAILED`), contact, role, customers[] (customerId, venueName), `privacy` (`noticeSent`, `proactiveConsent`: `null` = mai chiesto; solo contatti cliente) |
 | `update_privacy` | noticeSent?, proactiveConsent? (almeno uno; il contatto è quello del `caller`) | `status` `UPDATED`, `privacy`. Solo `CUSTOMER_CONTACT`; errori `ACCESS_DENIED`, `NOT_FOUND` |
+| `set_order_email` | email (il contatto è quello del `caller`) | `status` `UPDATED`, `orderEmail` normalizzato. Solo `CUSTOMER_CONTACT`; errori `INVALID_INPUT` (non un indirizzo singolo valido), `ACCESS_DENIED`, `NOT_FOUND` |
 | `get_customer_profile` | customerId | dati del locale; ultimi 5 ordini (contatto verificato o agente); ragione sociale, zona, listino e insight (solo agente) |
 | `extract_order_lines` | s3Uri (foto o vocale del chiamante) \| text | `status` (`OK` \| `NOT_AN_ORDER` \| `UNREADABLE_MEDIA`), `source` (photo/voice/text), `lines[]` (rawText, rawQuantity, rawUnit, note, readConfidence, status `READ`/`UNREADABLE`, imageRegion solo per le foto), `struckOut[]`, `deliveryNotes`, `ignoredNotes[]`, `transcript` (solo vocali). Errori: `ACCESS_DENIED` (media non del chiamante), `UNSUPPORTED_MEDIA` (es. PDF, HEIC), `EXTRACTION_FAILED` (E-04) |
 | `match_products` | lines[], customerId | per riga: candidates[] con confidence |
@@ -501,7 +505,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `recommend_products` | customerId, context(lines) | suggestions[] con reason |
 | `create_order_draft` | customerId, lines[] (sku, quantity, rawText, status?, candidates?…), source, deliveryDate?, deliveryNotes? | `existing`, order. Nome, unità, prezzi e totale li calcola il tool, mai il modello; se la conversazione ha già una bozza aperta la restituisce invariata |
 | `update_order_draft` | orderId, ops[] (`add` \| `update` \| `remove` + campi della riga), deliveryDate?, deliveryNotes? | `status`, order. Modificare un riepilogo lo riporta a bozza; un ordine `CONFIRMED`/`SUBMITTED` si modifica fino al cut-off (`UPDATED`, evento `order.updated`), oltre `ORDER_LOCKED`; `NEEDS_FIXES` non salva |
-| `request_order_confirmation` | orderId | `PENDING_CONFIRMATION` + summary, oppure `NEEDS_FIXES` + issues[] (`UNRESOLVED_LINES`, `NO_LINES`, `NOT_A_MULTIPLE`, `NO_PRICE`, `NO_DELIVERY_DATE`, `INVALID_DELIVERY_DATE` con `options`, `BELOW_MINIMUM` con `missing`) |
+| `request_order_confirmation` | orderId | `PENDING_CONFIRMATION` + summary + `orderEmail` (dove andrà l'email di conferma, `null` = nessun indirizzo), oppure `NEEDS_FIXES` + issues[] (`UNRESOLVED_LINES`, `NO_LINES`, `NOT_A_MULTIPLE`, `NO_PRICE`, `NO_DELIVERY_DATE`, `INVALID_DELIVERY_DATE` con `options`, `BELOW_MINIMUM` con `missing`) |
 | `confirm_order` | orderId, idempotencyKey?, interactiveReply? (`contextId`) | `CONFIRMED` \| `ALREADY_CONFIRMED` \| `NOT_CONFIRMABLE` (+ `orderStatus`) \| `NEEDS_FIXES`; errore `CONFIRMATION_MISMATCH` |
 | `cancel_order` | orderId | order (`CANCELLED`); errore `ORDER_LOCKED` oltre il cut-off o dopo la pianificazione |
 | `get_order_status` | customerId \| orderId (uno solo) | orders[] (ultimi 5, dal più recente): status, deliveryDate, erpOrderNumber, righe, totale, fascia di consegna |
