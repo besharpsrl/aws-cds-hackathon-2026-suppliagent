@@ -10,9 +10,11 @@ members = [
     "suppliagent-console-api",
     "suppliagent-erp-adapter",
     "suppliagent-inbound-router",
+    "suppliagent-insights-analyzer",
     "suppliagent-notifier",
     "suppliagent-order-pdf",
     "suppliagent-order-sweeper",
+    "suppliagent-proactive-trigger",
     "suppliagent-shared",
     "suppliagent-tool-catalog",
     "suppliagent-tool-customers",
@@ -2032,9 +2034,11 @@ dependencies = [
     { name = "suppliagent-console-api" },
     { name = "suppliagent-erp-adapter" },
     { name = "suppliagent-inbound-router" },
+    { name = "suppliagent-insights-analyzer" },
     { name = "suppliagent-notifier" },
     { name = "suppliagent-order-pdf" },
     { name = "suppliagent-order-sweeper" },
+    { name = "suppliagent-proactive-trigger" },
     { name = "suppliagent-shared" },
     { name = "suppliagent-tool-catalog" },
     { name = "suppliagent-tool-customers" },
@@ -2060,9 +2064,11 @@ requires-dist = [
     { name = "suppliagent-console-api", editable = "services/console_api" },
     { name = "suppliagent-erp-adapter", editable = "services/erp_adapter" },
     { name = "suppliagent-inbound-router", editable = "services/inbound_router" },
+    { name = "suppliagent-insights-analyzer", editable = "services/insights_analyzer" },
     { name = "suppliagent-notifier", editable = "services/notifier" },
     { name = "suppliagent-order-pdf", editable = "services/order_pdf" },
     { name = "suppliagent-order-sweeper", editable = "services/order_sweeper" },
+    { name = "suppliagent-proactive-trigger", editable = "services/proactive_trigger" },
     { name = "suppliagent-shared", editable = "services/shared" },
     { name = "suppliagent-tool-catalog", editable = "services/tools/catalog" },
     { name = "suppliagent-tool-customers", editable = "services/tools/customers" },
@@ -2155,6 +2161,17 @@ dependencies = [
 requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 
 [[package]]
+name = "suppliagent-insights-analyzer"
+version = "0.1.0"
+source = { editable = "services/insights_analyzer" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
 name = "suppliagent-notifier"
 version = "0.1.0"
 source = { editable = "services/notifier" }
@@ -2180,6 +2197,17 @@ requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
 name = "suppliagent-order-sweeper"
 version = "0.1.0"
 source = { editable = "services/order_sweeper" }
+dependencies = [
+    { name = "suppliagent-shared" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "suppliagent-shared", editable = "services/shared" }]
+
+[[package]]
+name = "suppliagent-proactive-trigger"
+version = "0.1.0"
+source = { editable = "services/proactive_trigger" }
 dependencies = [
     { name = "suppliagent-shared" },
 ]

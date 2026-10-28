@@ -84,7 +84,24 @@ export function buildApp(app: App, config: EnvConfig) {
     agent,
     data,
   );
-  const proactive = after(new ProactiveStack(app, name('proactive'), common), data, messaging);
+  const proactive = after(
+    new ProactiveStack(app, name('proactive'), {
+      ...common,
+      key: foundation.key,
+      eventBus: foundation.eventBus,
+      tables: {
+        customers: data.tables.Customers,
+        contacts: data.tables.Contacts,
+        orders: data.tables.Orders,
+        orderHistory: data.tables.OrderHistory,
+        customerInsights: data.tables.CustomerInsights,
+        promotions: data.tables.Promotions,
+      },
+    }),
+    foundation,
+    data,
+    messaging,
+  );
   const consoleStack = after(
     new ConsoleStack(app, name('console'), {
       ...common,

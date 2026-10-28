@@ -1,0 +1,13 @@
+[project]
+name = "suppliagent-proactive-trigger"
+version = "0.1.0"
+description = "SuppliAgent proactive trigger (T-08, FN-19): morning selection of the customers due for a reorder proposal"
+requires-python = ">=3.12,<3.13"
+dependencies = ["suppliagent-shared"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "proactive_trigger"
