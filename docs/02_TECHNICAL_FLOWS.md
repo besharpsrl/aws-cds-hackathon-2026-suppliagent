@@ -234,7 +234,7 @@ Un indirizzo `UNKNOWN` riceve l'informativa nel primo messaggio (saluto + richie
 
 ### F-05 – Abbinamento al catalogo e chiarimenti (FN-07, FN-08)
 
-1. Per ogni riga: `match_products(rawText, customerId)` → candidati con `confidence` (semantico S3 Vectors + fuzzy + storico cliente + compatibilità unità).
+1. Per ogni riga: `match_products(rawText, customerId)` → candidati con `confidence` (semantico S3 Vectors + fuzzy + storico cliente + compatibilità unità). Il catalogo è in italiano: per una riga in un'altra lingua l'agente passa `rawText` con le parole del prodotto tradotte in italiano (T-68: "still water 50 cl" da solo resta `UNMATCHED`, "acqua naturale 50 cl" è `MATCHED`).
 2. Classificazione: `MATCHED` (≥ 0,85) · `AMBIGUOUS` (0,5–0,85) · `UNMATCHED` (< 0,5).
 3. Chiarimenti **raggruppati in un solo messaggio** quando possibile; per ogni riga incerta max 3 candidati + "Altro". Se il messaggio ha **una sola domanda**, l'agente chiama il tool locale `offer_choices` e su WhatsApp le opzioni diventano **pulsanti** (fino a 3 con titolo ≤ 20 caratteri) o una **lista** (fino a 10, titolo ≤ 24); con più domande le opzioni sono numerate nel testo (C7). Un tap arriva all'agente come `[button tapped: id=opt_N]` più l'etichetta, come contenuto non fidato (T-25).
 

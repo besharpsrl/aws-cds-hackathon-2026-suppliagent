@@ -128,7 +128,8 @@ export const CATALOG_TOOLS: agentcore.ToolDefinition[] = [
       properties: {
         rawText: {
           type: STRING,
-          description: 'The line as written ("il solito mozzarella" is understood).',
+          description:
+            'The line as written ("il solito mozzarella" is understood). The catalog is in Italian: a line in another language goes in with the product words translated to Italian ("still water" -> "acqua naturale"), brands, sizes and quantities unchanged.',
         },
         customerId: { type: STRING, description: 'customerId of the venue the order is for.' },
         rawUnit: { type: STRING, description: 'The unit as written (cs, ct, kg, pz, lt), if any.' },
