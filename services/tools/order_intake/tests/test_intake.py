@@ -196,7 +196,7 @@ def test_voice_is_transcribed_then_extracted(
     assert result["source"] == "voice" and result["transcript"] == transcribe.transcript
     job = transcribe.started[0]
     assert job["Media"]["MediaFileUri"] == VOICE
-    assert job["LanguageOptions"] == ["it-IT", "en-US"] and job["IdentifyLanguage"] is True
+    assert job["LanguageCode"] == "it-IT" and "IdentifyLanguage" not in job
     assert job["OutputBucketName"] == BUCKET and job["OutputKey"].startswith("transcripts/")
     assert transcribe.transcript in bedrock.calls[0]["messages"][0]["content"][0]["text"]
     assert events[0][1]["source"] == "voice"

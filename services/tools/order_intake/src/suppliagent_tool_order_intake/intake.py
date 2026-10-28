@@ -37,7 +37,7 @@ TOOL = "report_order_lines"
 MAX_IMAGE_BYTES = 3_750_000
 IMAGE_FORMATS = {".jpg": "jpeg", ".jpeg": "jpeg", ".png": "png", ".gif": "gif", ".webp": "webp"}
 AUDIO_EXTENSIONS = {".ogg", ".opus", ".mp3", ".m4a", ".mp4", ".amr", ".wav", ".webm", ".flac"}
-TRANSCRIBE_LANGUAGES = ["it-IT", "en-US"]  # FN-27: Italian or English contacts
+TRANSCRIBE_LANGUAGE = "it-IT"  # FN-27 asks for Italian or English: Italian only for now
 TRANSCRIBE_TIMEOUT_S = 60
 TRANSCRIBE_POLL_S = 2
 
@@ -278,8 +278,8 @@ def _transcribe_voice(key: str) -> str:
         client.start_transcription_job(
             TranscriptionJobName=job,
             Media={"MediaFileUri": f"s3://{bucket}/{key}"},
-            IdentifyLanguage=True,
-            LanguageOptions=TRANSCRIBE_LANGUAGES,
+            # Fixed language: IdentifyLanguage took 118 s on 28/10 (7 s without), over the 60 s wait
+            LanguageCode=TRANSCRIBE_LANGUAGE,
             OutputBucketName=bucket,
             OutputKey=f"transcripts/{job}.json",
             OutputEncryptionKMSKeyId=os.environ["KMS_KEY_ARN"],
