@@ -112,7 +112,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Matching catalogo (S3 Vectors) | ✅ | Schede tecniche: Knowledge Base su S3 Vectors con 12 schede sintetiche (T-06b, dopo il deploy di `catalog` e `seed.py`); tool `ask_product_sheets` con citazione della scheda (T-44b, dopo il deploy di `agent`) |
 | Ordine (stock, prezzi, consegne, stato, conferma, sweeper) | ✅ | Pulsanti WhatsApp (T-25) in PR, da provare sul telefono |
 | ERP mock + PDF ordine | ✅ | |
-| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Inbox, dettaglio e correzione riga su API reali (T-62, dopo il deploy di `console` e `scripts/deploy-console.sh`); conversazioni live e handoff in console (T-63: *Take over* / *Reply* / *Release*, polling 2 s; lato agente T-49); WebSocket e KPI da fare |
+| Console (Cognito, inbox, dettaglio con bigliettino, ruolo `judge`) | ◐ | Inbox, dettaglio e correzione riga su API reali (T-62, dopo il deploy di `console` e `scripts/deploy-console.sh`); conversazioni live e handoff in console (T-63: *Take over* / *Reply* / *Release*, polling 2 s; lato agente T-49); WebSocket e KPI da fare; dominio stabile `app.suppliagent.stonecutters.besharp.net` (CNAME → CloudFront, certificato ACM `us-east-1`, 28/10) |
 | Copilota agenti, riordino proattivo | ◐ | Could (flussi 6 e 7). Insight per cliente e selezione dei riordini scaduti in `ProactiveStack` (T-08, dopo il deploy di `proactive`): analisi notturna su `CustomerInsights`, al mattino `reorder.due`; il turno proattivo con il template è T-52. Suggerimenti `reco` (T-50, PR dopo il code freeze, da deployare solo con conferma di MG): 1 per ordine con consenso, fino a 3 nel briefing dell'agente di commercio |
 | Analytics e KPI | – | Tolti (§4.4) |
 | `dev` pronto per i giudici, README giudici | ☐ | T-10 |
@@ -263,6 +263,7 @@ Dal 27/10 sera il fatto sono le [issue chiuse](https://github.com/besharpsrl/aws
 | 26/10 | T-40, T-41 (ridotti) | AgentCore Gateway + Runtime, agente Strands per ruolo | #15 |
 | 26/10 | T-66 | Ruolo `judge` in sola lettura, pagina demo | #13 |
 | 26/10 | – | Console online su `dev` (script di pubblicazione) | #12 |
+| 28/10 | – | Dominio custom `app.suppliagent.stonecutters.besharp.net` per la console (`consoleDomain`, `consoleCertificateArn`, `scripts/console-dns-records.sh`) | `feat/console-custom-domain` |
 | 26/10 | T-62 (UI) | Inbox e dettaglio ordine con bigliettino, su mock | #10 |
 | 26/10 | T-61 | Scaffold console React + Vite + Cognito | #9, #11 |
 | 26/10 | T-20 | `ChannelsStack`: topic SNS, SES configuration set e rule set | #7 |
