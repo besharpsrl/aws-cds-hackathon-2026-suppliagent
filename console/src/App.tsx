@@ -27,8 +27,11 @@ export function App() {
         <Route
           path="*"
           element={
-            <p>
-              Page not found. <Link to="/">Back to orders</Link>
+            <p className="text-muted-foreground">
+              Page not found.{' '}
+              <Link to="/" className="font-semibold text-primary hover:underline">
+                Back to orders
+              </Link>
             </p>
           }
         />
