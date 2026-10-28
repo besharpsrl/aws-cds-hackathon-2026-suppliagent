@@ -1,6 +1,6 @@
 # SuppliAgent – video demo script (≤ 3:00)
 
-> T-12 · Narration in English (the video is for the judges); production notes in Italian. Narration is about 330 words: at a calm pace it fills ~2:20, the rest is screen time. Fallbacks exist for every scene that depends on a task not yet on `dev`: record **only what works on a real phone**, never a simulation presented as real (the rules ask for the project running on a real device).
+> T-12 · Narration in English (the video is for the judges); production notes in Italian. Narration is about 330 words: at a calm pace it fills ~2:20, the rest is screen time. Fallbacks exist for every scene that depends on a task not yet on `dev`: record **only what works on a real phone**, never a simulation presented as real (the rules ask for the project running on a real device). Deadline: video uploaded and linked on Devpost by **28/10 21:00** (Italian time).
 
 ## Format
 
@@ -21,7 +21,7 @@
 | 2:25–2:50 | Architecture diagram (`docs/architecture.png`), highlight the CDS services as they are named | "Under the hood: End User Messaging Social for WhatsApp, SES for email, an agent built with Strands on Amazon Bedrock AgentCore running Amazon Nova, tools behind AgentCore Gateway, S3 Vectors for the catalog, all deployed with AWS CDK. Authorization is enforced inside every tool, by role." |
 | 2:50–3:00 | Title card: repo URL and the WhatsApp number from the README | "Next: proactive reorders, a sales rep copilot and delivery notices by SMS and RCS. Try it with the number in our README." |
 
-## If a scene is not ready at the freeze (12:00)
+## If a scene is not ready at recording time
 
 | Scene | Depends on | Fallback |
 |---|---|---|
@@ -34,7 +34,7 @@
 
 ## Pre-recording checklist (Italiano)
 
-- [ ] `dev` aggiornato da `main` dopo il freeze (T-10) e dati ripristinati: `uv run python seed/reset.py --env dev` (solo MG, su richiesta).
+- [ ] `dev` aggiornato da `main` (T-10) e dati ripristinati: `uv run python seed/reset.py --env dev` (solo MG, su richiesta).
 - [ ] SSM `notifierSandbox` = `false`, così le risposte arrivano davvero sul telefono; il numero di prova è registrato come tester (M-02).
 - [ ] Il contatto del telefono è **verificato** per il cliente demo (T-71): provare prima l'intero flusso, due volte, con lo stesso bigliettino.
 - [ ] Una prova a secco cronometrata: foto → conferma sotto i 60 secondi di video dopo il taglio delle attese.
@@ -42,5 +42,5 @@
 - [ ] Console: account `judge` (M-06) per la scena a sola lettura; account `backoffice` per la correzione.
 - [ ] Nessun nome del distributore reale, nessun dato reale (AGENTS §8.10); nessuna musica.
 - [ ] Sottotitoli in inglese (file `.srt` o inseriti nel video); durata **≤ 3:00**.
-- [ ] Caricamento su YouTube o Vimeo, **pubblico**, titolo "SuppliAgent – AWS CDS Agentic AI Hackathon"; link nel form Devpost (M-07, M-08) e nel README.
+- [ ] Caricamento su YouTube o Vimeo, **pubblico**, titolo "SuppliAgent – AWS CDS Agentic AI Hackathon"; link nel form Devpost (M-07, M-08) e nel README, entro la consegna di **oggi 28/10 alle 21:00**.
 - [ ] Il testo del video non promette nulla che non sia su `dev`: stessa lista di `docs/SUBMISSION_TEXT.md` (_Verify before submitting_).

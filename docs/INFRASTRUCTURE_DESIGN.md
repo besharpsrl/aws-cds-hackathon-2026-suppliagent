@@ -26,7 +26,7 @@
 - **Account** AWS `471112860008` (decisione del 24/10): account **condiviso** con altri progetti beSharp, già con bootstrap CDK. Per questo il CDK **non crea AWS Budgets** (un budget conterebbe la spesa di tutto l'account); i costi SuppliAgent si isolano con i tag obbligatori (`Project`, `Owner`, `Env`) in Cost Explorer.
 - **Region: `eu-west-1` (Irlanda)**. Vincolo: **dati e inferenza restano in Europa**.
 - **Modello**: **Amazon Nova** tramite inference profile **`eu.`**: `eu.amazon.nova-pro-v1:0` (ragionamento, tool use, vision) e `eu.amazon.nova-lite-v1:0` (classificazioni veloci); il profilo `global.` **non** si usa. *Decisione del 25/10*: sull'account `471112860008` (in *channel program*) Claude non è invocabile; se verrà abilitato, il passaggio a Claude sarà un task pianificato (cambio di `modelId`/`fastModelId` + eval di confronto).
-- **Ambiente**: solo `dev` (decisione del 27/10): sviluppo, video e judging; congelato dopo il code freeze e attivo fino al 12/11/2026. Selezionato con `-c env=dev`.
+- **Ambiente**: solo `dev` (decisione del 27/10): sviluppo, video e judging; attivo fino al 12/11/2026. Selezionato con `-c env=dev`.
 - **Naming**: `suppliagent-<env>-<componente>`; tag: `Project=Hackathon AWS CDS`, `Owner=matteo.goretti@besharp.it`, `Env=<env>` (decisione del 24/10: i primi due sono obbligatori su **tutte** le risorse dell'account).
 
 Disponibilità servizi verificata il 09–12/10/2026:
