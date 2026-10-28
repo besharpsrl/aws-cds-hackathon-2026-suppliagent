@@ -217,9 +217,9 @@ def _run_turn(
 ) -> None:
     started = time.monotonic()
     messages = sorted(pending, key=lambda m: (m["ts"], m["messageId"]))
-    reply = _invoke_agent(_turn_request(conversation_id, item, messages, conversation))
+    reply, interactive = _invoke_agent(_turn_request(conversation_id, item, messages, conversation))
     if reply:
-        _notify(conversation_id, messages, reply)
+        _notify(conversation_id, messages, reply, interactive)
     put_event(
         SOURCE,
         "agent.turn",
@@ -264,7 +264,8 @@ def _window_open(last_inbound: str | None) -> bool:
     return datetime.now(UTC) - datetime.fromisoformat(last_inbound) < WHATSAPP_WINDOW
 
 
-def _invoke_agent(turn: dict[str, Any]) -> str:
+def _invoke_agent(turn: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    """The reply text and, if any, its options (T-25: buttons, validated by the Notifier)."""
     session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"suppliagent:{turn['conversationId']}"))
     try:
         response = _agent().invoke_agent_runtime(
@@ -277,22 +278,29 @@ def _invoke_agent(turn: dict[str, Any]) -> str:
         raise AgentTurnError from e
     if "error" in result:
         raise AgentTurnError
-    return str(result.get("reply") or "")
+    interactive = result.get("interactive")
+    return str(result.get("reply") or ""), interactive if isinstance(interactive, dict) else None
 
 
-def _notify(conversation_id: str, messages: list[dict[str, Any]], reply: str) -> None:
+def _notify(
+    conversation_id: str,
+    messages: list[dict[str, Any]],
+    reply: str,
+    interactive: dict[str, Any] | None = None,
+) -> None:
     """The key comes from the turn's messages, so a retried turn cannot send a second reply."""
     key = f"turn#{messages[0]['messageId']}#{messages[-1]['messageId']}"
+    request = {
+        "kind": "reply",
+        "conversationId": conversation_id,
+        "idempotencyKey": key,
+        "text": reply,
+    }
+    if interactive:
+        request["interactive"] = interactive
     response = _lambda().invoke(
         FunctionName=os.environ["NOTIFIER_FUNCTION_NAME"],
-        Payload=json.dumps(
-            {
-                "kind": "reply",
-                "conversationId": conversation_id,
-                "idempotencyKey": key,
-                "text": reply,
-            }
-        ).encode(),
+        Payload=json.dumps(request).encode(),
     )
     if response.get("FunctionError"):
         error_type = json.loads(response["Payload"].read()).get("errorType")
