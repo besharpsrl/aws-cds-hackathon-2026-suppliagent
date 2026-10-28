@@ -148,3 +148,36 @@ describe('ConsoleStack (T-60, FN-28, FN-32)', () => {
     });
   });
 });
+
+describe('ConsoleStack custom domain', () => {
+  const arn = 'arn:aws:acm:us-east-1:111111111111:certificate/00000000-0000-0000-0000-000000000000';
+  const withDomain = Template.fromStack(
+    buildApp(new App({ context }), {
+      ...getConfig('dev'),
+      consoleDomain: 'app.example.com',
+      consoleCertificateArn: arn,
+    }).console,
+  );
+
+  it('puts the alias and the certificate on the distribution, with a TLS 1.2 policy', () => {
+    withDomain.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        Aliases: ['app.example.com'],
+        ViewerCertificate: Match.objectLike({
+          AcmCertificateArn: arn,
+          MinimumProtocolVersion: 'TLSv1.2_2021',
+        }),
+      }),
+    });
+  });
+
+  it('rejects a domain without certificate', () => {
+    expect(() =>
+      buildApp(new App({ context }), {
+        ...getConfig('dev'),
+        consoleDomain: 'app.example.com',
+        consoleCertificateArn: undefined,
+      }),
+    ).toThrow(/together/);
+  });
+});

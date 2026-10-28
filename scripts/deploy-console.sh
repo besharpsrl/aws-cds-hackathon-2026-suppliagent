@@ -35,5 +35,4 @@ aws s3 cp console/dist/index.html "s3://${BUCKET}/index.html" \
   --cache-control "no-cache" --content-type "text/html" --region "$REGION"
 aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" --paths "/*" >/dev/null
 
-echo "Console: https://$(aws cloudfront get-distribution --id "$DISTRIBUTION" \
-  --query Distribution.DomainName --output text)"
+echo "Console: $(output ConsoleUrl)"

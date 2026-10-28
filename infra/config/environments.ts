@@ -17,6 +17,10 @@ export interface EnvConfig {
   readonly logRetention: RetentionDays;
   /** SES domain for orders: creates identity and inbound rule set (T-15). Unset → no SES resources. */
   readonly sesDomain?: string;
+  /** Custom domain of the console (CNAME to CloudFront, docs/INFRASTRUCTURE_DESIGN.md §8). Needs `consoleCertificateArn`. */
+  readonly consoleDomain?: string;
+  /** ACM certificate of `consoleDomain`, in us-east-1 (CloudFront requirement). */
+  readonly consoleCertificateArn?: string;
   /** WhatsApp phone number ID on EUM Social (T-15). Unset → SSM parameter `UNSET`. */
   readonly waPhoneNumberId?: string;
   /** RCS agent of EUM SMS v2 (M-11, docs/RCS_SMS_SETUP.md). Unset → SSM `UNSET`, no RCS/SMS. */
@@ -84,6 +88,9 @@ const environments: Record<EnvName, EnvConfig> = {
     powertoolsLayerVersion: 40,
     logRetention: RetentionDays.TWO_WEEKS,
     sesDomain: 'suppliagent.stonecutters.besharp.net',
+    consoleDomain: 'app.suppliagent.stonecutters.besharp.net',
+    consoleCertificateArn:
+      'arn:aws:acm:us-east-1:471112860008:certificate/0a49dbe3-377f-43cc-a6a9-9fde325938b8',
     waPhoneNumberId: 'phone-number-id-79f96a1ea97d47aabfce52eb7b8cf23c', // set once the WABA is linked (docs/WABA_SETUP.md)
     rcsAgentId: 'rcs-83650561df2543e1942ccb9a500fa736', // test agent, testers only (M-11)
     smsSenderId: 'SUPPLIAGENT/IT', // one-way alphanumeric sender ID (M-11)

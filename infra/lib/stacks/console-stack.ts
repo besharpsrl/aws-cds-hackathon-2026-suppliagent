@@ -9,6 +9,7 @@ import {
   type StackProps,
 } from 'aws-cdk-lib';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
@@ -132,8 +133,19 @@ export class ConsoleStack extends Stack {
       serverAccessLogsPrefix: 'site/',
       removalPolicy: RemovalPolicy.RETAIN,
     });
+    const { consoleDomain, consoleCertificateArn } = config;
+    if (Boolean(consoleDomain) !== Boolean(consoleCertificateArn)) {
+      throw new Error('consoleDomain and consoleCertificateArn must be set together');
+    }
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: `${prefix} console`,
+      ...(consoleDomain && consoleCertificateArn
+        ? {
+            domainNames: [consoleDomain],
+            certificate: acm.Certificate.fromCertificateArn(this, 'Cert', consoleCertificateArn),
+            minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
+          }
+        : {}),
       defaultRootObject: 'index.html',
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
@@ -158,11 +170,13 @@ export class ConsoleStack extends Stack {
       reason:
         'WAF has a fixed monthly cost (AGENTS §11); API is protected by Cognito. Revisit before demo.',
     });
-    Validations.of(this.distribution).acknowledge({
-      id: 'AwsSolutions-CFR4',
-      reason:
-        'Default *.cloudfront.net certificate: TLS policy cannot be enforced without a custom domain.',
-    });
+    if (!consoleDomain) {
+      Validations.of(this.distribution).acknowledge({
+        id: 'AwsSolutions-CFR4',
+        reason:
+          'Default *.cloudfront.net certificate: TLS policy cannot be enforced without a custom domain.',
+      });
+    }
 
     const notifierName = `${prefix}-notifier`;
 
@@ -406,7 +420,10 @@ export class ConsoleStack extends Stack {
     new CfnOutput(this, 'UserPoolClientId', { value: this.userPoolClient.userPoolClientId });
     new CfnOutput(this, 'ApiUrl', { value: this.api.url });
     new CfnOutput(this, 'ConsoleUrl', {
-      value: `https://${this.distribution.distributionDomainName}`,
+      value: `https://${consoleDomain ?? this.distribution.distributionDomainName}`,
+    });
+    new CfnOutput(this, 'DistributionDomainName', {
+      value: this.distribution.distributionDomainName,
     });
     new CfnOutput(this, 'SiteBucketName', { value: siteBucket.bucketName });
   }

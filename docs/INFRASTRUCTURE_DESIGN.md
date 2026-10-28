@@ -413,6 +413,7 @@ sequenceDiagram
 | SMS/RCS | per messaggio | Basso |
 | SES, Lambda, DynamoDB, SQS, SNS, API GW, S3 | pay-per-use | Trascurabile |
 | CloudFront + WAF | costo fisso WAF | Basso |
+| Dominio custom console (ACM, CNAME) | gratis; fuori da CloudFormation, da rimuovere a mano allo spegnimento | Nullo |
 
 > Scelta deliberata di **S3 Vectors** invece di OpenSearch Serverless: nessun costo minimo orario, adatto ai crediti dell'hackathon.
 
@@ -442,6 +443,8 @@ SuppliAgent/
 | `env` / `region` | `dev` / `eu-west-1` |
 | `waPhoneNumberId` | ID numero WhatsApp su EUM Social (`infra/config/environments.ts` → SSM; `UNSET` finché non è valorizzato; `-c waPhoneNumberId=…` lo sovrascrive) |
 | `sesDomain` | `ordini.example.com` (`infra/config/environments.ts`, `-c sesDomain=…` lo sovrascrive: crea identity e rule set inbound; `dev` = `suppliagent.stonecutters.besharp.net`) |
+
+| `consoleDomain` / `consoleCertificateArn` | hostname della console (CNAME → CloudFront) e certificato ACM in `us-east-1` (`infra/config/environments.ts`; vanno impostati insieme; `dev` = `app.suppliagent.stonecutters.besharp.net`). Certificato e CNAME sono passi manuali (README, passo 7); senza i due valori la console resta su `*.cloudfront.net` |
 
 > `waPhoneNumberId` e `sesDomain` stanno nella config per ambiente (T-15): un deploy di `ChannelsStack` (anche indiretto) non li perde. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
 | `rcsAgentId` / `smsSenderId` | agente RCS / sender ID del fallback in `infra/config/environments.ts` (`dev`: `rcs-83650561df2543e1942ccb9a500fa736` / `SUPPLIAGENT/IT`), pubblicati in SSM come ARN (`rcsAgentArn`, `smsSenderId`) con `smsConfigurationSet` (T-27) |
