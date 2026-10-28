@@ -146,3 +146,35 @@ table.lines tr[data-corrected='true'] td:first-child {
   display: grid;
   gap: 0.25rem;
 }
+.thread {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 40rem;
+}
+.bubble {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+.bubble-outbound {
+  background: #e0f2fe;
+}
+.bubble p {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+}
+.bubble .meta {
+  font-size: 0.8rem;
+  color: #475467;
+}
+.reply {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 40rem;
+  margin: 1rem 0;
+}
+.reply textarea {
+  width: 100%;
+}

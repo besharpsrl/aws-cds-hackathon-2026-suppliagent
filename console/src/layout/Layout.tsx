@@ -15,6 +15,7 @@ export function Layout() {
           <NavLink to="/" end>
             Orders
           </NavLink>
+          <NavLink to="/conversations">Conversations</NavLink>
           <NavLink to="/demo">Try the demo</NavLink>
         </nav>
         <span className="who">

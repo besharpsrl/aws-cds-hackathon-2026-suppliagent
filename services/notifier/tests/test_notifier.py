@@ -181,6 +181,19 @@ def test_without_the_sandbox_parameter_nothing_is_sent_but_the_reply_is_recorded
     assert "providerMessageId" not in item
 
 
+def test_an_operator_reply_is_recorded_with_its_author(fakes: Fakes) -> None:
+    notifier.handler(reply() | {"sentBy": "OPERATOR"}, None)
+
+    [item] = outgoing()
+    assert item["sentBy"] == "OPERATOR"
+
+
+def test_an_unknown_author_is_refused(fakes: Fakes) -> None:
+    with pytest.raises(ValidationError):
+        notifier.handler(reply() | {"sentBy": "AGENT"}, None)
+    assert outgoing() == []
+
+
 def test_whatsapp_reply_goes_to_the_address_of_the_last_inbound_message(fakes: Fakes) -> None:
     sandbox("false")
 
