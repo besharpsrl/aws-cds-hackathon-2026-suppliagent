@@ -69,7 +69,7 @@ Full design: [`docs/INFRASTRUCTURE_DESIGN.md`](docs/INFRASTRUCTURE_DESIGN.md) (I
 
 **Prerequisites**: AWS account with access to Amazon Bedrock models in `eu-west-1`, Node.js 22, Python 3.12, [`uv`](https://docs.astral.sh/uv/), AWS CDK v2, Docker.
 
-**Manual prerequisites** (cannot be automated): WhatsApp Business Account linked to AWS End User Messaging Social and approved message templates; SES domain verification, production access and MX record; RCS agent registration and test devices; SMS origination identity.
+**Manual prerequisites** (cannot be automated): WhatsApp Business Account linked to AWS End User Messaging Social and approved message templates; SES domain verification, production access and MX record; RCS agent registration and test devices; SMS origination identity; CloudWatch Transaction Search enabled once per account and region, for the agent traces in CloudWatch GenAI Observability (`aws xray get-trace-segment-destination` shows `CloudWatchLogs`/`ACTIVE`).
 
 **Manual steps** (after `cdk deploy suppliagent-<env>-channels`):
 1. *WhatsApp* (step by step, in Italian: [docs/WABA_SETUP.md](docs/WABA_SETUP.md)): link the WABA to AWS End User Messaging Social, then add an event destination pointing at the SNS topic `suppliagent-<env>-wa-events` (ARN in SSM `/suppliagent/<env>/waEventsTopicArn`); then set `waPhoneNumberId` for the environment in `infra/config/environments.ts` and redeploy `channels` (`-c waPhoneNumberId=<id>` only overrides it).
