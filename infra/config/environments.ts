@@ -19,6 +19,10 @@ export interface EnvConfig {
   readonly sesDomain?: string;
   /** WhatsApp phone number ID on EUM Social (T-15). Unset → SSM parameter `UNSET`. */
   readonly waPhoneNumberId?: string;
+  /** RCS agent of EUM SMS v2 (M-11, docs/RCS_SMS_SETUP.md). Unset → SSM `UNSET`, no RCS/SMS. */
+  readonly rcsAgentId?: string;
+  /** SMS sender ID used as the RCS fallback, as `<SenderId>/<ISO country>` (M-11). */
+  readonly smsSenderId?: string;
   /** Runtime parameters published to SSM under /suppliagent/<env>/<name> (02_TECHNICAL_FLOWS §7). */
   readonly parameters: Readonly<Record<string, string>>;
   /** Bedrock inference profile of the agent (always `eu.`, INFRASTRUCTURE_DESIGN §2). */
@@ -81,6 +85,8 @@ const environments: Record<EnvName, EnvConfig> = {
     logRetention: RetentionDays.TWO_WEEKS,
     sesDomain: 'suppliagent.stonecutters.besharp.net',
     waPhoneNumberId: 'phone-number-id-79f96a1ea97d47aabfce52eb7b8cf23c', // set once the WABA is linked (docs/WABA_SETUP.md)
+    rcsAgentId: 'rcs-83650561df2543e1942ccb9a500fa736', // test agent, testers only (M-11)
+    smsSenderId: 'SUPPLIAGENT/IT', // one-way alphanumeric sender ID (M-11)
     parameters: runtimeParameters,
     model: novaPro,
   },
@@ -90,7 +96,7 @@ const environments: Record<EnvName, EnvConfig> = {
 export function channelValue(
   node: { tryGetContext(key: string): unknown },
   config: EnvConfig,
-  name: 'sesDomain' | 'waPhoneNumberId',
+  name: 'sesDomain' | 'waPhoneNumberId' | 'rcsAgentId' | 'smsSenderId',
 ): string | undefined {
   return (node.tryGetContext(name) as string | undefined) || config[name];
 }

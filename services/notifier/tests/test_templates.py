@@ -1,4 +1,5 @@
-"""Notifier WhatsApp templates (T-52, F-13 reorder proposal; F-12 delivery day)."""
+"""Notifier WhatsApp templates (T-52, F-13 reorder proposal; F-12 delivery day) and SMS/RCS
+(T-27, FN-15, FN-18)."""
 
 import json
 from collections.abc import Iterator
@@ -8,18 +9,31 @@ from typing import Any
 import boto3
 import pytest
 from aws_lambda_powertools.utilities import parameters
+from botocore.exceptions import ClientError
 from moto import mock_aws
 from notifier import handler as notifier
 from suppliagent_shared.aws import reset_clients
+from suppliagent_shared.errors import ChannelUnavailableError
 
 TEMPLATES = Path(__file__).parents[1] / "whatsapp_templates"
 SANDBOX_PARAM = "/suppliagent/test/notifierSandbox"
 CONV = "conv_con001"
+RCS_AGENT = "arn:aws:sms-voice:eu-west-1:111111111111:rcs-agent/rcs-test"
+SENDER_ID = "arn:aws:sms-voice:eu-west-1:111111111111:sender-id/SUPPLIAGENT/IT"
 
 
 class Fakes:
     def __init__(self) -> None:
         self.whatsapp: list[dict[str, Any]] = []
+        self.rcs: list[dict[str, Any]] = []
+        self.refuse_rcs = False
+
+    def send_rcs_message(self, **request: Any) -> dict[str, str]:
+        if self.refuse_rcs:
+            error = {"Error": {"Code": "ValidationException", "Message": "not a tester"}}
+            raise ClientError(error, "SendRcsMessage")  # type: ignore[arg-type]
+        self.rcs.append(request)
+        return {"MessageId": f"rcs-{len(self.rcs)}"}
 
     def send_whatsapp_message(self, **request: Any) -> dict[str, str]:
         self.whatsapp.append(json.loads(request["message"]))
@@ -64,10 +78,14 @@ def fakes(monkeypatch: pytest.MonkeyPatch) -> Iterator[Fakes]:
         "WA_PHONE_NUMBER_ID_PARAM": "/suppliagent/test/waPhoneNumberId",
         "SANDBOX_PARAM": SANDBOX_PARAM,
         "DELIVERY_CUTOFF": "18:00",
+        "RCS_AGENT_PARAM": "/suppliagent/test/rcsAgentArn",
+        "SMS_SENDER_PARAM": "/suppliagent/test/smsSenderId",
+        "SMS_CONFIGURATION_SET_PARAM": "/suppliagent/test/smsConfigurationSet",
     }.items():
         monkeypatch.setenv(name, value)
     fake = Fakes()
     monkeypatch.setattr(notifier, "_social", lambda: fake)
+    monkeypatch.setattr(notifier, "_sms", lambda: fake)
     with mock_aws():
         reset_clients()
         parameters.clear_caches()  # type: ignore[no-untyped-call]
@@ -82,10 +100,17 @@ def fakes(monkeypatch: pytest.MonkeyPatch) -> Iterator[Fakes]:
         _table(resource, "delivery-calendar", "zone", "date")
         _table(resource, "orders", "orderId")
         _table(resource, "deliveries", "orderId")
+        _table(resource, "channel-identities", "channelAddress", index="contactId")
         boto3.client("events").create_event_bus(Name="suppliagent-test-events")
         ssm = boto3.client("ssm")
         ssm.put_parameter(Name="/suppliagent/test/waPhoneNumberId", Value="pn-1", Type="String")
         ssm.put_parameter(Name=SANDBOX_PARAM, Value="false", Type="String")
+        for name, value in {
+            "rcsAgentArn": RCS_AGENT,
+            "smsSenderId": SENDER_ID,
+            "smsConfigurationSet": "suppliagent-test-sms",
+        }.items():
+            ssm.put_parameter(Name=f"/suppliagent/test/{name}", Value=value, Type="String")
         put(
             "customers",
             {
@@ -271,3 +296,135 @@ def test_other_status_changes_and_rep_orders_send_nothing(fakes: Fakes) -> None:
     assert notifier.handler(delivery_event("SCHEDULED"), None) == {"status": "SKIPPED"}
     assert notifier.handler(delivery_event(), None) == {"status": "NO_CONTACT"}
     assert fakes.whatsapp == []
+
+
+def sms_identity(verified: bool = True) -> None:
+    put(
+        "channel-identities",
+        {
+            "channelAddress": "SMS#+393470000001",
+            "channel": "SMS",
+            "contactId": "con_001",
+            "role": "CUSTOMER_CONTACT",
+            "verified": verified,
+        },
+    )
+
+
+def test_out_for_delivery_goes_on_rcs_for_a_contact_with_an_sms_identity(fakes: Fakes) -> None:
+    _order()
+    sms_identity()
+
+    assert notifier.handler(delivery_event(), None) == {"status": "SENT"}
+
+    assert fakes.whatsapp == []
+    [call] = fakes.rcs
+    assert call["DestinationPhoneNumber"] == "+393470000001"
+    assert call["OriginationIdentity"] == RCS_AGENT
+    assert call["FallbackConfiguration"]["Channel"] == "SMS"
+    assert call["FallbackConfiguration"]["OriginationIdentity"] == SENDER_ID
+    assert "08:00" in call["RcsMessageContent"]["Content"]["TextMessage"]["Body"]
+    assert [s["Reply"]["PostbackData"] for s in call["RcsMessageContent"]["Suggestions"]] == [
+        "delivery_received",
+        "delivery_issue",
+    ]
+    [item] = outgoing()
+    assert (item["channel"], item["providerMessageId"]) == ("SMS", "rcs-1")
+    assert notifier.handler(delivery_event(), None) == {"status": "DUPLICATE"}
+
+
+def test_unverified_sms_identity_or_refused_rcs_falls_back_to_whatsapp(fakes: Fakes) -> None:
+    _order()
+    sms_identity(verified=False)
+    assert notifier.handler(delivery_event(), None) == {"status": "SENT"}
+    assert fakes.rcs == [] and len(fakes.whatsapp) == 1
+
+
+def test_rcs_refused_sends_the_whatsapp_template(fakes: Fakes) -> None:
+    _order()
+    sms_identity()
+    fakes.refuse_rcs = True
+    assert notifier.handler(delivery_event(), None) == {"status": "SENT"}
+    assert len(fakes.whatsapp) == 1
+
+
+def test_a_reply_on_the_sms_channel_goes_out_on_rcs_with_suggested_replies(fakes: Fakes) -> None:
+    put(
+        "conversations",
+        {
+            "conversationId": CONV,
+            "contactId": "con_001",
+            "lastInboundChannel": "SMS",
+            "lastInboundFrom": "+393470000001",
+            "mode": "AGENT",
+        },
+    )
+    request = {
+        "kind": "reply",
+        "conversationId": CONV,
+        "idempotencyKey": "turn#1",
+        "text": "Che tipo di problema?",
+        "interactive": {
+            "kind": "CHOICE",
+            "options": [{"id": "opt_1", "title": "Mancante"}, {"id": "opt_2", "title": "Rotto"}],
+        },
+    }
+    assert notifier.handler(request, None) == {"status": "SENT"}
+    [call] = fakes.rcs
+    assert [s["Reply"]["Text"] for s in call["RcsMessageContent"]["Suggestions"]] == [
+        "Mancante",
+        "Rotto",
+    ]
+
+
+def test_rcs_not_configured_is_channel_unavailable(fakes: Fakes) -> None:
+    parameters.clear_caches()  # type: ignore[no-untyped-call]
+    boto3.client("ssm").put_parameter(
+        Name="/suppliagent/test/rcsAgentArn", Value="UNSET", Type="String", Overwrite=True
+    )
+    put(
+        "conversations",
+        {"conversationId": CONV, "lastInboundChannel": "SMS", "lastInboundFrom": "+3934700"},
+    )
+    request = {"kind": "reply", "conversationId": CONV, "idempotencyKey": "k", "text": "Ciao"}
+    with pytest.raises(ChannelUnavailableError):
+        notifier.handler(request, None)
+    assert fakes.rcs == []
+
+
+def test_order_confirmation_sms_next_to_the_email(fakes: Fakes) -> None:
+    sms_identity()
+    put(
+        "orders",
+        {
+            "orderId": "ord_1",
+            "customerId": "cus_001",
+            "conversationId": CONV,
+            "status": "SUBMITTED",
+            "confirmedBy": "con_001",
+            "deliveryDate": "2026-10-29",
+            "revision": 0,
+        },
+    )
+    notifier._order_sms({"orderId": "ord_1", "reason": "confirmed", "revision": 0})
+    notifier._order_sms({"orderId": "ord_1", "reason": "confirmed", "revision": 0})
+
+    [call] = fakes.rcs
+    body = call["RcsMessageContent"]["Content"]["TextMessage"]["Body"]
+    assert "ord_1" in body and "giovedì 29 ottobre" in body
+    assert "Suggestions" not in call["RcsMessageContent"]
+
+
+def test_no_order_sms_without_an_sms_identity(fakes: Fakes) -> None:
+    put(
+        "orders",
+        {
+            "orderId": "ord_1",
+            "customerId": "cus_001",
+            "status": "SUBMITTED",
+            "confirmedBy": "con_001",
+            "deliveryDate": "2026-10-29",
+        },
+    )
+    notifier._order_sms({"orderId": "ord_1", "reason": "confirmed"})
+    assert fakes.rcs == []

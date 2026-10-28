@@ -64,7 +64,7 @@ export class FoundationStack extends Stack {
     // SNS also delivers to the CMK-encrypted SQS queues (T-21). Scoped to this account (confused deputy).
     this.key.addToResourcePolicy(
       new iam.PolicyStatement({
-        principals: ['ses', 'social-messaging', 'sns'].map(
+        principals: ['ses', 'social-messaging', 'sms-voice', 'sns'].map(
           (service) => new iam.ServicePrincipal(`${service}.amazonaws.com`),
         ),
         actions: ['kms:GenerateDataKey*', 'kms:Decrypt'],

@@ -162,7 +162,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [x] Se il contatto non ha un'email, l'assistente la chiede nel riepilogo (facoltativa) e la salva sul contatto, solo per le conferme d'ordine (T-26, F-07.C7).
 
 #### FN-15 – Conferma SMS/RCS · **M** · CH
-- [ ] Messaggio breve con numero d'ordine e data di consegna; RCS con branding su device tester, SMS altrimenti.
+- [x] Messaggio breve con numero d'ordine e data di consegna; RCS con branding su device tester, SMS altrimenti (T-27: al contatto con identità `SMS#` verificata, una volta per revisione dell'ordine).
 
 #### FN-16 – Modifica e annullamento · **S** · AG
 - [ ] Modifiche libere fino alla conferma; dopo la conferma consentite entro il cut-off con nuova conferma email/SMS.
@@ -172,7 +172,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [ ] "Quando arriva?" restituisce stato, data e fascia di consegna degli ordini aperti.
 
 #### FN-18 – Avvisi di consegna e problemi · **S** · CH + AG
-- [ ] RCS il giorno di consegna con fascia oraria e pulsanti *Ricevuto / Segnala problema* (fallback SMS).
+- [x] RCS il giorno di consegna con fascia oraria e pulsanti *Ricevuto / Segnala problema* (fallback SMS) (T-27; senza identità `SMS#`: template WhatsApp, T-52).
 - [ ] Segnalazione con tipo, righe e foto → visibile in console con priorità.
 
 #### FN-19 – Riordino proattivo · **M** · AG + IN

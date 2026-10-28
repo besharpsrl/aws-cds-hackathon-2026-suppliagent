@@ -33,11 +33,16 @@ And two WhatsApp templates (T-29 approved them; T-52, F-13 / F-12):
   with the delivery window, quick replies `delivery_received` / `delivery_issue`.
 A template goes out also outside the 24 h window; the taps reach the agent as `interactiveReply`.
 
-Not yet (T-24 complete, T-27): other templates outside the window, SMS/RCS, opt-out, channel
-fallback.
+And SMS/RCS (T-27, FN-15, FN-18; AWS End User Messaging SMS v2, `SendRcsMessage` with the SMS
+fallback of the sender ID): replies on the `SMS` channel (suggested replies for the options), the
+short order confirmation next to the email, and the delivery message with *Received / Report a
+problem* for a contact who has a verified `SMS#` identity (otherwise the WhatsApp template).
+
+Not yet (T-24 complete): other templates outside the window, opt-out, channel fallback.
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `WA_PHONE_NUMBER_ID_PARAM`, `SES_FROM_PARAM`,
-`SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`, `DOCUMENTS_BUCKET`, `DELIVERY_CUTOFF`.
+`SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`, `DOCUMENTS_BUCKET`, `DELIVERY_CUTOFF`,
+`RCS_AGENT_PARAM`, `SMS_SENDER_PARAM`, `SMS_CONFIGURATION_SET_PARAM`.
 """
 
 import json
@@ -156,6 +161,11 @@ def _social() -> Any:
 
 
 @cache
+def _sms() -> Any:
+    return boto3.client("pinpoint-sms-voice-v2")
+
+
+@cache
 def _ses() -> Any:
     return boto3.client("sesv2")
 
@@ -168,12 +178,14 @@ def _s3() -> Any:
 def reset_clients() -> None:
     """For tests."""
     _social.cache_clear()
+    _sms.cache_clear()
     _ses.cache_clear()
     _s3.cache_clear()
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, str]:
     if event.get("detail-type") == "order.pdf_ready":
+        _order_sms(event.get("detail") or {})
         return _order_confirmation(event.get("detail") or {})
     if event.get("detail-type") == "reorder.due":
         return _reorder_due(event.get("detail") or {})
@@ -260,7 +272,7 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
             return {"status": "DUPLICATE"}
         raise SendInProgressError  # a concurrent attempt may still fail: the caller retries
     sandbox = _sandbox()
-    interactive = request.interactive if channel == "WHATSAPP" else None
+    interactive = request.interactive if channel in ("WHATSAPP", "SMS") else None
     try:
         if sandbox:
             # A recorded id lets the simulator tap the buttons (scripts/simulate_channel.py --tap).
@@ -354,7 +366,10 @@ def _send(
     if channel == "EMAIL":
         _send_email(address, text, conversation)
         return None, False
-    raise ChannelUnavailableError  # SMS/RCS arrive with T-27
+    if channel == "SMS":
+        options = [(o.id, o.title) for o in interactive.options] if interactive else []
+        return _send_rcs(address, text, options), bool(options)
+    raise ChannelUnavailableError
 
 
 def whatsapp_markup(text: str) -> str:
@@ -862,8 +877,10 @@ def _reorder_due(detail: dict[str, Any]) -> dict[str, str]:
 
 
 def _delivery_update(detail: dict[str, Any]) -> dict[str, str]:
-    """`delivery_update` when the order leaves for the delivery (F-12.1), to the customer contact
-    who placed it, if their conversation is on WhatsApp (an order placed by a sales rep: none)."""
+    """The delivery message when the order leaves (F-12.1), to the customer contact who placed it
+    (an order placed by a sales rep: none): RCS with suggested replies if the contact has a
+    verified `SMS#` identity, otherwise (or if RCS refuses it) the `delivery_update` template on
+    WhatsApp."""
     if detail.get("to") != "OUT_FOR_DELIVERY":
         return {"status": "SKIPPED"}
     order_id = parse_order_id(detail.get("orderId"))
@@ -880,6 +897,26 @@ def _delivery_update(detail: dict[str, Any]) -> dict[str, str]:
     if not end:
         raise InvalidInputError
     customer = table("customers").get_item(Key={"customerId": order["customerId"]}).get("Item")
+    language = _lang(contact)
+    if address := _sms_address(contact_id):  # F-12.1: RCS, SMS fallback (FN-18)
+        try:
+            return {
+                "status": _send_sms_message(
+                    f"delivery-sms#{order_id}",
+                    order.get("conversationId"),
+                    address,
+                    DELIVERY_SMS[language].format(
+                        name=_first_name(contact, customer or {}),
+                        order=order_id,
+                        start=start,
+                        end=end,
+                    ),
+                    TEMPLATE_BUTTONS[DELIVERY_TEMPLATE][language],
+                    {"orderId": order_id, "template": "delivery_update_rcs"},
+                )
+            }
+        except (ChannelUnavailableError, ClientError) as e:  # F-11.C7: the WhatsApp template
+            logger.warning("rcs refused: whatsapp template instead", error=type(e).__name__)
     return {
         "status": _send_template(
             contact_id,
@@ -969,6 +1006,144 @@ def _send_template(
         logger.exception("sent, but not recorded")
     logger.info("template sent", template=name, sandbox=sandbox)
     return status
+
+
+# --- SMS / RCS (T-27, FN-15, FN-18) -----------------------------------------------------------
+
+# RCS limits: text body 3072 characters, suggestion text 25, at most 11 suggestions. The SMS
+# fallback (sender ID, one-way in Italy) is a notification: no options to answer (F-11.C4).
+RCS_TEXT_LIMIT = 3072
+RCS_SUGGESTION_LIMIT = 25
+RCS_MAX_SUGGESTIONS = 11
+SMS_FALLBACK_LIMIT = 300
+SMS_CONFIRMATION = {
+    "it": "Ordine {order} confermato, consegna {date}. Conferma con il PDF via email.",
+    "en": "Order {order} confirmed, delivery on {date}. Confirmation with the PDF by email.",
+}
+SMS_UPDATED = {
+    "it": "Ordine {order} aggiornato, consegna {date}.",
+    "en": "Order {order} updated, delivery on {date}.",
+}
+DELIVERY_SMS = {
+    "it": "Ciao {name}, l'ordine {order} arriva oggi tra le {start} e le {end}. "
+    "Quando arriva, facci sapere se è tutto a posto.",
+    "en": "Hi {name}, order {order} will be delivered today between {start} and {end}. "
+    "When it arrives, let us know if everything is fine.",
+}
+
+
+def _sms_param(env_name: str) -> str:
+    value = _param(env_name)
+    if value == "UNSET":
+        raise ChannelUnavailableError
+    return value
+
+
+def _send_rcs(address: str, text: str, options: list[tuple[str, str]]) -> str:
+    """An RCS text from the agent, with suggested replies for the options (their postback is the
+    option id, back to the Router as `interactiveReply`); a phone without RCS gets the SMS
+    fallback from the sender ID, without the options."""
+    content: dict[str, Any] = {"Content": {"TextMessage": {"Body": text[:RCS_TEXT_LIMIT]}}}
+    if options:
+        content["Suggestions"] = [
+            {"Reply": {"Text": title[:RCS_SUGGESTION_LIMIT], "PostbackData": option_id}}
+            for option_id, title in options[:RCS_MAX_SUGGESTIONS]
+        ]
+    response = _sms().send_rcs_message(
+        DestinationPhoneNumber=address,
+        OriginationIdentity=_sms_param("RCS_AGENT_PARAM"),
+        RcsMessageContent=content,
+        MessageTrafficType="TRANSACTIONAL",
+        FallbackConfiguration={
+            "Channel": "SMS",
+            "OriginationIdentity": _sms_param("SMS_SENDER_PARAM"),
+            "MessageBody": text[:SMS_FALLBACK_LIMIT],
+        },
+        ConfigurationSetName=_sms_param("SMS_CONFIGURATION_SET_PARAM"),
+    )
+    return str(response.get("MessageId", ""))
+
+
+def _sms_address(contact_id: str) -> str | None:
+    """The contact's verified `SMS#` identity: SMS/RCS only to a number given for it, never to
+    the WhatsApp number (testers only for the RCS test agent, SMS sandbox)."""
+    items = table("channel-identities").query(
+        IndexName="by-contactId", KeyConditionExpression=Key("contactId").eq(contact_id)
+    )["Items"]
+    for item in items:
+        if item.get("channel") == "SMS" and item.get("verified") is True:
+            return str(item["channelAddress"]).removeprefix("SMS#")
+    return None
+
+
+def _send_sms_message(
+    key: str,
+    conversation_id: str | None,
+    address: str,
+    text: str,
+    options: list[tuple[str, str]],
+    extra: dict[str, Any],
+) -> str:
+    """One idempotent RCS/SMS send, recorded in the conversation (if any)."""
+    if not _claim(key):
+        if _is_done(key):
+            return "DUPLICATE"
+        raise SendInProgressError
+    sandbox = _sandbox()
+    try:
+        provider_id: str | None = _sandbox_id(key) if sandbox else _send_rcs(address, text, options)
+    except Exception:
+        _unclaim(key)
+        _event("notification.failed", conversation_id or "", "SMS", sandbox, extra.get("template"))
+        raise
+    _done(key)
+    status = "SANDBOX" if sandbox else "SENT"
+    try:
+        if conversation_id:
+            if options:
+                extra = extra | {
+                    "interactive": {
+                        "kind": "SUGGESTIONS",
+                        "options": [{"id": i, "title": t} for i, t in options],
+                    }
+                }
+            _store(conversation_id, key, "SMS", text, provider_id, status, extra)
+        _event("notification.sent", conversation_id or "", "SMS", sandbox, extra.get("template"))
+    except Exception:
+        logger.exception("sent, but not recorded")
+    logger.info("rcs sent", sandbox=sandbox)  # never the number (AGENTS §7)
+    return status
+
+
+def _order_sms(detail: dict[str, Any]) -> None:
+    """Short RCS/SMS confirmation next to the email (FN-15, F-11), once per order revision, to the
+    customer contact who confirmed and has a verified `SMS#` identity. Best effort: the email
+    goes out anyway, a failure here is logged (the retry of the event sends it again)."""
+    try:
+        order_id = parse_order_id(detail.get("orderId"))
+        order = table("orders").get_item(Key={"orderId": order_id}).get("Item")
+        if not order or order["status"] not in EMAILED_STATUSES:
+            return
+        contact_id = str(order.get("confirmedBy") or order.get("createdBy") or "")
+        address = _sms_address(contact_id) if contact_id.startswith("con_") else None
+        if not address:
+            return
+        language = "en" if _language(contact_id).startswith("en") else "it"
+        when = _day(date.fromisoformat(str(order["deliveryDate"])[:10]), language, weekday=True)
+        texts = SMS_UPDATED if detail.get("reason") == "updated" else SMS_CONFIRMATION
+        revision = int(detail.get("revision", order.get("revision", 0)))
+        _send_sms_message(
+            f"order-sms#{order_id}#{revision}",
+            order.get("conversationId"),
+            address,
+            texts[language].format(order=order_id, date=when),
+            [],
+            {"orderId": order_id, "template": "order_confirmation_sms"},
+        )
+    except ChannelUnavailableError:
+        logger.info("rcs not configured: no order sms")
+    except Exception:
+        logger.exception("order sms not sent")
 
 
 # Idempotency: a claim in the TurnBuffer table (TTL attribute `expiresAt`, like the Router's

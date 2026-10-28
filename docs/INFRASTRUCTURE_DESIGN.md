@@ -94,6 +94,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 - **Inbound two-way** → SNS `suppliagent-sms-inbound` (risposte, postback, STOP).
 - Configuration set con event destinations (SNS). Agente RCS registrato, device tester invitati, registrazione Italia (`IT_RCS_LAUNCH_REGISTRATION`).
 - *Stato (M-11, 28/10)*: agente RCS **di test** `ACTIVE` con un tester Android verificato (solo tester, niente lancio verso gli operatori) e sender ID `SUPPLIAGENT` per IT (one-way); account SMS in sandbox. In Italia RCS non arriva su iPhone. Procedura, ID e vincoli: [RCS_SMS_SETUP.md](./RCS_SMS_SETUP.md).
+- *Stato (T-27)*: `ChannelsStack` con topic `sms-inbound` (two-way dell'agente attivato da custom resource `UpdateRcsAgent`) e `sms-events` (configuration set `suppliagent-<env>-sms-cs`, tutti gli eventi), parametri SSM `rcsAgentArn` / `smsSenderId` / `smsConfigurationSet`. Il Router normalizza SMS e RCS (canale `SMS`; un tap su un suggested reply arriva come `messageBody` JSON `type = SUGGESTION` con il nostro `postbackData`, gli indicatori di scrittura si scartano). Il Notifier invia con `SendRcsMessage` dall'agente e `FallbackConfiguration` SMS dal sender ID: risposte sul canale `SMS` (opzioni come suggested reply, max 11, 25 caratteri), conferma breve accanto all'email (`order.pdf_ready`, chiave `order-sms#<orderId>#<revision>`, best effort) e avviso di consegna (F-12), solo verso un'identità `SMS#` verificata del contatto. Permessi: `sms-voice:SendRcsMessage` / `SendTextMessage` su agente, sender ID e configuration set.
 
 ### 5.2 Ingestion & Routing
 
@@ -440,7 +441,7 @@ SuppliAgent/
 | `sesDomain` | `ordini.example.com` (`infra/config/environments.ts`, `-c sesDomain=…` lo sovrascrive: crea identity e rule set inbound; `dev` = `suppliagent.stonecutters.besharp.net`) |
 
 > `waPhoneNumberId` e `sesDomain` stanno nella config per ambiente (T-15): un deploy di `ChannelsStack` (anche indiretto) non li perde. Valori attuali in SSM `/suppliagent/<env>/sesDomain` e `/suppliagent/<env>/waPhoneNumberId`.
-| `rcsAgentId` / `smsOriginationIdentity` | agente RCS / sender (`dev`: `rcs-83650561df2543e1942ccb9a500fa736` / `SUPPLIAGENT`, ancora da cablare in T-27) |
+| `rcsAgentId` / `smsSenderId` | agente RCS / sender ID del fallback in `infra/config/environments.ts` (`dev`: `rcs-83650561df2543e1942ccb9a500fa736` / `SUPPLIAGENT/IT`), pubblicati in SSM come ARN (`rcsAgentArn`, `smsSenderId`) con `smsConfigurationSet` (T-27) |
 | `modelId` / `fastModelId` | `eu.amazon.nova-pro-v1:0` / `eu.amazon.nova-lite-v1:0` |
 | `embeddingModelId` | `amazon.titan-embed-text-v2:0` |
 | `matchAutoThreshold` / `matchAskThreshold` | `0.85` / `0.5` |

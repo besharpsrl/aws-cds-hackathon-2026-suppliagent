@@ -3,6 +3,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ses from 'aws-cdk-lib/aws-ses';
+import * as smsvoice from 'aws-cdk-lib/aws-smsvoice';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as cr from 'aws-cdk-lib/custom-resources';
@@ -18,13 +19,16 @@ export interface ChannelsStackProps extends StackProps {
 /**
  * Channels (T-20, FN-01): SNS topics fed by AWS End User Messaging Social (WhatsApp) and SES, SES
  * configuration set, and, when the environment has a `sesDomain`, the SES identity and inbound rule set.
- * SMS/RCS (EUM SMS v2) arrive with T-27. Identifiers that only exist after manual steps (WhatsApp phone
- * number, domain) come from `infra/config/environments.ts` (`-c` overrides them) and are published to SSM.
+ * SMS/RCS (EUM SMS v2, T-27): two-way topic `sms-inbound` (enabled on the RCS agent made by hand in
+ * M-11), configuration set with its events on `sms-events`. Identifiers that only exist after manual
+ * steps (WhatsApp phone number, domain, RCS agent, sender ID) come from `infra/config/environments.ts`
+ * (`-c` overrides them) and are published to SSM.
  */
 export class ChannelsStack extends Stack {
   readonly waEventsTopic: sns.Topic;
   readonly mailInboundTopic: sns.Topic;
   readonly emailEventsTopic: sns.Topic;
+  readonly smsInboundTopic: sns.Topic;
   readonly configurationSet: ses.ConfigurationSet;
 
   constructor(scope: Construct, id: string, props: ChannelsStackProps) {
@@ -52,6 +56,51 @@ export class ChannelsStack extends Stack {
     this.waEventsTopic = topic('WaEventsTopic', 'wa-events', 'social-messaging');
     this.mailInboundTopic = topic('MailInboundTopic', 'mail-inbound', 'ses');
     this.emailEventsTopic = topic('EmailEventsTopic', 'email-events', 'ses');
+    this.smsInboundTopic = topic('SmsInboundTopic', 'sms-inbound', 'sms-voice');
+    const smsEventsTopic = topic('SmsEventsTopic', 'sms-events', 'sms-voice');
+    // Delivery results of RCS and SMS sends (RCS_SMS_SETUP.md: without it only a CloudWatch metric).
+    const smsConfigurationSet = new smsvoice.CfnConfigurationSet(this, 'SmsConfigurationSet', {
+      configurationSetName: `${prefix}-sms-cs`,
+      eventDestinations: [
+        {
+          eventDestinationName: 'sns',
+          enabled: true,
+          matchingEventTypes: ['ALL'],
+          snsDestination: { topicArn: smsEventsTopic.topicArn },
+        },
+      ],
+    });
+    const rcsAgentId = channelValue(this.node, config, 'rcsAgentId');
+    const smsSenderId = channelValue(this.node, config, 'smsSenderId');
+    const smsArn = (resource: string, resourceName: string) =>
+      this.formatArn({ service: 'sms-voice', resource, resourceName });
+    if (rcsAgentId) {
+      // The agent exists outside CloudFormation (M-11): two-way to `sms-inbound` is switched on here.
+      const twoWay = (enabled: boolean) => ({
+        service: 'PinpointSMSVoiceV2',
+        action: 'updateRcsAgent',
+        parameters: {
+          RcsAgentId: rcsAgentId,
+          TwoWayEnabled: enabled,
+          ...(enabled ? { TwoWayChannelArn: this.smsInboundTopic.topicArn } : {}),
+        },
+        physicalResourceId: cr.PhysicalResourceId.of(`${prefix}-rcs-two-way`),
+      });
+      const rcsTwoWay = new cr.AwsCustomResource(this, 'RcsTwoWay', {
+        onCreate: twoWay(true),
+        onUpdate: twoWay(true),
+        onDelete: twoWay(false),
+        policy: cr.AwsCustomResourcePolicy.fromStatements([
+          new iam.PolicyStatement({
+            actions: ['sms-voice:UpdateRcsAgent'],
+            resources: [smsArn('rcs-agent', rcsAgentId)],
+          }),
+        ]),
+        // The Lambda runtime's SDK may predate the RCS API.
+        installLatestAwsSdk: true,
+      });
+      rcsTwoWay.node.addDependency(this.smsInboundTopic);
+    }
 
     this.configurationSet = new ses.ConfigurationSet(this, 'ConfigurationSet', {
       configurationSetName: `${prefix}-cs`,
@@ -125,8 +174,10 @@ export class ChannelsStack extends Stack {
         id: 'AwsSolutions-IAM5[Resource::*]',
         reason: 'ses:SetActiveReceiptRuleSet does not support resource-level permissions.',
       });
-      // Singleton Lambda that CDK creates for AwsCustomResource.
-      const provider = this.node.findChild('AWS679f53fac002430cb0da5b7982bd2287');
+    }
+    // Singleton Lambda that CDK creates for AwsCustomResource (rule set activation, RCS two-way).
+    const provider = this.node.tryFindChild('AWS679f53fac002430cb0da5b7982bd2287');
+    if (provider) {
       Validations.of(provider).acknowledge({
         id: 'AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]',
         reason: 'CDK-managed AwsCustomResource provider uses the basic execution role.',
@@ -147,5 +198,8 @@ export class ChannelsStack extends Stack {
     parameter('sesFromAddress', sesDomain ? `ordine@${sesDomain}` : undefined);
     parameter('waEventsTopicArn', this.waEventsTopic.topicArn);
     parameter('sesConfigurationSet', this.configurationSet.configurationSetName);
+    parameter('rcsAgentArn', rcsAgentId && smsArn('rcs-agent', rcsAgentId));
+    parameter('smsSenderId', smsSenderId && smsArn('sender-id', smsSenderId));
+    parameter('smsConfigurationSet', `${prefix}-sms-cs`).node.addDependency(smsConfigurationSet);
   }
 }
