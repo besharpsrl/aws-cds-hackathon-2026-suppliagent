@@ -65,7 +65,7 @@ Full design: [`docs/INFRASTRUCTURE_DESIGN.md`](docs/INFRASTRUCTURE_DESIGN.md) (I
 
 ## Getting started
 
-> Commands will be finalized as the code lands; see [`agent-context/AGENTS.md`](agent-context/AGENTS.md) §6.
+Everything is deployed with AWS CDK from a single account and region (`eu-west-1`); the only environment is `dev`. The sections below give the full sequence: prerequisites, first deploy, manual steps, seed data, console. Development commands (lint, tests) are in [`agent-context/AGENTS.md`](agent-context/AGENTS.md) §6.
 
 **Prerequisites**: AWS account with access to Amazon Bedrock models in `eu-west-1`, Node.js 22, Python 3.12, [`uv`](https://docs.astral.sh/uv/), AWS CDK v2, Docker.
 
@@ -80,12 +80,17 @@ Full design: [`docs/INFRASTRUCTURE_DESIGN.md`](docs/INFRASTRUCTURE_DESIGN.md) (I
 6. *RCS and SMS* (step by step, in Italian: [docs/RCS_SMS_SETUP.md](docs/RCS_SMS_SETUP.md)): create an RCS agent with a `TEST_RCS_LAUNCH_REGISTRATION` (auto-approved in minutes), invite Android test devices (RCS for business does not reach iPhones on Italian carriers), and request the alphanumeric sender ID `SuppliAgent` for Italy (one-way). The SMS account stays in the sandbox: SMS only to verified numbers.
 7. *Demo page*: once the WhatsApp number and the order mailbox exist, republish the console with `VITE_DEMO_WHATSAPP="+39…" VITE_DEMO_ORDER_EMAIL="ordini@<sesDomain>" scripts/deploy-console.sh <env>`. For `dev` the values are in `console/.env.example`; the deploy script takes them from the environment variables above, not from `.env` files.
 
+**Deploy from scratch** (credentials for the target account in `AWS_PROFILE`; steps 1-2 and 5-7 of the manual steps above are done once, in parallel, as they depend on Meta and DNS):
+
 ```bash
-uv sync
-cd infra && npm ci && npx cdk synth -c env=dev
-npx cdk deploy --all -c env=dev
-uv run python seed/seed.py --env dev
+npm ci && uv sync                                              # dependencies (npm workspaces + uv workspace)
+cd infra && npx cdk bootstrap -c env=dev                       # once per account and region
+npx cdk deploy --all -c env=dev                                # 9 stacks, in dependency order
+cd .. && uv run python seed/seed.py --env dev                  # catalog, customers, test customers C90001-C90003
+scripts/deploy-console.sh dev                                  # build and publish the console (orders from the real API)
 ```
+
+Then create the console users (manual step 4). `seed/reset.py --env dev` brings the demo back to its initial state: it clears orders, deliveries and issues, reloads the seed and rebuilds the product index with the `catalog-indexer` Lambda (run it once after the first seed so the catalog is searchable).
 
 Without a WhatsApp number, test the whole pipeline with the channel simulator (`dev` only: it refuses to run unless the Notifier sandbox is on, so nothing is sent). The sandbox is off by default (`notifierSandbox: 'false'` in `infra/config/environments.ts`: replies really go out); switch it on in SSM for the test and off again afterwards:
 
@@ -98,7 +103,7 @@ aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value false --ov
 
 ## Try it (for judges)
 
-The console has a read-only `judge` role: judges can browse orders and see each handwritten ticket next to the lines the agent read, but cannot change anything (enforced by the API, not only by the UI). After signing in, the **Try the demo** page walks through ordering and offers a sample handwritten order to download.
+The console has a read-only `judge` role: judges can browse orders and see each handwritten ticket next to the lines the agent read, but cannot change anything (enforced by the API, not only by the UI). After signing in, the **Try the demo** page walks through ordering and offers a sample handwritten order to download (the same image is in the repo: [`agent/evals/data/bigliettini/ordine_ristorante.jpeg`](agent/evals/data/bigliettini/ordine_ristorante.jpeg)); send it as a photo on WhatsApp or by email to see the agent read it.
 
 **Order channels (`dev`)**
 - **WhatsApp**: send a message, a photo of a handwritten list or a voice note to **+39 345 246 0472** (display name "SuppliAgent"). Replies within 24 hours of your message are free-form; outside that window the agent uses Meta-approved templates.
