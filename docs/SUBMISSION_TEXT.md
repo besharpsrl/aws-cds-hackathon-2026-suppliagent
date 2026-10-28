@@ -4,7 +4,111 @@
 
 ## Tagline
 
-Restaurants keep ordering the way they always did, with a photo of a handwritten note on WhatsApp. SuppliAgent turns it into a verified, confirmed order for their food distributor.
+Devpost "General info" → *Elevator pitch* (max 200 characters; this one is 176):
+
+Restaurants order on WhatsApp the way they always have: a photo of a handwritten list, a voice note or a text. SuppliAgent's AI agent turns it into a verified, confirmed order.
+
+## About the project (Devpost "Project details" → "Project Story")
+
+Paste the content of the block below as is (Devpost Markdown + LaTeX: `$$...$$` for display math). It describes the full scope: before submitting, fill in the `[[...]]` markers with measured values and remove anything not live on `dev` (see **Verify before submitting**). The architecture image is loaded from the public repo on `main`.
+
+````markdown
+## Inspiration
+
+One of our customers at beSharp is a food distributor serving hotels, restaurants and cafés. Most of its orders don't come from a portal. They arrive at the end of service as a **photo of a handwritten list**, a **voice note** or a quick WhatsApp message to a sales rep, and someone in the back office retypes each one into the ERP.
+
+That means minutes of data entry per order, misread abbreviations, "the usual" taken to mean the wrong thing, out-of-stock products found only after the order was promised, and nobody noticing when a regular customer quietly stops reordering.
+
+We asked restaurant owners what would help. They didn't want a new app or a B2B portal: they wanted to **keep ordering on WhatsApp**. So we built an agent that meets them where they already are.
+
+## What it does
+
+SuppliAgent is an agentic AI that turns the way restaurants already order into verified, confirmed orders for their distributor. It serves three kinds of users.
+
+**Restaurant owners (on WhatsApp or by email)**
+- Send a **photo of a handwritten list**, a **voice note** or a text. The agent reads the handwriting with a vision model, transcribes the voice note and **matches every line to the catalog** using the customer's price list and purchase history.
+- It **asks only when it has to**: when a line has several plausible matches, the customer gets a WhatsApp question with interactive buttons (at most three options plus "Other").
+- It **checks the business rules** before promising anything: stock, price list, pack multiples, delivery days and cut-off. It proposes substitutes for missing products and makes **at most one** relevant suggestion per order.
+- It asks for **explicit confirmation with one tap**. Nothing reaches the ERP before that, and confirmation is idempotent, so a double tap never creates two orders.
+- Then the paperwork: the order goes to the ERP, a **confirmation email with the order PDF** and an **SMS/RCS confirmation** go out, followed by delivery notifications with suggested replies (*Received* / *Report a problem*).
+- **Proactive reorders**: when a regular reorder is overdue, the agent offers to repeat it with one tap. It only does this with the customer's consent, never at night, and at most once every 7 days.
+
+**Sales reps (copilot on WhatsApp or in the web chat)**
+- "What should I pitch to this restaurant?": recommendations based on the customer's history, products they stopped buying, similar customers and current promotions.
+- Catalog search and **technical sheet Q&A** (allergens, storage, formats) with citations, plus visit briefings and orders placed on behalf of a customer. Reps only ever see their own portfolio.
+
+**Back office (web console)**
+- Orders in real time, with the **original photo of the handwritten list next to the order lines**. Low-confidence lines are highlighted and can be corrected by picking another candidate.
+- Live conversations with **take over / release** (human handoff), delivery issues and **impact KPIs**. A read-only `judge` role is available for the hackathon.
+
+## How we built it
+
+![SuppliAgent architecture](https://raw.githubusercontent.com/besharpsrl/aws-cds-hackathon-2026-suppliagent/main/docs/architecture.png)
+
+Everything is serverless in `eu-west-1` and deployed with **AWS CDK (TypeScript)**: nine stacks, cdk-nag clean, one AWS KMS key for all data at rest.
+
+| Layer | What we used |
+|---|---|
+| **Messaging (AWS CDS)** | **AWS End User Messaging Social** (WhatsApp, `SendWhatsAppMessage`), **Amazon SES v2** (`SendEmail` plus inbound email), **AWS End User Messaging SMS/RCS** (`SendRcsMessage`, `SendTextMessage`) |
+| **Ingestion** | SNS → SQS (standard + DLQ) → Inbound Router (identity, role, idempotency, media to encrypted S3) → per-conversation turn buffer in DynamoDB → Turn Dispatcher (debounce + lock) |
+| **Agent** | **Strands Agents on Amazon Bedrock AgentCore**: Runtime, Memory, Gateway (MCP tools on Lambda, IAM SigV4), Identity, Observability, plus Bedrock Guardrails |
+| **Models** | **Amazon Nova Pro** (reasoning and handwriting vision) and **Nova Lite** (fast classification) through the `eu.` inference profile, so data and inference stay in the EU |
+| **Knowledge** | **Amazon S3 Vectors** catalog index (Titan Text Embeddings V2), **Bedrock Knowledge Bases** for technical sheets, **Amazon Transcribe** for voice notes |
+| **Orders** | DynamoDB, EventBridge `order.confirmed` → ERP adapter (mock) and order PDF, scheduled sweep for draft reminders and expiry |
+| **Proactivity** | Nightly EventBridge Scheduler → Insights & Reorder Analyzer → Proactive Trigger |
+| **Console** | React on CloudFront, Amazon Cognito (`backoffice`, `sales_rep`, `judge`), API Gateway REST + WebSocket |
+| **Analytics** | Firehose → S3 Parquet → Glue → Athena for the KPIs, CloudWatch for operations |
+
+A few design choices shaped the whole system:
+
+- **One writer for all channels.** Only the Notifier is allowed to call the CDS send APIs. Channel policy (the WhatsApp 24-hour window, approved templates outside it, fallback to SMS or email) lives in one place.
+- **One answer per burst.** People send three photos and two messages in ten seconds. The Turn Dispatcher waits for the burst to end (3 s for text, 6 s for media, 15 s at most) and holds a per-conversation lock, so the customer gets one coherent reply instead of five.
+- **The model proposes, the code decides.** The model reads the list and proposes SKUs and quantities with a confidence score \\(c\\). Prices, totals, pack sizes, order status and permissions are decided in code. Each line is handled like this:
+
+$$
+\text{line} \;\rightarrow\;
+\begin{cases}
+\text{accepted automatically} & c \ge 0.85 \\
+\text{clarification question (max 3 options + Other)} & 0.5 \le c < 0.85 \\
+\text{flagged as unmatched, never guessed} & c < 0.5
+\end{cases}
+$$
+
+- **Authorization inside the tools, not in the prompt.** The Dispatcher passes the caller's role and customer ids to the tools, and the model can't change them. A restaurant can only see its own data and a sales rep only their own portfolio, and every tool has negative authorization tests.
+- **Proactive, but polite.** A reorder is due when the time since the last order exceeds 1.5 times the customer's average interval: \\(t_{\text{since last}} > 1.5\,\bar{\Delta t}\\). Even then, the agent only proposes it with consent, outside quiet hours and at most once every 7 days.
+- **Synthetic data only.** The catalog, price lists, customers and order history are anonymized or synthetic.
+
+## Challenges we ran into
+
+- **Handwriting is hard.** Cursive, strikethroughs, arrows, quantities written as "2 cs" or "the usual" and notes that aren't order lines at all. The hard part isn't reading, it's knowing *when you've read badly*. Our first prototype read 62% of the lines right, and too many wrong lines came back looking valid. That pushed us towards the confidence thresholds above, clarification questions and a mandatory confirmation step instead of trusting the read.
+- **Real messaging is messy.** Duplicate deliveries, bursts of messages, media that arrives after the text, the 24-hour window and templates that need Meta approval. We also learned that **SNS standard topics can't deliver to FIFO queues**, so we used standard SQS with idempotency on the provider message id and ordered messages by AWS receive time, and let the debounce do the rest.
+- **Trusting a button.** On WhatsApp, an interactive reply id can be forged. A tap on "Confirm" only counts if it answers the summary of *that* order, and the order tool checks the quoted message id.
+- **New services, tight deadline.** AgentCore and S3 Vectors are very new. We deployed them entirely with CDK and kept the agent as a zip code deployment (no container) to keep the deploy loop short.
+- **Model availability.** We planned for Claude but it wasn't enabled on our account, so we moved to Amazon Nova through the EU inference profile. The model id is configuration, not code.
+
+## Accomplishments that we're proud of
+
+- A restaurant owner can go **from a photo of a handwritten list to a confirmed order in [[XX]] seconds** without installing anything, while the back office retypes nothing.
+- **[[XX]]% of handwritten lines read correctly** on our anonymized evaluation set of **[[XX]] real-style notes**, and lines the agent isn't sure about are asked or flagged, never silently guessed.
+- **All three AWS CDS channels working together**: WhatsApp for the conversation, email with the PDF for the paperwork, SMS/RCS for confirmations and delivery notices, with automatic fallback between them.
+- A **real use case for a real distributor**, designed around how restaurants actually work and not around a demo script.
+- **Fully reproducible**: one `cdk deploy`, cdk-nag clean, least-privilege IAM, encrypted everywhere, synthetic data only.
+
+## What we learned
+
+- **Put authorization in the tools.** Enforcing role and customer scope inside every tool made the agent simpler to trust and much simpler to test than prompt rules ever could.
+- **Let the model propose and the code decide.** That split is what makes *ordering*, an action with money attached, safe to automate.
+- **Conversation design matters as much as the model.** Debounce, short questions with buttons and one clear summary to confirm did more for the experience than any prompt tweak.
+- **Measure before you claim.** A small, honest evaluation set of handwritten notes told us more than any demo did, and changed the design.
+
+## What's next for SuppliAgent
+
+- **Pilot with the distributor**: real catalog and ERP integration replacing the mock, and a measured baseline (orders per day, entry time, error rate) to compare against.
+- **Better handwriting confidence**: calibration on a larger set of notes and learning from back-office corrections.
+- **More channels and languages**: RCS rich cards for reorder proposals and more languages beyond Italian and English.
+- **Smarter proactivity**: seasonal patterns, menu-aware suggestions and promotions targeted per segment.
+- **Model choice**: an option for Anthropic Claude on Amazon Bedrock as soon as it's enabled on the account, compared with our evaluation suite.
+````
 
 ## The problem
 
@@ -50,6 +154,20 @@ Design choices that matter:
 
 ## How SuppliAgent uses AWS End User Messaging Social (WhatsApp)
 
+Devpost field "Describe how AWS End User Messaging Social (EUM - WhatsApp) was used." (plain textarea: paste the block as is; full scope, check **Verify before submitting**):
+
+```text
+WhatsApp is the product, not an add-on: it is the channel restaurant owners already use to order from their food distributor, so SuppliAgent lives there.
+
+- Receiving: the distributor's WhatsApp Business number is linked to AWS End User Messaging Social. Every inbound text, photo (the handwritten order list), voice note and button reply arrives as an event on an Amazon SNS topic, then goes through SQS to our Inbound Router. Media is fetched with GetWhatsAppMessageMedia and stored encrypted in S3, so the agent can read the photo (Amazon Nova vision) or transcribe the voice note (Amazon Transcribe), and the back office console can show the original list next to the order lines.
+- Conversation design: messages sent in a burst (three photos and two texts in ten seconds) are merged into one turn by a per-conversation debounce and lock, so the customer gets one coherent answer instead of five. Inbound messages are marked as read and processed idempotently on the WhatsApp message id.
+- Sending: a single Notifier Lambda is the only component allowed to call SendWhatsAppMessage. It sends free-form answers inside the 24-hour customer service window and interactive messages: reply buttons for clarifications (at most three options plus "Other") and the one-tap "Confirm" on the order summary. A tap only counts if it answers that exact order summary, so a forged or stale button cannot confirm an order.
+- Templates: outside the 24-hour window the Notifier uses only Meta-approved message templates (order confirmation, pending-order reminder, delivery update and proactive reorder proposal, in Italian and English), defined as code in the repo. If WhatsApp is not possible, it falls back to SMS/RCS or email.
+- Identity and safety: the sender's number identifies the contact and their role (restaurant owner or sales rep). Unknown numbers are asked for their venue and customer code before ordering. Every agent tool enforces that a customer only sees their own data and a rep only their own portfolio.
+- Same channel, two audiences: restaurant owners order on WhatsApp, and sales reps use the same number as a copilot (recommendations, technical sheets, orders on behalf of customers).
+```
+
+Background notes (not for the form):
 WhatsApp is the product, not an add-on: it is the channel restaurants already use to order.
 
 - **Receiving.** A WhatsApp Business number is linked to AWS End User Messaging Social. Inbound text, images (the handwritten notes), voice notes and interactive replies arrive as events on an SNS topic and enter the pipeline described above. Media is downloaded and stored encrypted in S3 so the agent can read the photo and the console can show it next to the order lines.
@@ -82,7 +200,11 @@ Proactive reorder proposals ("you usually reorder olive oil every 10 days"), the
 
 ## Built with
 
-AWS End User Messaging Social, Amazon SES, Amazon Bedrock (Nova), Amazon Bedrock AgentCore, Strands Agents, Amazon S3 Vectors, Amazon Transcribe, AWS Lambda, Amazon DynamoDB, Amazon SQS, Amazon SNS, Amazon EventBridge, Amazon API Gateway, Amazon Cognito, Amazon CloudFront, Amazon S3, AWS KMS, AWS CDK, Python, TypeScript, React.
+Devpost "Built with" (max 25 tags; type each one and press Enter). These 25, in this order:
+
+AWS End User Messaging Social, WhatsApp, Amazon SES, AWS End User Messaging SMS, RCS, Amazon Bedrock, Amazon Nova, Amazon Bedrock AgentCore, Strands Agents, Amazon Bedrock Knowledge Bases, Amazon S3 Vectors, Amazon Transcribe, AWS Lambda, Amazon DynamoDB, Amazon SQS, Amazon SNS, Amazon EventBridge, Amazon API Gateway, Amazon Cognito, Amazon CloudFront, Amazon Athena, AWS CDK, Python, TypeScript, React.
+
+Left out to stay within 25 (they are in the story): Amazon S3, AWS KMS, Bedrock Guardrails, MCP, Firehose, Glue, CloudWatch.
 
 ## Verify before submitting
 
