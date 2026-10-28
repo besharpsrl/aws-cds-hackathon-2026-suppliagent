@@ -1,5 +1,6 @@
-import { fileURLToPath } from 'node:url';
+import * as path from 'node:path';
 import {
+  ArnFormat,
   CfnOutput,
   Duration,
   RemovalPolicy,
@@ -20,6 +21,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
 import type { EnvConfig } from '../../config/environments.js';
 import { PythonLambda } from '../constructs/python-lambda.js';
+import { REPO_ROOT, uvBundling } from '../constructs/uv-bundling.js';
 
 export interface ConsoleStackProps extends StackProps {
   readonly config: EnvConfig;
@@ -27,6 +29,8 @@ export interface ConsoleStackProps extends StackProps {
   readonly ordersTable: ITableV2;
   /** Read to enrich orders (names, handoff, ticket photo) and to price a corrected line. */
   readonly customersTable: ITableV2;
+  /** Read to name the contact of a conversation. */
+  readonly contactsTable: ITableV2;
   readonly conversationsTable: ITableV2;
   readonly messagesTable: ITableV2;
   readonly productsTable: ITableV2;
@@ -39,11 +43,10 @@ export interface ConsoleStackProps extends StackProps {
 /** Console roles (FN-28, FN-32): `judge` is read-only. */
 export const CONSOLE_GROUPS = ['backoffice', 'sales_rep', 'judge'] as const;
 
-const consoleApiCode = fileURLToPath(new URL('../../../services/console_api/src', import.meta.url));
-
 /**
  * Back-office console: Cognito, S3 + CloudFront (OAC) for the SPA, REST API with `console_api`.
- * WebSocket/broadcaster (T-63), rep chat (T-64) and WAF are not part of T-60.
+ * Conversations and handoff actions (T-63) are plain REST, polled by the console (FN-28: 2 s).
+ * WebSocket/broadcaster, rep chat (T-64) and WAF are not part of this stack yet.
  */
 export class ConsoleStack extends Stack {
   readonly userPool: cognito.UserPool;
@@ -161,14 +164,28 @@ export class ConsoleStack extends Stack {
         'Default *.cloudfront.net certificate: TLS policy cannot be enforced without a custom domain.',
     });
 
+    const notifierName = `${prefix}-notifier`;
+
     // --- API ----------------------------------------------------------------------------------
     const consoleApi = new PythonLambda(this, 'ConsoleApi', {
       config,
       key,
       name: 'console-api',
-      code: lambda.Code.fromAsset(consoleApiCode),
+      code: lambda.Code.fromAsset(
+        path.join(REPO_ROOT, 'services/console_api'),
+        uvBundling({
+          package: 'suppliagent-console-api',
+          sources: {
+            'services/shared/src/suppliagent_shared': 'suppliagent_shared',
+            'services/console_api/src/console_api': 'console_api',
+          },
+          omit: ['boto3', 'botocore', 's3transfer', 'aws-lambda-powertools'],
+        }),
+      ),
       handler: 'console_api.handler.handler',
       environment: {
+        TABLE_PREFIX: `${prefix}-`, // conversations.py and suppliagent_shared address tables by name
+        NOTIFIER_FUNCTION_NAME: notifierName,
         ORDERS_TABLE: props.ordersTable.tableName,
         CUSTOMERS_TABLE: props.customersTable.tableName,
         CONVERSATIONS_TABLE: props.conversationsTable.tableName,
@@ -193,11 +210,33 @@ export class ConsoleStack extends Stack {
         resources: [props.ordersTable.tableArn],
       }),
     );
+    // Handoff (T-63): *Take over* and *Release* update `mode` on Conversations, nothing else.
+    consoleApi.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['dynamodb:UpdateItem', 'dynamodb:Scan'],
+        resources: [props.conversationsTable.tableArn],
+      }),
+    );
+    // The back office's reply goes out through the Notifier, the only sender (AGENTS §8.7).
+    consoleApi.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['lambda:InvokeFunction'],
+        resources: [
+          this.formatArn({
+            service: 'lambda',
+            resource: 'function',
+            resourceName: notifierName,
+            arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+          }),
+        ],
+      }),
+    );
     consoleApi.function.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['dynamodb:GetItem', 'dynamodb:BatchGetItem'],
         resources: [
           props.customersTable.tableArn,
+          props.contactsTable.tableArn,
           props.conversationsTable.tableArn,
           props.productsTable.tableArn,
           props.priceListsTable.tableArn,
@@ -223,7 +262,10 @@ export class ConsoleStack extends Stack {
       }),
     );
     consoleApi.function.addToRolePolicy(
-      new iam.PolicyStatement({ actions: ['kms:Decrypt'], resources: [key.keyArn] }),
+      new iam.PolicyStatement({
+        actions: ['kms:Decrypt', 'kms:GenerateDataKey'],
+        resources: [key.keyArn],
+      }),
     );
     // The `Resource::*` findings carry the cross-stack export token, so the ids depend on the env.
     const exported = (stack: string, logicalId: string) =>
@@ -247,7 +289,7 @@ export class ConsoleStack extends Stack {
       defaultCorsPreflightOptions: {
         // Bearer-token API, no cookies: any origin is safe, and the CloudFront domain is not known here.
         allowOrigins: apigw.Cors.ALL_ORIGINS,
-        allowMethods: ['GET', 'PATCH', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
         allowHeaders: ['Authorization', 'Content-Type'],
       },
     });
@@ -255,9 +297,9 @@ export class ConsoleStack extends Stack {
       cognitoUserPools: [this.userPool],
     });
     const integration = new apigw.LambdaIntegration(consoleApi.function);
+    const authorized = { authorizer, authorizationType: apigw.AuthorizationType.COGNITO };
     const methodOptions = {
-      authorizer,
-      authorizationType: apigw.AuthorizationType.COGNITO,
+      ...authorized,
       requestParameters: { 'method.request.querystring.status': false },
     };
     const orders = this.api.root.addResource('orders');
@@ -293,6 +335,40 @@ export class ConsoleStack extends Stack {
         },
         requestModels: { 'application/json': correction },
       });
+    // Conversations and handoff (FN-24, FN-28): the Lambda checks the role; `judge` never writes.
+    const reply = this.api.addModel('ConversationReply', {
+      contentType: 'application/json',
+      modelName: 'ConversationReply',
+      schema: {
+        schema: apigw.JsonSchemaVersion.DRAFT4,
+        type: apigw.JsonSchemaType.OBJECT,
+        required: ['text', 'idempotencyKey'],
+        additionalProperties: false,
+        properties: {
+          text: { type: apigw.JsonSchemaType.STRING, minLength: 1, maxLength: 1000 },
+          idempotencyKey: { type: apigw.JsonSchemaType.STRING, minLength: 8, maxLength: 64 },
+        },
+      },
+    });
+    const conversationParam = { 'method.request.path.conversationId': true };
+    const conversations = this.api.root.addResource('conversations');
+    conversations.addMethod('GET', integration, authorized);
+    const conversation = conversations.addResource('{conversationId}');
+    conversation.addMethod('GET', integration, {
+      ...authorized,
+      requestParameters: conversationParam,
+    });
+    for (const action of ['takeover', 'release']) {
+      conversation.addResource(action).addMethod('POST', integration, {
+        ...authorized,
+        requestParameters: conversationParam,
+      });
+    }
+    conversation.addResource('reply').addMethod('POST', integration, {
+      ...authorized,
+      requestParameters: conversationParam,
+      requestModels: { 'application/json': reply },
+    });
     const validator = this.api.addRequestValidator('Validator', {
       validateRequestParameters: true,
       validateRequestBody: true,

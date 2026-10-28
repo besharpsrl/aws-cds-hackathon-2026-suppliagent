@@ -91,6 +91,7 @@ export function buildApp(app: App, config: EnvConfig) {
       key: foundation.key,
       ordersTable: data.tables.Orders,
       customersTable: data.tables.Customers,
+      contactsTable: data.tables.Contacts,
       conversationsTable: data.tables.Conversations,
       messagesTable: data.tables.Messages,
       productsTable: data.tables.Products,
