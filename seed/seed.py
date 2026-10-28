@@ -6,6 +6,8 @@ Items are validated against the shared models and written with PutItem, so re-ru
 Optional extra items (e.g. the real demo phone number) go in seed/private/<table>.json, git-ignored.
 The synthetic technical sheets (seed/data/sheets, T-06b) go to `catalog-assets/sheets/` and the
 Knowledge Base ingestion is started (ids from SSM); it runs for a minute or two in the background.
+A sheet removed from the repo stays in the bucket: delete it there too. `reset.py` leaves the
+sheets alone (they are not demo state).
 """
 
 import argparse
@@ -92,9 +94,11 @@ def upload_sheets(session: Any, env: str) -> str:
         ssm.get_parameter(Name=f"/suppliagent/{env}/{name}")["Parameter"]["Value"]
         for name in ("productSheetsKbId", "productSheetsDataSourceId")
     )
-    job = session.client("bedrock-agent").start_ingestion_job(
-        knowledgeBaseId=kb_id, dataSourceId=source_id
-    )
+    agent = session.client("bedrock-agent")
+    try:
+        job = agent.start_ingestion_job(knowledgeBaseId=kb_id, dataSourceId=source_id)
+    except agent.exceptions.ConflictException:
+        return "already running (run seed.py again later to pick up changed sheets)"
     return str(job["ingestionJob"]["ingestionJobId"])
 
 

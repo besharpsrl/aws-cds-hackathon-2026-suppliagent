@@ -234,3 +234,42 @@ def test_sheets_are_uploaded_and_the_ingestion_started(monkeypatch: pytest.Monke
         keys = {o["Key"] for o in real_client("s3").list_objects_v2(Bucket=bucket)["Contents"]}
     assert "sheets/BURRATA-125.md" in keys and "sheets/BURRATA-125.md.metadata.json" in keys
     assert started == [{"knowledgeBaseId": "KB1", "dataSourceId": "DS1"}]
+
+
+def test_an_ingestion_already_running_does_not_fail_the_seed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from botocore.exceptions import ClientError
+
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+
+    class ConflictError(ClientError):
+        pass
+
+    class FakeAgent:
+        class exceptions:  # noqa: N801 - boto3 shape
+            ConflictException = ConflictError
+
+        def start_ingestion_job(self, **_request: Any) -> dict[str, Any]:
+            raise ConflictError({"Error": {"Code": "ConflictException"}}, "StartIngestionJob")
+
+    with mock_aws():
+        session = boto3.Session(region_name="eu-west-1")
+        account = session.client("sts").get_caller_identity()["Account"]
+        session.client("s3").create_bucket(
+            Bucket=f"suppliagent-dev-catalog-assets-{account}",
+            CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+        )
+        for name in ("productSheetsKbId", "productSheetsDataSourceId"):
+            session.client("ssm").put_parameter(
+                Name=f"/suppliagent/dev/{name}", Value="X", Type="String"
+            )
+        real_client: Any = session.client
+        monkeypatch.setattr(
+            session,
+            "client",
+            lambda name, **kw: FakeAgent() if name == "bedrock-agent" else real_client(name, **kw),
+        )
+        assert seed.upload_sheets(session, "dev").startswith("already running")

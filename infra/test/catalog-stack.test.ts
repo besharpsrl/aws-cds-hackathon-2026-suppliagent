@@ -127,6 +127,7 @@ describe('CatalogStack – technical sheets (T-06b, FN-21)', () => {
     const json = JSON.stringify(policy[1].Properties.PolicyDocument);
     expect(json).toContain('/sheets/*');
     expect(json).not.toContain('s3:PutObject');
+    expect(json).toContain('kms:DescribeKey');
     expect(json).toContain('ProductSheetsIndex');
     expect(json).not.toContain('ProductsIndex');
   });

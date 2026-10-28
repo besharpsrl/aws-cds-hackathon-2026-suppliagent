@@ -169,7 +169,7 @@ export class CatalogStack extends Stack {
         resources: [catalogAssetsBucket.arnForObjects(`${SHEETS_PREFIX}*`)],
       }),
     );
-    key.grant(kbRole, 'kms:Decrypt', 'kms:GenerateDataKey');
+    key.grant(kbRole, 'kms:Decrypt', 'kms:GenerateDataKey', 'kms:DescribeKey');
     Validations.of(kbRole).acknowledge({
       id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttCatalogAssetsBucket7B5F8F10ArnD47BEC48/${SHEETS_PREFIX}*]`,
       reason: 'The Knowledge Base reads every technical sheet under sheets/ (read-only).',
@@ -206,13 +206,8 @@ export class CatalogStack extends Stack {
           inclusionPrefixes: [SHEETS_PREFIX],
         },
       },
-      // A sheet is short: one chunk per section keeps the citation to the sheet precise.
-      vectorIngestionConfiguration: {
-        chunkingConfiguration: {
-          chunkingStrategy: 'FIXED_SIZE',
-          fixedSizeChunkingConfiguration: { maxTokens: 300, overlapPercentage: 10 },
-        },
-      },
+      // A sheet is short (~300 tokens): one chunk per sheet, so a hit cites the whole sheet.
+      vectorIngestionConfiguration: { chunkingConfiguration: { chunkingStrategy: 'NONE' } },
       dataDeletionPolicy: 'DELETE',
     });
     this.knowledgeBaseId = kb.attrKnowledgeBaseId;
