@@ -387,3 +387,38 @@ export const ORDERS_TOOLS: agentcore.ToolDefinition[] = [
     },
   },
 ];
+
+/** Mirrors the pydantic inputs in services/tools/reco (T-50). */
+export const RECO_TOOLS: agentcore.ToolDefinition[] = [
+  {
+    name: 'recommend_products',
+    description:
+      'Motivated product suggestions from the data. With orderId (an open order): at most one suggestion per order, only with the customer consent; a second call returns ALREADY_SUGGESTED. With customerId (sales reps only, briefing): up to 3. Each suggestion has sku, name, format, price and reason: REORDER_DUE (everyDays, lastOrderedAt, lastQuantity), DROPPED, SIMILAR_VENUES (note) or PROMOTION (promo). Status OK, or NONE with reason NO_CONSENT, ALREADY_SUGGESTED, ORDER_CLOSED, ORDER_REQUIRED or NOTHING_RELEVANT.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        orderId: { type: STRING, description: 'orderId of the open order, exactly as given.' },
+        customerId: {
+          type: STRING,
+          description: 'customerId of the venue, for a sales rep briefing (no order).',
+        },
+        caller: CALLER,
+      },
+      required: ['caller'],
+    },
+  },
+  {
+    name: 'record_suggestion_outcome',
+    description:
+      "Records the customer's answer to the suggestion made on an order: accepted true after the product was added with update_order_draft, false if they declined or confirmed without it. A declined product is not proposed again. Status RECORDED, ALREADY_RECORDED or NO_SUGGESTION.",
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        orderId: { type: STRING, description: 'orderId of the order, exactly as given.' },
+        accepted: { type: BOOLEAN, description: 'True if the customer took the suggestion.' },
+        caller: CALLER,
+      },
+      required: ['orderId', 'accepted', 'caller'],
+    },
+  },
+];

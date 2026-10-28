@@ -26,7 +26,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     const toolsOf = (name: string) =>
       targets.find((t) => t.Properties.Name === name)?.Properties.TargetConfiguration.Mcp.Lambda
         .ToolSchema.InlinePayload;
-    expect(targets).toHaveLength(5);
+    expect(targets).toHaveLength(6);
     expect(toolsOf('customers').map((t: { Name: string }) => t.Name)).toEqual([
       'identify_contact',
       'get_customer_profile',
@@ -55,12 +55,17 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       'report_delivery_issue',
       'handoff_to_human',
     ]);
+    expect(toolsOf('reco').map((t: { Name: string }) => t.Name)).toEqual([
+      'recommend_products',
+      'record_suggestion_outcome',
+    ]);
     for (const tool of [
       ...toolsOf('customers'),
       ...toolsOf('order-intake'),
       ...toolsOf('catalog'),
       ...toolsOf('inventory-pricing'),
       ...toolsOf('orders'),
+      ...toolsOf('reco'),
     ]) {
       expect(tool.InputSchema.Properties.caller.Type).toBe('object'); // forwarded to the Lambda
     }
@@ -310,6 +315,25 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       Environment: {
         Variables: Match.objectLike({ DELIVERY_CUTOFF: '18:00', MIN_ORDER_VALUE: '80' }),
       },
+    });
+  });
+
+  it('lets the reco tool write only the suggestion on Orders and CustomerInsights (T-50)', () => {
+    const statements = statementsOf('RecoTool');
+    const all = actions(statements);
+    expect(all.filter((a) => /^dynamodb:(Put|Delete|Batch)/.test(a))).toEqual([]);
+    expect(all.some((a) => a.endsWith('*'))).toBe(false);
+    expect(all).toContain('events:PutEvents');
+    const writes = statements.filter((s) =>
+      [s.Action].flat().some((a) => /^dynamodb:Update/.test(a)),
+    );
+    const written = JSON.stringify(writes.map((s) => s.Resource));
+    expect(written).toMatch(/GetAttOrders/);
+    expect(written).toMatch(/GetAttCustomerInsights/);
+    expect(written).not.toMatch(/GetAtt(Customers|Contacts|Products|PriceLists|Promotions)/);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'suppliagent-dev-tool-reco',
+      Handler: 'suppliagent_tool_reco.handler.lambda_handler',
     });
   });
 
