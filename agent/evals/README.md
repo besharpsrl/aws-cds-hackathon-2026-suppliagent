@@ -36,3 +36,16 @@ Risultato del 26/10/2026 (`eu.amazon.nova-pro-v1:0`, immagini originali, tempera
 | **Totale** | 29 | **18 (62%)** | 9 |
 
 Rispetto al baseline: nessun troncamento sul pub (tetto `maxTokens`, tool call forzata). Restano: corsivo (il ristorante), note e righe barrate non riportate in `ignoredNotes`/`struckOut` (non finiscono comunque tra le righe), confidenza poco calibrata. Un tentativo di prompt ("lettura non plausibile → `UNREADABLE`") ha peggiorato (41%, il pub ha restituito 19 righe) ed è stato scartato. Criterio FN-05 (≥ 90% su ≥ 15 bigliettini): **non raggiunto né misurabile con 3 note**; resta a T-53.
+
+Confronto del 28/10/2026 (5 bigliettini, stesso prompt, una esecuzione per modello): il modello passa a `eu.amazon.nova-2-lite-v1:0`.
+
+| Bigliettino | Righe attese | Nova Pro: corrette / lette male | Nova 2 Lite: corrette / lette male |
+|---|---|---|---|
+| `ordine_bar` | 8 | 6 / 1 | 7 / 1 |
+| `ordine_bar_aurora` | 6 | 5 / 1 | 6 / 0 |
+| `ordine_pub` | 9 | 2 / 12 | 9 / 0 |
+| `ordine_ristorante` (corsivo) | 12 | 4 / 6 | 7 / 2 |
+| `ordine_ristorante_zurro` | 7 | 2 / 6 | 2 / 5 |
+| **Totale** | 42 | **19 (45%)** / 26 | **31 (74%)** / 8 |
+
+Nova Pro in una prima esecuzione si è fermato con `EXTRACTION_FAILED` su `ordine_pub`. Nova 2 Lite riporta anche le note (`notesIgnored`).

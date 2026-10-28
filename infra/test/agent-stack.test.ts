@@ -83,7 +83,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
         },
       },
       EnvironmentVariables: Match.objectLike({
-        MODEL_ID: 'eu.amazon.nova-pro-v1:0',
+        MODEL_ID: 'eu.amazon.nova-2-lite-v1:0',
         GATEWAY_URL: { 'Fn::GetAtt': [Match.stringLikeRegexp('^Gateway'), 'GatewayUrl'] },
         AWS_REGION: 'eu-west-1',
         PRIVACY_NOTICE_URL: 'UNSET',
@@ -161,14 +161,14 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     expect(policies).toContain('kms:DescribeKey');
   });
 
-  it('lets the runtime invoke only the Nova Pro profile and its EU foundation models', () => {
+  it('lets the runtime invoke only the Nova 2 Lite profile and its EU foundation models', () => {
     const bedrock = statementsOf('RuntimeExecutionRole').filter((s) =>
       [s.Action].flat().some((a) => a.startsWith('bedrock:Invoke')),
     );
     expect(bedrock).toHaveLength(1);
     const resources = JSON.stringify(bedrock[0].Resource);
-    expect(resources).toContain('inference-profile/eu.amazon.nova-pro-v1:0');
-    expect(resources).toContain('eu-central-1::foundation-model/amazon.nova-pro-v1:0');
+    expect(resources).toContain('inference-profile/eu.amazon.nova-2-lite-v1:0');
+    expect(resources).toContain('eu-central-1::foundation-model/amazon.nova-2-lite-v1:0');
     expect(resources).not.toMatch(/foundation-model\/\*|"\*"/);
   });
 
@@ -251,7 +251,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       'transcription-job/ordint-*',
     );
     const model = JSON.stringify(find('bedrock:InvokeModel')?.Resource);
-    expect(model).toContain('inference-profile/eu.amazon.nova-pro-v1:0');
+    expect(model).toContain('inference-profile/eu.amazon.nova-2-lite-v1:0');
     expect(model).not.toMatch(/foundation-model\/\*|"\*"/);
   });
 
@@ -262,7 +262,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       Timeout: 120,
       Environment: {
         Variables: Match.objectLike({
-          MODEL_ID: 'eu.amazon.nova-pro-v1:0',
+          MODEL_ID: 'eu.amazon.nova-2-lite-v1:0',
           MEDIA_BUCKET: Match.anyValue(),
           KMS_KEY_ARN: Match.anyValue(),
           EVENT_BUS_NAME: Match.anyValue(),

@@ -40,11 +40,18 @@ export interface BedrockModelConfig {
   readonly destinationRegions: readonly string[];
 }
 
-// Amazon Nova Pro via the EU cross-region profile (decision of 25/10: Claude not enabled on the account).
-// Destination regions from the Nova Pro model card for source region eu-west-1.
-const novaPro: BedrockModelConfig = {
-  profileId: 'eu.amazon.nova-pro-v1:0',
-  destinationRegions: ['eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-3'],
+// Amazon Nova 2 Lite via the EU cross-region profile (decision of 28/10, was Nova Pro since 25/10;
+// Claude not enabled on the account). Destination regions from GetInferenceProfile in eu-west-1.
+const nova2Lite: BedrockModelConfig = {
+  profileId: 'eu.amazon.nova-2-lite-v1:0',
+  destinationRegions: [
+    'eu-central-1',
+    'eu-north-1',
+    'eu-south-1',
+    'eu-south-2',
+    'eu-west-1',
+    'eu-west-3',
+  ],
 };
 
 // Defaults from docs/02_TECHNICAL_FLOWS.md §7.
@@ -95,7 +102,7 @@ const environments: Record<EnvName, EnvConfig> = {
     rcsAgentId: 'rcs-83650561df2543e1942ccb9a500fa736', // test agent, testers only (M-11)
     smsSenderId: 'SUPPLIAGENT/IT', // one-way alphanumeric sender ID (M-11)
     parameters: runtimeParameters,
-    model: novaPro,
+    model: nova2Lite,
   },
 };
 
