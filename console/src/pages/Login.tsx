@@ -3,6 +3,11 @@ import type { FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import logo from '../../../assets/brand/suppliagent_logo_light.svg';
 import { useAuth } from '../auth/AuthContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export function Login() {
   const auth = useAuth();
@@ -40,55 +45,93 @@ export function Login() {
     void run(() => auth.confirmNewPassword(newPassword), 'Could not set the password');
   };
 
+  const errorAlert = error && (
+    <Alert variant="destructive" role="alert">
+      <AlertDescription>{error}</AlertDescription>
+    </Alert>
+  );
+
   return (
-    <main className="login">
-      <img src={logo} alt="SuppliAgent" className="logo" />
-      {needsNewPassword ? (
-        <form onSubmit={onNewPassword}>
-          <p>First access: choose a new password (at least 12 characters).</p>
-          <label>
-            New password
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
-          </label>
-          {error && <p role="alert">{error}</p>}
-          <button type="submit" disabled={busy}>
-            Set password
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={onSignIn}>
-          <label>
-            Email
-            <input
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
-          {error && <p role="alert">{error}</p>}
-          <button type="submit" disabled={busy}>
-            Sign in
-          </button>
-        </form>
-      )}
+    <main className="grid min-h-dvh lg:grid-cols-2">
+      <section className="hidden flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
+        <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">
+          beSharp · we make IT run
+        </p>
+        <div className="grid gap-4">
+          <h2 className="font-display text-5xl leading-none font-black uppercase tracking-tight text-white">
+            Orders in chat.
+            <br />
+            <span className="text-sidebar-primary">Under control.</span>
+          </h2>
+          <p className="max-w-md text-sidebar-muted">
+            Supervise the orders the agent reads from WhatsApp and email, fix uncertain lines and
+            take over conversations when a person is needed.
+          </p>
+        </div>
+        <p className="text-xs text-sidebar-muted">SuppliAgent back-office console</p>
+      </section>
+      <section className="flex items-center justify-center p-6">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="justify-items-center gap-3">
+            <img src={logo} alt="SuppliAgent" className="h-14" />
+            <CardDescription>
+              {needsNewPassword
+                ? 'First access: choose a new password (at least 12 characters).'
+                : 'Sign in to the console.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {needsNewPassword ? (
+              <form onSubmit={onNewPassword} className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="new-password">New password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                {errorAlert}
+                <Button type="submit" disabled={busy} className="w-full">
+                  Set password
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={onSignIn} className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="username"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                {errorAlert}
+                <Button type="submit" disabled={busy} className="w-full">
+                  Sign in
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </section>
     </main>
   );
 }

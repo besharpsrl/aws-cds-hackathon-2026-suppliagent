@@ -104,7 +104,7 @@ Non creare nuove cartelle di primo livello senza motivo; se servono, aggiorna qu
 | IaC | AWS CDK v2 (TypeScript), Node.js 22 LTS, `cdk-nag` (AwsSolutions) |
 | Lambda & agent | Python 3.12, ARM64, `boto3`, **AWS Lambda Powertools** (logger, tracer, metrics, idempotency), `pydantic` v2 |
 | Agent | Strands Agents + AgentCore SDK; tool esposti via AgentCore Gateway (MCP) |
-| Console | React + Vite + TypeScript, Amplify Auth (Cognito) solo lato client |
+| Console | React + Vite + TypeScript, Tailwind CSS v4 + shadcn/ui (tema beSharp), Amplify Auth (Cognito) solo lato client |
 | Python tooling | `uv` (dipendenze), `ruff` (lint+format), `mypy`, `pytest`, `moto` per i mock AWS |
 | TS tooling | `npm` workspaces, `eslint`, `prettier`, `vitest` (anche per le CDK assertions) |
 

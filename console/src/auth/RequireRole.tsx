@@ -9,11 +9,17 @@ import type { Role } from './roles';
  */
 export function RequireRole({ roles, children }: { roles?: Role[]; children: ReactNode }) {
   const auth = useAuth();
-  if (auth.status === 'loading') return <p className="status">Loading…</p>;
+  if (auth.status === 'loading')
+    return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (auth.status === 'signedOut') return <Navigate to="/login" replace />;
   const allowed = roles
     ? roles.some((role) => auth.user.roles.includes(role))
     : auth.user.roles.length > 0;
-  if (!allowed) return <p role="alert">You are not allowed to see this page.</p>;
+  if (!allowed)
+    return (
+      <p role="alert" className="p-6 text-sm font-medium text-destructive">
+        You are not allowed to see this page.
+      </p>
+    );
   return <>{children}</>;
 }
