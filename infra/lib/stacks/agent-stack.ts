@@ -278,6 +278,8 @@ export class AgentStack extends Stack {
     allowOrders(['dynamodb:PutItem'], tables.Issues.tableArn);
     // Evidence that the customer answered after the summary (confirm_order): read-only.
     allowOrders(['dynamodb:Query'], tables.Messages.tableArn);
+    // handoff_to_human (T-49): mode and handoff of the caller's conversation only.
+    allowOrders(['dynamodb:UpdateItem'], tables.Conversations.tableArn);
     eventBus.grantPutEventsTo(ordersTool);
 
     const gateway = new agentcore.Gateway(this, 'Gateway', {

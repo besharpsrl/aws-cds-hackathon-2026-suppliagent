@@ -51,6 +51,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       'cancel_order',
       'get_order_status',
       'report_delivery_issue',
+      'handoff_to_human',
     ]);
     for (const tool of [
       ...toolsOf('customers'),

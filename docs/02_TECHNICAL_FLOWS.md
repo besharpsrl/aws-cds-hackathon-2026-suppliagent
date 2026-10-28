@@ -376,6 +376,8 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 
 `handoff_to_human(reason, summary)` → `mode = HUMAN`, notifica in console (e all'agente di commercio del cliente). Il back office risponde dalla console sullo stesso canale; *Release* riporta all'agente.
 
+Implementazione (T-49): logica in `suppliagent_shared.handoff` (`start_handoff`, `release_handoff`), usata dal tool e dalla console (*Take over* con `OPERATOR_TAKEOVER`, *Release*: T-63). La conversazione è quella del `caller`, mai scelta dal modello; il tool è disponibile a tutti i ruoli, anche `UNKNOWN` (F-02.C3/C4); `OPERATOR_TAKEOVER` solo dalla console. Un secondo handoff mentre è già `HUMAN` non cambia nulla (`ALREADY_HANDED_OFF`). La risposta del turno in cui avviene l'handoff parte normalmente; i messaggi successivi restano in `Messages`. Limiti: niente avviso all'agente di commercio; al *Release* l'agente non vede i messaggi scambiati in `HUMAN` (solo la sua storia di sessione, fino a T-54).
+
 ### F-15 – Cambio di canale (FN-25)
 
 Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp può essere confermato rispondendo all'email, e un tap RCS sulla consegna è collegato all'ordine giusto. La risposta va sempre sul canale da cui arriva il messaggio.
@@ -472,7 +474,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `reorder.proposed` / `reorder.accepted` | customerId, orderId | proattività |
 | `delivery.issue_reported` | orderId, type | qualità consegne |
 | `rep.query` | repId, type (briefing, sheets, catalog, order) | uso copilota |
-| `handoff.started` / `handoff.released` | reason | automazione |
+| `handoff.started` / `handoff.released` | conversationId, reason, by (`AGENT` o operatore) | automazione |
 | `notification.sent` / `notification.failed` | channel, template | delivery |
 | `agent.turn` | latencyMs, tokens, toolCount | costi e performance |
 
@@ -500,7 +502,7 @@ Invocazione (implementata in T-41; riferimento eseguibile: `scripts/invoke_agent
 | `get_rep_agenda` | repId, date | visite[] con priorità |
 | `get_customer_briefing` | repId, customerId | briefing strutturato |
 | `send_notification` | contactId, channel?, template \| content, attachments | messageId, channelUsed |
-| `handoff_to_human` | conversationId, reason, summary | ok |
+| `handoff_to_human` | reason, summary (conversazione dal `caller`) | `HANDED_OFF` \| `ALREADY_HANDED_OFF`; errore `NOT_FOUND` se la conversazione non esiste |
 
 ## 7. Parametri configurabili (SSM)
 

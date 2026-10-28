@@ -326,4 +326,25 @@ export const ORDERS_TOOLS: agentcore.ToolDefinition[] = [
       required: ['orderId', 'type', 'caller'],
     },
   },
+  {
+    name: 'handoff_to_human',
+    description:
+      'Hands this conversation to a person of the distributor: you stop answering until they give it back. Returns HANDED_OFF or ALREADY_HANDED_OFF.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        reason: {
+          type: STRING,
+          description:
+            'CUSTOMER_REQUEST, IDENTIFICATION_FAILED, NEW_CUSTOMER, UNRESOLVED_LINES, ORDER_LOCKED, DELIVERY_ISSUE, NEGATIVE_SENTIMENT, LOW_CONFIDENCE or OUT_OF_SCOPE.',
+        },
+        summary: {
+          type: STRING,
+          description: 'For the operator: what the user wants, what was done, what is open.',
+        },
+        caller: CALLER,
+      },
+      required: ['reason', 'summary', 'caller'],
+    },
+  },
 ];

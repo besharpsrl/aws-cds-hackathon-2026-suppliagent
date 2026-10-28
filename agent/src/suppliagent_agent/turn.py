@@ -29,6 +29,8 @@ PROFILE = "customers___get_customer_profile"
 EXTRACT = "order-intake___extract_order_lines"
 MATCH = "catalog___match_products"
 SEARCH = "catalog___search_catalog"
+# F-14: every role, UNKNOWN included (identification failed, new customer).
+HANDOFF = "orders___handoff_to_human"
 # Stock, prices, delivery dates (T-45) and the order lifecycle (T-46); the tools check the caller's
 # own customers (or the rep's portfolio) themselves.
 ORDER_TOOLS = frozenset(
@@ -45,9 +47,9 @@ ORDER_TOOLS = frozenset(
         "orders___report_delivery_issue",
     }
 )
-KNOWN_TOOLS = frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH}) | ORDER_TOOLS
+KNOWN_TOOLS = frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH, HANDOFF}) | ORDER_TOOLS
 ROLE_TOOLS: dict[Role, frozenset[str]] = {
-    "UNKNOWN": frozenset({IDENTIFY}),
+    "UNKNOWN": frozenset({IDENTIFY, HANDOFF}),
     "CUSTOMER_CONTACT": KNOWN_TOOLS,
     "SALES_REP": KNOWN_TOOLS,
 }
