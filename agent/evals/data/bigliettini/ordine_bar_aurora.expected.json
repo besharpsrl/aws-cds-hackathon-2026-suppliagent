@@ -1,0 +1,59 @@
+{
+  "image": "ordine_bar_aurora.jpeg",
+  "requestedDelivery": "venerdì",
+  "lines": [
+    {
+      "rawText": "4 CAFFÈ IN GRANI 1kg",
+      "product": "caffè in grani",
+      "quantity": 4,
+      "unit": null,
+      "packageSize": "1 kg",
+      "needsClarification": false
+    },
+    {
+      "rawText": "2 LATTE INTERO (CARTONI)",
+      "product": "latte intero",
+      "quantity": 2,
+      "unit": "cartone",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "1 BURRO PANETTI (CARTONI)",
+      "product": "burro in panetti",
+      "quantity": 1,
+      "unit": "cartone",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "3 ACQUA NATURALE (CASSE)",
+      "product": "acqua naturale",
+      "quantity": 3,
+      "unit": "cassa",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "2 ACQUA FRIZZANTE (CASSE)",
+      "product": "acqua frizzante",
+      "quantity": 2,
+      "unit": "cassa",
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "10 BURRATA 125g",
+      "product": "burrata",
+      "quantity": 10,
+      "unit": null,
+      "packageSize": "125 g",
+      "needsClarification": false
+    }
+  ],
+  "struckOut": [],
+  "notes": [
+    "Sconto!! -10% come l'altra volta!: richiesta di sconto, da non applicare",
+    "Il numero davanti ad 'acqua frizzante' è corretto a penna (cifra cancellata, riscritta 2)"
+  ]
+}

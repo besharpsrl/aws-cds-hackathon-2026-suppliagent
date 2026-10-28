@@ -1,0 +1,64 @@
+{
+  "image": "ordine_ristorante_zurro.jpeg",
+  "requestedDelivery": null,
+  "lines": [
+    {
+      "rawText": "FDL JULIENNE 2",
+      "product": "fior di latte julienne",
+      "quantity": 2,
+      "unit": null,
+      "packageSize": null,
+      "needsClarification": true
+    },
+    {
+      "rawText": "PELATI 2 CS",
+      "product": "pomodori pelati",
+      "quantity": 2,
+      "unit": "cassa",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "MOZZ BUFALA 125g 12",
+      "product": "mozzarella di bufala",
+      "quantity": 12,
+      "unit": null,
+      "packageSize": "125 g",
+      "needsClarification": false
+    },
+    {
+      "rawText": "FARINA 2 SACCHI",
+      "product": "farina",
+      "quantity": 2,
+      "unit": "sacco",
+      "packageSize": null,
+      "needsClarification": false
+    },
+    {
+      "rawText": "OLIO EVO 5L 2",
+      "product": "olio extravergine di oliva",
+      "quantity": 2,
+      "unit": null,
+      "packageSize": "5 L",
+      "needsClarification": false
+    },
+    {
+      "rawText": "BIRRA 33CL 1 CARTONE",
+      "product": "birra",
+      "quantity": 1,
+      "unit": "cartone",
+      "packageSize": "33 cl",
+      "needsClarification": false
+    },
+    {
+      "rawText": "CRUDO 2 Kg",
+      "product": "prosciutto crudo",
+      "quantity": 2,
+      "unit": "kg",
+      "packageSize": null,
+      "needsClarification": true
+    }
+  ],
+  "struckOut": [],
+  "notes": []
+}
