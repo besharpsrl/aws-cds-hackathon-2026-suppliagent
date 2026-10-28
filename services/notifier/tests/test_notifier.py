@@ -231,6 +231,19 @@ def test_long_whatsapp_text_is_cut_to_the_provider_limit(fakes: Fakes) -> None:
     assert len(fakes.whatsapp[0]["message"]["text"]["body"]) == 4096
 
 
+def test_markdown_bold_and_headings_become_whatsapp_bold(fakes: Fakes) -> None:
+    # T-68: the model writes **bold** and # headings, which WhatsApp shows as literal marks
+    sandbox("false")
+    text = "## Riepilogo\n**Ordine n. ord_1**\n- 2 x *Birra* **33 cl**\n2 * 3 = 6\n# **Totale**"
+
+    notifier.handler(reply(text=text), None)
+
+    body = fakes.whatsapp[0]["message"]["text"]["body"]
+    assert body == "*Riepilogo*\n*Ordine n. ord_1*\n- 2 x *Birra* *33 cl*\n2 * 3 = 6\n*Totale*"
+    [item] = outgoing()
+    assert item["text"] == text  # the record (console) keeps what the agent wrote
+
+
 def test_same_idempotency_key_sends_once(fakes: Fakes) -> None:
     sandbox("false")
 

@@ -63,6 +63,8 @@ from notifier.order_email import Email, render
 SOURCE = "suppliagent.notifier"
 WHATSAPP_WINDOW = timedelta(hours=24)
 WHATSAPP_TEXT_LIMIT = 4096
+_MD_HEADING = re.compile(r"^#{1,6}[ \t]+\**(.+?)\**[ \t]*$", re.MULTILINE)
+_MD_BOLD = re.compile(r"\*\*(\S(?:.*?\S)?)\*\*")
 CLAIM_SECONDS = 120  # an unfinished send can be retried after this
 DONE_SECONDS = 7 * 24 * 3600
 SUBJECTS = {"it-IT": "La tua richiesta", "en-GB": "Your request"}
@@ -322,6 +324,7 @@ def _send(
 ) -> tuple[str | None, bool]:
     """Provider id of the message sent, and whether the options went out with it."""
     if channel == "WHATSAPP":
+        text = whatsapp_markup(text)
         last_inbound = conversation.get("lastWhatsappInboundAt")
         if interactive:
             return _send_whatsapp_interactive(
@@ -332,6 +335,12 @@ def _send(
         _send_email(address, text, conversation)
         return None, False
     raise ChannelUnavailableError  # SMS/RCS arrive with T-27
+
+
+def whatsapp_markup(text: str) -> str:
+    """Markdown the model writes (`**bold**`, `# heading`) as WhatsApp bold (`*bold*`), T-68."""
+    text = _MD_HEADING.sub(r"*\1*", text)
+    return _MD_BOLD.sub(r"*\1*", text)
 
 
 def _check_window(last_inbound: str | None) -> None:
