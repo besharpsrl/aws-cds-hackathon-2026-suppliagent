@@ -102,7 +102,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Area | Stato | Dettaglio |
 |---|---|---|
 | Infra di base (CDK, CI, tag, KMS, dati) | ✅ | 9 stack su `dev`, CI verde, cdk-nag |
-| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, `PENDING` (T-29); invio reale mai provato (T-68) |
+| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, ancora `PENDING` il 28/10 alle 12:00 (T-29: da controllare in WhatsApp Manager; non servono alla demo, l'invio di template è T-24, rinviato); invio reale mai provato (T-68) |
 | Email (SES) | ◐ | Dominio `suppliagent.stonecutters.besharp.net` verificato, fuori sandbox, ricezione ok; email di conferma con PDF e bounce fatti (T-26, #100), da provare su `dev` dopo il deploy di `channels`, `messaging`, `agent` |
 | SMS/RCS | ◐ | M-11 fatta (28/10): agente RCS di test attivo, tester Android verificato e messaggio di prova ricevuto; sender ID `SUPPLIAGENT` (IT, one-way); RCS non arriva su iPhone in Italia ([RCS_SMS_SETUP](docs/RCS_SMS_SETUP.md)). Codice da fare (T-27, Could) |
 | Pipeline (Router, debounce, Dispatcher, Notifier base) | ✅ | Errori del turno: cortesia al primo, handoff `LOW_CONFIDENCE` al secondo, tetto di messaggi per turno (T-67, da deployare con `messaging`) |
