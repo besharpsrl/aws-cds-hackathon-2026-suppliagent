@@ -41,6 +41,8 @@ PROFILE = "customers___get_customer_profile"
 EXTRACT = "order-intake___extract_order_lines"
 MATCH = "catalog___match_products"
 SEARCH = "catalog___search_catalog"
+# FN-21 (T-44b): technical sheets, every known role.
+SHEETS = "catalog___ask_product_sheets"
 # F-14: every role, UNKNOWN included (identification failed, new customer).
 HANDOFF = "orders___handoff_to_human"
 # F-01: privacy notice and consent of a customer contact; sales reps are staff and never get it.
@@ -66,7 +68,9 @@ ORDER_TOOLS = frozenset(
 # FN-11, FN-20 (T-50): one suggestion per order (consent checked by the tool), rep briefings.
 RECO_TOOLS = frozenset({"reco___recommend_products", "reco___record_suggestion_outcome"})
 KNOWN_TOOLS = (
-    frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH, HANDOFF}) | ORDER_TOOLS | RECO_TOOLS
+    frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH, SHEETS, HANDOFF})
+    | ORDER_TOOLS
+    | RECO_TOOLS
 )
 REQUEST_CONFIRMATION = "orders___request_order_confirmation"
 CONFIRM = "orders___confirm_order"

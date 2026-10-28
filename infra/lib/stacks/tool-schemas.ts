@@ -152,6 +152,23 @@ export const CATALOG_TOOLS: agentcore.ToolDefinition[] = [
       required: ['query', 'caller'],
     },
   },
+  {
+    name: 'ask_product_sheets',
+    description:
+      'Searches the technical sheets of the products (allergens, ingredients, storage, shelf life, nutrition, use). Returns FOUND with passages, each with the sku and the sheet name to cite, or NOT_FOUND when the sheets do not say it. Never answer such questions from memory.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        question: { type: STRING, description: "The question, in the user's words." },
+        sku: {
+          type: STRING,
+          description: 'SKU of the product, if known (from match_products or search_catalog).',
+        },
+        caller: CALLER,
+      },
+      required: ['question', 'caller'],
+    },
+  },
 ];
 
 /** Mirrors the pydantic inputs in services/tools/inventory_pricing (T-45). */

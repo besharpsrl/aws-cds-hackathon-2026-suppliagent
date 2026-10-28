@@ -511,7 +511,7 @@ Pubblicati sul bus applicativo: servono a collegare i componenti (regole EventBr
 | `extract_order_lines` | s3Uri (foto o vocale del chiamante) \| text | `status` (`OK` \| `NOT_AN_ORDER` \| `UNREADABLE_MEDIA`), `source` (photo/voice/text), `lines[]` (rawText, rawQuantity, rawUnit, note, readConfidence, status `READ`/`UNREADABLE`, imageRegion solo per le foto), `struckOut[]`, `deliveryNotes`, `ignoredNotes[]`, `transcript` (solo vocali). Errori: `ACCESS_DENIED` (media non del chiamante), `UNSUPPORTED_MEDIA` (es. PDF, HEIC), `EXTRACTION_FAILED` (E-04) |
 | `match_products` | lines[], customerId | per riga: candidates[] con confidence |
 | `search_catalog` | query, filters | products[] |
-| `ask_product_sheets` | question, sku? | answer, citations[] |
+| `ask_product_sheets` | question, sku? | status (`FOUND` \| `NOT_FOUND`), passages[] (sku, sheet da citare, text, score) – T-44b: dati, la risposta la scrive l'agente |
 | `check_availability` | lines[] (sku, quantity), deliveryDate | per SKU: `status` (`AVAILABLE` \| `PARTIAL` \| `OUT_OF_STOCK` \| `DISCONTINUED` \| `UNKNOWN_SKU`), `availableQuantity` (parziale), `nextArrival`, `multiple` e `roundedQuantity` (non multiplo), `substitutes[]` disponibili; `stockQuantity` solo per l'agente di commercio |
 | `get_prices` | customerId, skus[] | per SKU: `unitPrice` del listino del cliente, `promo` valida oggi, `finalPrice` (EUR, IVA esclusa) o `NO_PRICE` |
 | `get_delivery_options` | customerId, orderTime?, requestedDate? | nextDeliveryDate, options[] (3 date), servedDays, cutoff, afterCutoff (+ missedDeliveryDate), minOrderValue, requestedDateServed |

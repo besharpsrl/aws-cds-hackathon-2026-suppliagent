@@ -39,6 +39,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     expect(toolsOf('catalog').map((t: { Name: string }) => t.Name)).toEqual([
       'match_products',
       'search_catalog',
+      'ask_product_sheets',
     ]);
     expect(toolsOf('inventory-pricing').map((t: { Name: string }) => t.Name)).toEqual([
       'check_availability',
@@ -290,6 +291,10 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
     const statements = statementsOf('CatalogTool');
     const all = actions(statements);
     expect(all).toEqual(expect.arrayContaining(['s3vectors:QueryVectors', 'bedrock:InvokeModel']));
+    // T-44b: Retrieve on the sheets Knowledge Base only, never RetrieveAndGenerate
+    const retrieve = statements.filter((s) => [s.Action].flat().includes('bedrock:Retrieve'));
+    expect(JSON.stringify(retrieve)).toContain('knowledge-base/');
+    expect(all).not.toContain('bedrock:RetrieveAndGenerate');
     // reads only: no table or index writes, no wildcard actions
     expect(all.filter((a) => /^(dynamodb|s3vectors):.*(Put|Update|Delete|Scan)/.test(a))).toEqual(
       [],

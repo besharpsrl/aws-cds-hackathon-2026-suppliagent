@@ -186,7 +186,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 | `extract_order_lines` | `tool-order-intake` (target Gateway `order-intake`: i nomi dei target non ammettono `_`) | tutti i ruoli noti (non `UNKNOWN`) | S3 `media/<contactId\|conversationId>/…` del solo chiamante → Nova Pro vision / testo; vocali via Transcribe (job `ordint-<hash>`, trascrizione in `transcripts/` dello stesso bucket, stesso ciclo di vita di 90 gg) |
 | `match_products` | `tool-catalog` (target Gateway `catalog`) | tutti i ruoli noti, solo clienti del chiamante | S3 Vectors + Products + OrderHistory (+ Stock per i sostituti) |
 | `search_catalog` | `tool-catalog` | tutti i ruoli noti | S3 Vectors + Products |
-| `ask_product_sheets` (T-44b) | `tool-catalog` | tutti | Bedrock Knowledge Base (schede tecniche, dopo T-06b) |
+| `ask_product_sheets` (T-44b) | `tool-catalog` | tutti i ruoli noti | Bedrock Knowledge Base (schede tecniche): `bedrock:Retrieve` sulla sola KB, id da SSM `productSheetsKbId` risolto al deploy |
 | `check_availability` | `tool-inventory-pricing` (target Gateway `inventory-pricing`) | tutti i ruoli noti (giacenza esatta solo `SALES_REP`) | Products, Stock |
 | `get_prices` | `tool-inventory-pricing` | tutti i ruoli noti, solo clienti del chiamante (listino del cliente) | Customers, PriceLists, Promotions |
 | `get_delivery_options` | `tool-inventory-pricing` | tutti i ruoli noti, solo clienti del chiamante | Customers, DeliveryCalendar |
@@ -229,7 +229,7 @@ La chat web degli agenti di commercio entra dalla console (WebSocket → Lambda 
 - Data source S3 `catalog-assets/sheets/` (schede tecniche MD o PDF: allergeni, conservazione, uso).
 - Vector store **S3 Vectors**; nessun chunking (le schede sono brevi: un chunk per scheda, la citazione è la scheda intera); metadati `sku`, `category` dai sidecar `<file>.metadata.json`.
 - *Stato (T-06b)*: `CatalogStack` con indice `product-sheets` nello stesso vector bucket (1024, `float32`, cosine; `AMAZON_BEDROCK_TEXT` e `AMAZON_BEDROCK_METADATA` non filtrabili), `CfnKnowledgeBase` `suppliagent-<env>-product-sheets` (Titan Text Embeddings V2, `S3_VECTORS`), data source S3 `catalog-assets/sheets/` (`DataDeletionPolicy = DELETE`), ruolo dedicato (trust `bedrock.amazonaws.com` con `aws:SourceAccount` e `knowledge-base/*`; solo `InvokeModel` di Titan V2, `s3vectors` sull'indice `product-sheets`, lettura di `sheets/*`, CMK). Id in SSM `productSheetsKbId` / `productSheetsDataSourceId`. Il bucket `catalog-assets` è riferito per nome (niente export dal `FoundationStack`: il deploy di `catalog` non richiede quello di `foundation`). Le 12 schede **sintetiche** stanno in `seed/data/sheets/` (`<sku>.md` + sidecar); `seed/seed.py` le carica e avvia l'ingestion (`--skip-sheets` per saltarla). Nessun costo fisso. Il tool `ask_product_sheets` è T-44b.
-- `ask_product_sheets` usa `RetrieveAndGenerate`/`Retrieve` con filtro per SKU quando noto, risposta con **citazione della scheda**.
+- `ask_product_sheets` (T-44b) usa `Retrieve` (mai `RetrieveAndGenerate`: la risposta la scrive l'agente) con filtro `equals sku` quando lo SKU è noto; tiene i passaggi con punteggio ≥ 0,55 (da calibrare) e li restituisce con la scheda da citare, altrimenti `NOT_FOUND` e l'agente dice che le schede non lo riportano. Evento `rep.query` (`type = sheets`) per gli agenti di commercio.
 
 ### 5.5 Ordini, ERP e outbound
 

@@ -15,12 +15,14 @@ from suppliagent_tool_catalog.catalog import (
     match_products,
     search_catalog,
 )
+from suppliagent_tool_catalog.sheets import AskProductSheetsInput, ask_product_sheets
 
 logger = Logger(service="tool-catalog")
 
 TOOLS: dict[str, tuple[type[ToolInput], Callable[[Any], dict[str, Any]]]] = {
     "match_products": (MatchProductsInput, match_products),
     "search_catalog": (SearchCatalogInput, search_catalog),
+    "ask_product_sheets": (AskProductSheetsInput, ask_product_sheets),
 }
 
 

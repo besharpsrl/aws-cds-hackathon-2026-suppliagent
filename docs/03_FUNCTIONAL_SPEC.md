@@ -65,7 +65,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-18 | Avvisi di consegna RCS e segnalazione problemi | S | CH + AG | TE, CR | F-11, F-12 | ◐ T-27 |
 | FN-19 | **Riordino proattivo** | M | AG + IN | CR, VI, DP | F-13 | ◐ T-08, T-52 |
 | FN-20 | Copilota: consigli e briefing cliente | M | AG | VI, CR | F-10.A | ◐ T-50, T-51 |
-| FN-21 | Copilota: catalogo e schede tecniche (Knowledge Base) | M | AG + IN | TE | F-10.B | ◐ Knowledge Base con 12 schede sintetiche (T-06b); tool T-44b |
+| FN-21 | Copilota: catalogo e schede tecniche (Knowledge Base) | M | AG + IN | TE | F-10.B | ✅ Knowledge Base con 12 schede sintetiche (T-06b), tool `ask_product_sheets` con citazione (T-44b) |
 | FN-22 | Copilota: ordine per conto del cliente | S | AG | VI | F-10.D | ◐ T-51 |
 | FN-23 | Copilota: agenda e briefing giornaliero | C | AG + CH | VI | F-10.C, F-10.E | ◐ T-51 |
 | FN-24 | Handoff verso back office | M | AG + CO | VI, FU | F-14 | ◐ T-63 ✓, T-54 |
@@ -187,9 +187,9 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 - [ ] Cliente fuori portafoglio → rifiuto.
 
 #### FN-21 – Copilota: catalogo e schede tecniche · **M** · AG + IN
-- [ ] Risposte su allergeni, ingredienti, conservazione e formati **con citazione della scheda**.
-- [ ] Se l'informazione non è presente nelle schede, l'agente lo dice esplicitamente (test con domande senza risposta).
-- [ ] Disponibile anche ai clienti, senza informazioni interne.
+- [x] Risposte su allergeni, ingredienti, conservazione e formati **con citazione della scheda** (T-44b).
+- [x] Se l'informazione non è presente nelle schede, l'agente lo dice esplicitamente (`NOT_FOUND`, test con domande senza risposta).
+- [x] Disponibile anche ai clienti, senza informazioni interne.
 
 #### FN-22 – Copilota: ordine per conto del cliente · **S** · AG
 - [ ] L'agente di commercio inserisce un ordine da foto/testo per un cliente del suo portafoglio; i chiarimenti arrivano a lui.
