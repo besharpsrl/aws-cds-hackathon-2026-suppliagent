@@ -199,10 +199,11 @@ describe('MessagingStack – debounce and Notifier (T-22, T-24 base, FN-26, FN-0
     }
   });
 
-  it('lets the notifier only update orders, to store the summary message (T-25)', () => {
+  it('lets the notifier only update orders and contacts (T-25 summary message, T-26 bounces)', () => {
     const policy = rolePolicy('notifier');
+    // One statement: CDK merges the UpdateItem grants on Orders (T-25) and Contacts (T-26).
     expect(policy).toMatch(
-      /"dynamodb:UpdateItem","Effect":"Allow","Resource":\{"Fn::ImportValue":"[^"]*Orders/,
+      /"dynamodb:UpdateItem","Effect":"Allow","Resource":(\[[^\]]*)?\{"Fn::ImportValue":"[^"]*Orders/,
     );
     expect(policy).not.toMatch(/dynamodb:(PutItem|DeleteItem)[^}]*Orders/);
   });
