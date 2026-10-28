@@ -58,6 +58,9 @@ export interface MessagingStackProps extends StackProps {
  * Orders (T-07, FN-13/14): EventBridge `order.confirmed` -> ERP adapter (mock) and Order PDF;
  * `order.pdf_ready` -> Notifier, the confirmation email with the PDF (T-26).
  */
+/** Receives of an inbound message before the DLQ (E-02, E-10). */
+const INBOUND_MAX_RECEIVES = 3;
+
 export class MessagingStack extends Stack {
   readonly inboundQueue: sqs.Queue;
   readonly turnFlushQueue: sqs.Queue;
@@ -132,12 +135,14 @@ export class MessagingStack extends Stack {
         ORDER_DOMAIN: channelValue(this.node, props.config, 'sesDomain') ?? '',
         TURN_FLUSH_QUEUE_URL: this.turnFlushQueue.queueUrl,
         NOTIFIER_FUNCTION_NAME: notifierName,
+        // E-02: on the last receive before the DLQ a media that cannot be downloaded is given up.
+        MAX_RECEIVES: String(INBOUND_MAX_RECEIVES),
         ...debounce,
       },
     });
     this.inboundQueue = queue('Inbound', {
       visibilityTimeout: Duration.seconds(6 * 60), // 6x the router timeout (Lambda guidance)
-      deadLetterQueue: { queue: inboundDlq, maxReceiveCount: 3 },
+      deadLetterQueue: { queue: inboundDlq, maxReceiveCount: INBOUND_MAX_RECEIVES },
     });
     for (const topic of props.inboundTopics) {
       topic.addSubscription(new SqsSubscription(this.inboundQueue)); // SNS envelope kept
@@ -171,6 +176,18 @@ export class MessagingStack extends Stack {
       [tables.channelIdentities, tables.contacts, tables.salesReps].map((t) => t.tableArn),
     );
     allow(['dynamodb:Query'], [`${tables.customers.tableArn}/index/by-repId`]);
+    // STOP / START on SMS or RCS: only `optedOutAt` on the sender's SMS# identity (F-11.C5, T-24);
+    // nothing else of an identity can be written from an inbound message.
+    router.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['dynamodb:UpdateItem'],
+        resources: [tables.channelIdentities.tableArn],
+        conditions: {
+          'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['channelAddress', 'optedOutAt'] },
+          StringEqualsIfExists: { 'dynamodb:ReturnValues': 'NONE' },
+        },
+      }),
+    );
     // The TurnBuffer update is part of the message transaction (T-22).
     allow(['dynamodb:UpdateItem'], [tables.conversations.tableArn, tables.turnBuffer.tableArn]);
     // Messages + a TTL'd `dedup#<messageId>` guard in TurnBuffer, in one transaction (E-01).
@@ -287,6 +304,7 @@ export class MessagingStack extends Stack {
         RCS_AGENT_PARAM: param('rcsAgentArn'),
         SMS_SENDER_PARAM: param('smsSenderId'),
         SMS_CONFIGURATION_SET_PARAM: param('smsConfigurationSet'),
+        QUIET_HOURS: config.parameters.quietHours,
       },
     });
     const allow = (actions: string[], resources: string[]) =>
@@ -323,6 +341,8 @@ export class MessagingStack extends Stack {
       [tables.orders, tables.customers, tables.contacts, tables.salesReps].map((t) => t.tableArn),
     );
     allow(['dynamodb:Query'], [`${tables.channelIdentities.tableArn}/index/by-contactId`]);
+    // T-24: opt-out of an SMS number (STOP), the contact's name for a template outside the window.
+    allow(['dynamodb:GetItem'], [tables.channelIdentities.tableArn]);
     // A hard bounce clears the contact's orderEmail (F-11.C7).
     allow(['dynamodb:UpdateItem'], [tables.contacts.tableArn]);
     allow(['s3:GetObject'], [props.documentsBucket.arnForObjects('orders/*')]);
@@ -563,6 +583,8 @@ export class MessagingStack extends Stack {
         NOTIFIER_FUNCTION_NAME: notifierName,
         PENDING_REMINDER_HOURS: config.parameters.pendingReminderHours,
         QUIET_HOURS: config.parameters.quietHours,
+        // The limit to confirm in the `order_pending_reminder` template (T-24).
+        DELIVERY_CUTOFF: config.parameters.deliveryCutoff,
       },
     });
     const allow = (actions: string[], resources: string[]) =>

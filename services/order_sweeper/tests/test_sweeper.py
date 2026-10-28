@@ -47,6 +47,7 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
         "NOTIFIER_FUNCTION_NAME": "notifier",
         "PENDING_REMINDER_HOURS": "2",
         "QUIET_HOURS": "21:00-07:00",
+        "DELIVERY_CUTOFF": "18:00",
     }.items():
         monkeypatch.setenv(name, value)
     with mock_aws():
@@ -147,6 +148,11 @@ def test_reminder_after_two_hours_once(aws: Any, notifier: Notifier, clock: type
     assert call["kind"] == "reply" and call["conversationId"] == "conv_1"
     assert call["idempotencyKey"] == "reminder#ord_1#2026-10-28T12:00:00.000Z"
     assert "1 righe" in call["text"] and "29/10" in call["text"] and "Confermo" in call["text"]
+    # outside the WhatsApp window the Notifier sends the approved template (T-24)
+    assert call["template"] == {
+        "name": "order_pending_reminder",
+        "params": ["1", "giovedì 29 ottobre", "oggi alle 18:00"],
+    }
     assert sweeper.handler({}, None) == {}  # not again
     assert len(notifier.calls) == 1
     assert status(aws)["status"] == "PENDING_CONFIRMATION"
@@ -165,6 +171,7 @@ def test_reminder_in_english(aws: Any, notifier: Notifier, clock: type[Clock]) -
     clock.now = datetime(2026, 10, 28, 14, 5, tzinfo=UTC)
     sweeper.handler({}, None)
     assert "Reply “Confirm”" in notifier.calls[0]["text"]
+    assert notifier.calls[0]["template"]["params"][1:] == ["Thursday 29 October", "today at 18:00"]
 
 
 def test_order_expires_at_the_end_of_the_day_with_a_message(
@@ -178,6 +185,7 @@ def test_order_expires_at_the_end_of_the_day_with_a_message(
     item = status(aws)
     assert item["status"] == "EXPIRED" and item["version"] == 4
     assert notifier.calls[0]["idempotencyKey"] == "expired#ord_1"
+    assert "template" not in notifier.calls[0]  # no approved template for the expiry
     assert "nessun ordine è stato inviato" in notifier.calls[0]["text"]
     assert events == [
         (

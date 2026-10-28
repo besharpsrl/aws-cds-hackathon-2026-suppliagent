@@ -48,3 +48,6 @@ def test_the_notifier_really_calls_whatsapp_and_ses() -> None:
     assert re.search(r"""client\(\s*["']sesv2["']""", code)
     assert ".send_whatsapp_message(" in code
     assert ".send_email(" in code
+    assert re.search(r"""client\(\s*["']pinpoint-sms-voice-v2["']""", code)
+    assert ".send_rcs_message(" in code
+    assert ".send_text_message(" in code

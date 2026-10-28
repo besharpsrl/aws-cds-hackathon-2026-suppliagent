@@ -3,6 +3,7 @@
 
 import json
 from collections.abc import Iterator
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -12,11 +13,14 @@ from aws_lambda_powertools.utilities import parameters
 from botocore.exceptions import ClientError
 from moto import mock_aws
 from notifier import handler as notifier
+from pydantic import ValidationError
 from suppliagent_shared.aws import reset_clients
+from suppliagent_shared.delivery import DAYS, ROME
 from suppliagent_shared.errors import ChannelUnavailableError
 
 TEMPLATES = Path(__file__).parents[1] / "whatsapp_templates"
 SANDBOX_PARAM = "/suppliagent/test/notifierSandbox"
+QUIET = notifier._quiet  # before the fixture replaces it
 CONV = "conv_con001"
 RCS_AGENT = "arn:aws:sms-voice:eu-west-1:111111111111:rcs-agent/rcs-test"
 SENDER_ID = "arn:aws:sms-voice:eu-west-1:111111111111:sender-id/SUPPLIAGENT/IT"
@@ -26,7 +30,16 @@ class Fakes:
     def __init__(self) -> None:
         self.whatsapp: list[dict[str, Any]] = []
         self.rcs: list[dict[str, Any]] = []
+        self.sms: list[dict[str, Any]] = []
         self.refuse_rcs = False
+        self.refuse_sms = False
+
+    def send_text_message(self, **request: Any) -> dict[str, str]:
+        if self.refuse_sms:
+            error = {"Error": {"Code": "ValidationException", "Message": "sandbox"}}
+            raise ClientError(error, "SendTextMessage")  # type: ignore[arg-type]
+        self.sms.append(request)
+        return {"MessageId": f"sms-{len(self.sms)}"}
 
     def send_rcs_message(self, **request: Any) -> dict[str, str]:
         if self.refuse_rcs:
@@ -86,6 +99,7 @@ def fakes(monkeypatch: pytest.MonkeyPatch) -> Iterator[Fakes]:
     fake = Fakes()
     monkeypatch.setattr(notifier, "_social", lambda: fake)
     monkeypatch.setattr(notifier, "_sms", lambda: fake)
+    monkeypatch.setattr(notifier, "_quiet", lambda: False)  # tests run at any hour
     with mock_aws():
         reset_clients()
         parameters.clear_caches()  # type: ignore[no-untyped-call]
@@ -195,7 +209,7 @@ def test_reorder_due_sends_the_template_with_our_quick_reply_payloads(fakes: Fak
     body, *buttons = template["components"]
     name, products, last, delivery = (p["text"] for p in body["parameters"])
     assert (name, products, last) == ("Luca", "fior di latte 1 kg e pelati 2,5 kg", "20 ottobre")
-    assert delivery.split()[0] in notifier.DAYS["it"]
+    assert delivery.split()[0] in DAYS["it"]
     assert [b["parameters"][0]["payload"] for b in buttons] == [
         "reorder_same",
         "reorder_modify",
@@ -340,10 +354,22 @@ def test_unverified_sms_identity_or_refused_rcs_falls_back_to_whatsapp(fakes: Fa
     assert fakes.rcs == [] and len(fakes.whatsapp) == 1
 
 
-def test_rcs_refused_sends_the_whatsapp_template(fakes: Fakes) -> None:
+def test_rcs_refused_sends_a_plain_sms_without_options(fakes: Fakes) -> None:
     _order()
     sms_identity()
     fakes.refuse_rcs = True
+    assert notifier.handler(delivery_event(), None) == {"status": "SENT"}
+    [call] = fakes.sms
+    assert call["OriginationIdentity"] == SENDER_ID and "08:00" in call["MessageBody"]
+    assert fakes.whatsapp == []
+    [item] = outgoing()
+    assert "interactive" not in item  # one-way: nothing to tap
+
+
+def test_rcs_and_sms_refused_sends_the_whatsapp_template(fakes: Fakes) -> None:
+    _order()
+    sms_identity()
+    fakes.refuse_rcs = fakes.refuse_sms = True
     assert notifier.handler(delivery_event(), None) == {"status": "SENT"}
     assert len(fakes.whatsapp) == 1
 
@@ -428,3 +454,181 @@ def test_no_order_sms_without_an_sms_identity(fakes: Fakes) -> None:
     )
     notifier._order_sms({"orderId": "ord_1", "reason": "confirmed"})
     assert fakes.rcs == []
+
+
+def test_no_reorder_suggestion_in_the_quiet_hours(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(notifier, "_quiet", lambda: True)
+    assert notifier.handler(reorder_event(), None) == {"status": "QUIET"}
+    assert fakes.whatsapp == []
+
+
+def test_quiet_hours_cross_midnight(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("QUIET_HOURS", "21:00-07:00")
+    for hour, quiet in ((22, True), (3, True), (7, False), (12, False), (20, False)):
+        moment = datetime(2026, 10, 28, hour, 30, tzinfo=ROME)
+        monkeypatch.setattr(notifier, "rome", lambda m=moment: m)
+        assert QUIET() is quiet
+
+
+# --- T-24: templates outside the 24 h window, channel fallback, retries, opt-out -------------
+
+OLD = "2020-01-01T00:00:00.000Z"  # the WhatsApp window closed long ago
+
+
+def whatsapp_conversation(last_inbound: str = OLD) -> None:
+    put(
+        "conversations",
+        {
+            "conversationId": CONV,
+            "contactId": "con_001",
+            "lastInboundChannel": "WHATSAPP",
+            "lastInboundFrom": "+393330000001",
+            "lastWhatsappInboundAt": last_inbound,
+            "lastInboundLocale": "it-IT",
+            "mode": "AGENT",
+        },
+    )
+
+
+def reminder(**extra: Any) -> dict[str, Any]:
+    return {
+        "kind": "reply",
+        "conversationId": CONV,
+        "idempotencyKey": "reminder#ord_1#t",
+        "text": "Il riepilogo del tuo ordine è ancora in attesa di conferma.",
+        **extra,
+    }
+
+
+TEMPLATE = {"name": "order_pending_reminder", "params": ["12", "giovedì 29 ottobre", "oggi 18:00"]}
+
+
+def test_outside_the_window_the_named_template_goes_out(fakes: Fakes) -> None:
+    whatsapp_conversation()
+    assert notifier.handler(reminder(template=TEMPLATE), None) == {"status": "SENT"}
+
+    [message] = fakes.whatsapp
+    assert message["type"] == "template"
+    body, *buttons = message["template"]["components"]
+    assert [p["text"] for p in body["parameters"]] == [
+        "Luca",
+        "12",
+        "giovedì 29 ottobre",
+        "oggi 18:00",
+    ]
+    assert [b["parameters"][0]["payload"] for b in buttons] == [
+        "order_show_summary",
+        "order_cancel_draft",
+    ]
+    [item] = outgoing()
+    assert item["template"] == "order_pending_reminder"
+
+
+def test_inside_the_window_the_text_goes_out_even_with_a_template(fakes: Fakes) -> None:
+    whatsapp_conversation("2099-01-01T00:00:00.000Z")
+    notifier.handler(reminder(template=TEMPLATE), None)
+    assert [m["type"] for m in fakes.whatsapp] == ["text"]
+
+
+def test_outside_the_window_without_template_the_reply_goes_on_rcs(fakes: Fakes) -> None:
+    whatsapp_conversation()
+    sms_identity()
+    assert notifier.handler(reminder(), None) == {"status": "SENT"}
+    assert fakes.whatsapp == []
+    [call] = fakes.rcs
+    assert call["DestinationPhoneNumber"] == "+393470000001"
+    [item] = outgoing()
+    assert item["channel"] == "SMS"
+
+
+def test_outside_the_window_with_no_other_channel_is_unavailable(fakes: Fakes) -> None:
+    whatsapp_conversation()
+    with pytest.raises(ChannelUnavailableError):
+        notifier.handler(reminder(), None)
+    assert outgoing() == []
+
+
+def test_an_unknown_template_is_refused(fakes: Fakes) -> None:
+    whatsapp_conversation()
+    with pytest.raises(ValidationError):
+        notifier.handler(reminder(template={"name": "promo", "params": ["x"]}), None)
+
+
+def test_transient_errors_are_retried_then_the_reply_goes_out(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    whatsapp_conversation("2099-01-01T00:00:00.000Z")
+    monkeypatch.setattr(notifier, "RETRY_BASE_SECONDS", 0)
+    calls = {"n": 0}
+    send = fakes.send_whatsapp_message
+
+    def flaky(**request: Any) -> dict[str, str]:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            error = {"Error": {"Code": "ThrottlingException", "Message": "slow down"}}
+            raise ClientError(error, "SendWhatsAppMessage")  # type: ignore[arg-type]
+        return send(**request)
+
+    monkeypatch.setattr(fakes, "send_whatsapp_message", flaky)
+    assert notifier.handler(reminder(), None) == {"status": "SENT"}
+    assert calls["n"] == 3
+
+
+def test_whatsapp_still_failing_after_the_retries_falls_back_to_rcs(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    whatsapp_conversation("2099-01-01T00:00:00.000Z")
+    sms_identity()
+    monkeypatch.setattr(notifier, "RETRY_BASE_SECONDS", 0)
+    calls = {"n": 0}
+
+    def down(**_request: Any) -> dict[str, str]:
+        calls["n"] += 1
+        error = {"Error": {"Code": "InternalServerException", "Message": "down"}}
+        raise ClientError(error, "SendWhatsAppMessage")  # type: ignore[arg-type]
+
+    monkeypatch.setattr(fakes, "send_whatsapp_message", down)
+    assert notifier.handler(reminder(), None) == {"status": "SENT"}
+    assert calls["n"] == notifier.SEND_ATTEMPTS and len(fakes.rcs) == 1
+
+
+def test_validation_errors_are_not_retried(fakes: Fakes, monkeypatch: pytest.MonkeyPatch) -> None:
+    whatsapp_conversation("2099-01-01T00:00:00.000Z")
+    calls = {"n": 0}
+
+    def invalid(**_request: Any) -> dict[str, str]:
+        calls["n"] += 1
+        error = {"Error": {"Code": "ValidationException", "Message": "bad"}}
+        raise ClientError(error, "SendWhatsAppMessage")  # type: ignore[arg-type]
+
+    monkeypatch.setattr(fakes, "send_whatsapp_message", invalid)
+    with pytest.raises(ClientError):
+        notifier.handler(reminder(), None)
+    assert calls["n"] == 1
+
+
+def test_no_rcs_to_a_number_that_sent_stop(fakes: Fakes) -> None:
+    _order()
+    put(
+        "channel-identities",
+        {
+            "channelAddress": "SMS#+393470000001",
+            "channel": "SMS",
+            "contactId": "con_001",
+            "role": "CUSTOMER_CONTACT",
+            "verified": True,
+            "optedOutAt": "2026-10-28T10:00:00Z",
+        },
+    )
+    assert notifier.handler(delivery_event(), None) == {"status": "SENT"}
+    assert fakes.rcs == [] and len(fakes.whatsapp) == 1  # the WhatsApp template instead
+    put(
+        "conversations",
+        {"conversationId": CONV, "lastInboundChannel": "SMS", "lastInboundFrom": "+393470000001"},
+    )
+    with pytest.raises(ChannelUnavailableError):
+        notifier.handler(
+            {"kind": "reply", "conversationId": CONV, "idempotencyKey": "k2", "text": "ok"}, None
+        )
