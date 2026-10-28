@@ -47,7 +47,7 @@ Deploy dopo l'invio della submission, modifiche a risorse condivise (numero What
 - Se dopo un deploy una Lambda ha `CodeSize` di poche centinaia di byte, l'asset è stato pubblicato vuoto (sintesi concorrente tra worktree): ripubblicare lo zip corretto con la stessa chiave e aggiornare il codice.
 - Dopo un deploy di `agent`, le sessioni AgentCore già aperte restano sul codice vecchio: provare con una conversazione nuova.
 - `cdk synth` a volte fallisce senza motivo riproducibile: rilanciare.
-- Su `dev` il **Notifier è in sandbox** (`notifierSandbox = true` in `infra/config/environments.ts`): le risposte sono registrate ma non inviate. Il simulatore (`scripts/simulate_channel.py`) funziona solo così. T-68 passa a invio reale: da quel momento il simulatore non si usa più (o si riaccende il sandbox per una prova e lo si rispegne). Il valore va cambiato nella config, non solo in SSM: ogni deploy sovrascrive il parametro.
+- Su `dev` l'invio è **reale** da T-68 (`notifierSandbox: 'false'` in `infra/config/environments.ts`, scritto in SSM dal deploy di `foundation`). Il simulatore (`scripts/simulate_channel.py`) funziona solo col sandbox acceso: per una prova si accende in SSM (`aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value true --overwrite`), lo si rispegne subito (`--value false`) e lo si annuncia in chat, perché nel frattempo i telefoni veri non ricevono risposte.
 
 ### 1.5 Lavoro in parallelo
 
@@ -102,7 +102,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Area | Stato | Dettaglio |
 |---|---|---|
 | Infra di base (CDK, CI, tag, KMS, dati) | ✅ | 9 stack su `dev`, CI verde, cdk-nag |
-| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, ancora `PENDING` il 28/10 alle 12:00 (T-29: da controllare in WhatsApp Manager; non servono alla demo, l'invio di template è T-24, rinviato); invio reale mai provato (T-68) |
+| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, ancora `PENDING` il 28/10 alle 12:00 (T-29: da controllare in WhatsApp Manager; non servono alla demo, l'invio di template è T-24, rinviato); invio reale attivo da T-68 (dopo il deploy di `foundation` e `messaging`); flussi 2 e 3 provati il 28/10 col simulatore in IT ed EN fino a ERP mock, PDF, stato, modifica e annullo; prova dal telefono da fare (T-68) |
 | Email (SES) | ◐ | Dominio `suppliagent.stonecutters.besharp.net` verificato, fuori sandbox, ricezione ok; email di conferma con PDF e bounce fatti (T-26, #100); risposte nello stesso thread del cliente e modifica rispondendo all'email di conferma (T-26b); da provare su `dev` dopo il deploy di `channels`, `messaging`, `agent` |
 | SMS/RCS | ◐ | M-11 fatta (28/10): agente RCS di test attivo, tester Android verificato e messaggio di prova ricevuto; sender ID `SUPPLIAGENT` (IT, one-way); RCS non arriva su iPhone in Italia ([RCS_SMS_SETUP](docs/RCS_SMS_SETUP.md)). Codice da fare (T-27, Could) |
 | Pipeline (Router, debounce, Dispatcher, Notifier base) | ✅ | Errori del turno: cortesia al primo, handoff `LOW_CONFIDENCE` al secondo, tetto di messaggi per turno (T-67, da deployare con `messaging`) |
@@ -120,6 +120,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 
 **Limiti noti** (da tenere presenti nella demo):
 - il matcher chiede conferma per "farina tipo 00 da 25 kg" (due candidati vicini); Nova a volte non converte "5 kg di farina" in sacchi da 25 kg;
+- sui bigliettini difficili Nova legge male parte delle righe e può fare più di 5 domande in un messaggio (T-05, T-53); a volte chiude il turno con "ti faccio sapere" senza chiamare i tool (prompt corretto in T-68, rispondere "ok" lo sblocca);
 - nessun controllo di stock al momento della conferma (solo prima); `cancel_order` non avvisa l'ERP;
 - fuori dalla finestra 24h di WhatsApp niente template né fallback di canale;
 - rischi di sicurezza accettati fino alla demo: [INFRASTRUCTURE_DESIGN §12](./docs/INFRASTRUCTURE_DESIGN.md).

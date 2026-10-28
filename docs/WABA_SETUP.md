@@ -99,15 +99,15 @@ Il **Router**, il Dispatcher e il Notifier sono invece nello stack **`messaging`
    - Dispatcher `turn done`, Notifier `reply sent`;
    - DLQ `suppliagent-dev-inbound-dlq` vuota.
 
-**Risposta sul telefono**: su `dev` il Notifier è in **sandbox** (SSM `notifierSandbox` = `true`): la risposta dell'agente viene registrata (log `reply sent` con `sandbox: true` e item `OUTBOUND` nella tabella) ma non inviata. È il valore da tenere su `dev`, perché il simulatore (`scripts/simulate_channel.py`) funziona solo così e i numeri finti del seed non ricevono invii reali. Per una prova con risposta reale, attivare l'invio solo per la durata del test (letto a ogni invio, nessun deploy; un deploy di `foundation` lo riporta comunque a `true`) e avvisare chi lavora in parallelo, perché nel frattempo il simulatore su `dev` non funziona:
+**Risposta sul telefono**: da T-68 su `dev` l'invio è **reale** (`notifierSandbox: 'false'` in `infra/config/environments.ts`, scritto in SSM dal deploy di `foundation`), anche per i giudici. Con il sandbox acceso (`true`) la risposta dell'agente viene solo registrata (log `reply sent` con `sandbox: true` e item `OUTBOUND` con stato `SANDBOX`). Il simulatore (`scripts/simulate_channel.py`) funziona solo col sandbox acceso: per una prova col simulatore accenderlo in SSM (letto a ogni invio, nessun deploy) e spegnerlo subito dopo, avvisando chi lavora in parallelo, perché nel frattempo le risposte ai telefoni veri non partono:
 
 ```bash
-aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value false --overwrite
-# ... prova ...
 aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value true --overwrite
+# ... prova col simulatore ...
+aws ssm put-parameter --name /suppliagent/dev/notifierSandbox --value false --overwrite
 ```
 
-Per i giudici l'invio deve restare reale: `notifierSandbox` va messo a `false` in `infra/config/environments.ts` (T-68), altrimenti il deploy successivo lo riporta a `true`.
+Un deploy di `foundation` riporta comunque il parametro al valore della config (`false`).
 
 ---
 

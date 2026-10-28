@@ -66,7 +66,9 @@ const runtimeParameters: Record<string, string> = {
   privacyNoticeUrl: 'UNSET',
   privacyNoticeVersion: '2026-10-28',
   // The Notifier records outgoing messages instead of sending them (T-24, T-14); read at runtime.
-  notifierSandbox: 'true',
+  // `false` since T-68: replies really go out (also for the judges). The simulator
+  // (`scripts/simulate_channel.py`) needs `true`: set it in SSM for a test, then back to `false`.
+  notifierSandbox: 'false',
   // The ERP mock answers as unavailable while `true` (to show E-08); read at runtime, default `false` (T-07).
   erpMockFailure: 'false',
 };
