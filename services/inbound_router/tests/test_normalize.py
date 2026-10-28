@@ -1,11 +1,12 @@
 """Channel event -> RawMessage (FN-01, TECHNICAL_FLOWS §3.1)."""
 
+import json
 from collections.abc import Callable
 from email.message import EmailMessage
 from typing import Any
 
 import pytest
-from inbound_router.normalize import email_message, whatsapp_messages
+from inbound_router.normalize import email_message, sms_messages, whatsapp_messages
 from suppliagent_shared.messages import AttachmentType
 from suppliagent_shared.models import Channel
 
@@ -200,3 +201,53 @@ def test_button_reply_keeps_the_message_it_answers(wa_event: Builder) -> None:
     [msg] = whatsapp_messages(event)
     assert msg.interactive_reply is not None
     assert msg.interactive_reply.contextId == "wamid.sent"
+
+
+SMS_AT = "2026-10-28T09:00:00.123Z"
+
+
+def sms_event(body: str, provider_id: str = "in-1") -> dict[str, Any]:
+    return {
+        "originationNumber": "+393330000001",
+        "destinationNumber": "rcs-test",
+        "messageKeyword": "",
+        "messageBody": body,
+        "inboundMessageId": provider_id,
+        "previousPublishedMessageId": "prev",
+    }
+
+
+def test_sms_or_rcs_text() -> None:
+    [msg] = sms_messages(sms_event("manca un cartone"), SMS_AT)
+    assert msg.channel is Channel.SMS
+    assert (msg.provider_message_id, msg.sender, msg.text) == (
+        "in-1",
+        "+393330000001",
+        "manca un cartone",
+    )
+    assert msg.received_at == SMS_AT and msg.interactive_reply is None
+
+
+def test_rcs_suggestion_tap_is_an_interactive_reply_without_context() -> None:
+    body = json.dumps(
+        {"type": "SUGGESTION", "text": "Segnala problema", "postbackData": "delivery_issue"}
+    )
+    [msg] = sms_messages(sms_event(body), SMS_AT)
+    assert msg.text is None
+    assert msg.interactive_reply is not None
+    assert (msg.interactive_reply.id, msg.interactive_reply.title) == (
+        "delivery_issue",
+        "Segnala problema",
+    )
+    assert msg.interactive_reply.contextId is None
+
+
+def test_rcs_typing_and_other_events_are_not_messages() -> None:
+    typing = json.dumps({"type": "RCS_TYPING", "receivedAt": SMS_AT})
+    assert sms_messages(sms_event(typing), SMS_AT) == []
+    assert sms_messages(sms_event(json.dumps({"type": "SUGGESTION"})), SMS_AT) == []
+
+
+def test_a_text_that_looks_like_json_stays_text() -> None:
+    [msg] = sms_messages(sms_event("{non è json"), SMS_AT)
+    assert msg.text == "{non è json"

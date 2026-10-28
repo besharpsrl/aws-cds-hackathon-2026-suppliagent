@@ -51,11 +51,11 @@ describe('MessagingStack – ingestion (T-21, FN-01)', () => {
     });
   });
 
-  it('subscribes the queue to the WhatsApp and inbound-mail topics, keeping the SNS envelope', () => {
+  it('subscribes the queue to the WhatsApp, inbound-mail and SMS topics, keeping the envelope', () => {
     const subscriptions = Object.values(template.findResources('AWS::SNS::Subscription')).filter(
       (s) => s.Properties.Protocol !== 'lambda', // the Notifier's bounce subscription (T-26)
     );
-    expect(subscriptions).toHaveLength(2);
+    expect(subscriptions).toHaveLength(3);
     for (const s of subscriptions) {
       expect(s.Properties.Protocol).toBe('sqs');
       expect(s.Properties.RawMessageDelivery).toBeUndefined();

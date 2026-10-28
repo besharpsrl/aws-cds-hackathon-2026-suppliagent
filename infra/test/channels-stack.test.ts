@@ -119,7 +119,9 @@ describe('ChannelsStack (T-20, FN-01)', () => {
           ],
         }),
       });
-      const [activate] = Object.values(template.findResources('Custom::AWS'));
+      const activate = Object.values(template.findResources('Custom::AWS')).find((r) =>
+        JSON.stringify(r.Properties.Create).includes('setActiveReceiptRuleSet'),
+      )!;
       for (const call of ['Create', 'Delete']) {
         expect(JSON.stringify(activate.Properties[call])).toContain('setActiveReceiptRuleSet');
       }

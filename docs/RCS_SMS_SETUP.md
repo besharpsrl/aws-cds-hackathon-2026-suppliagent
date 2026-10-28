@@ -77,8 +77,16 @@ sms request-sender-id --sender-id SuppliAgent --iso-country-code IT --message-ty
 
 Se il tester non riceve il messaggio subito dopo l'accettazione, attendere qualche minuto e reinviare: il primo invio, pochi secondi dopo il `VERIFIED`, non è arrivato; il secondo, 10 minuti dopo, sì. Se la registrazione va in `REQUIRES_UPDATES`, `describe-registration-field-values` mostra i campi con `DeniedReason`; una nuova versione (`create-registration-version`) non eredita i valori.
 
-## Da fare in T-27
+## Cablaggio (T-27)
 
-- Topic SNS `sms-inbound` (CDK) e `update-rcs-agent --rcs-agent-id <id> --two-way-enabled --two-way-channel-arn <topic>` per ricevere *Ricevuto / Segnala problema*.
-- Pool con agente RCS e sender ID per il fallback; configuration set con event destination per gli esiti.
-- Parametri `rcsAgentId` / `smsOriginationIdentity` (INFRASTRUCTURE_DESIGN §11) con i valori della tabella sopra.
+- `rcsAgentId` e `smsSenderId` (`SUPPLIAGENT/IT`) in `infra/config/environments.ts`; il `ChannelsStack` pubblica `rcsAgentArn`, `smsSenderId` (ARN) e `smsConfigurationSet` in SSM.
+- Topic `suppliagent-<env>-sms-inbound` sottoscritto alla coda `inbound`; il two-way dell'agente (`UpdateRcsAgent`, `TwoWayEnabled`, `TwoWayChannelArn`) lo attiva una custom resource del `ChannelsStack` (lo spegne alla cancellazione; se cambia `rcsAgentId`, il two-way del vecchio agente va spento a mano con `update-rcs-agent --no-two-way-enabled`). Serve `sms-voice.amazonaws.com` nella key policy della CMK (`FoundationStack`).
+- Configuration set `suppliagent-<env>-sms-cs` con tutti gli eventi su `suppliagent-<env>-sms-events`.
+- Niente pool: il fallback è per messaggio (`SendRcsMessage` con `FallbackConfiguration` SMS dal sender ID).
+- **Passo manuale per la demo**: il telefono Android del tester riceve RCS solo se il suo contatto ha un'identità `SMS#` verificata (mai il numero WhatsApp: l'agente di test invia solo ai tester e gli SMS in sandbox solo ai numeri verificati). Il numero non va nel repo:
+
+```bash
+aws dynamodb put-item --table-name suppliagent-dev-channel-identities --item '{
+  "channelAddress": {"S": "SMS#+39<android>"}, "channel": {"S": "SMS"},
+  "contactId": {"S": "con_<tester>"}, "role": {"S": "CUSTOMER_CONTACT"}, "verified": {"BOOL": true}}'
+```

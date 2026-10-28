@@ -43,7 +43,7 @@ class RawMessage:
 
     channel: Channel
     provider_message_id: str
-    sender: str  # E.164 number (WhatsApp) or lowercase address (email)
+    sender: str  # E.164 number (WhatsApp, SMS/RCS) or lowercase address (email)
     received_at: str
     text: str | None = None
     attachments: tuple[Attachment, ...] = ()
@@ -64,6 +64,44 @@ def is_whatsapp(event: dict[str, Any]) -> bool:
 
 def is_email(event: dict[str, Any]) -> bool:
     return event.get("notificationType") == "Received"
+
+
+def is_sms(event: dict[str, Any]) -> bool:
+    """Two-way SMS/RCS of AWS End User Messaging SMS v2 (topic `sms-inbound`, T-27)."""
+    return "originationNumber" in event and "inboundMessageId" in event
+
+
+def sms_messages(event: dict[str, Any], published_at: str) -> list[RawMessage]:
+    """An inbound SMS or RCS message. On RCS a tap on a suggested reply arrives as a JSON
+    `messageBody` with `type = SUGGESTION` and our `postbackData` (the option id); typing
+    indicators and other RCS events are not messages. No `contextId`: RCS does not say which
+    message the tap answers. `published_at` (the SNS timestamp) orders the messages of a chat."""
+    body = str(event.get("messageBody") or "")
+    reply = None
+    text: str | None = body
+    if body.startswith("{"):
+        try:
+            payload = json.loads(body)
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict) and "type" in payload:
+            if payload["type"] != "SUGGESTION" or not payload.get("postbackData"):
+                return []
+            title = str(payload.get("text") or payload["postbackData"])
+            reply = InteractiveReply(id=str(payload["postbackData"])[:40], title=title[:24])
+            text = None
+    if text is not None and len(text) > MAX_TEXT_CHARS:
+        text = text[:MAX_TEXT_CHARS] + " […]"
+    return [
+        RawMessage(
+            channel=Channel.SMS,
+            provider_message_id=str(event["inboundMessageId"]),
+            sender="+" + str(event["originationNumber"]).lstrip("+"),
+            received_at=_iso(datetime.fromisoformat(published_at.replace("Z", "+00:00"))),
+            text=text or None,
+            interactive_reply=reply,
+        )
+    ]
 
 
 def _iso(moment: datetime) -> str:

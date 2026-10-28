@@ -284,6 +284,9 @@ export class MessagingStack extends Stack {
         SANDBOX_PARAM: param('notifierSandbox'),
         DOCUMENTS_BUCKET: props.documentsBucket.bucketName,
         DELIVERY_CUTOFF: config.parameters.deliveryCutoff,
+        RCS_AGENT_PARAM: param('rcsAgentArn'),
+        SMS_SENDER_PARAM: param('smsSenderId'),
+        SMS_CONFIGURATION_SET_PARAM: param('smsConfigurationSet'),
       },
     });
     const allow = (actions: string[], resources: string[]) =>
@@ -350,6 +353,9 @@ export class MessagingStack extends Stack {
         param('sesFromAddress'),
         param('sesConfigurationSet'),
         param('notifierSandbox'),
+        param('rcsAgentArn'),
+        param('smsSenderId'),
+        param('smsConfigurationSet'),
       ].map(paramArn),
     );
     allow(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
@@ -364,6 +370,21 @@ export class MessagingStack extends Stack {
         }),
       ],
     );
+    const smsArn = (resource: string, resourceName: string) =>
+      this.formatArn({ service: 'sms-voice', resource, resourceName });
+    const rcsAgentId = channelValue(this.node, config, 'rcsAgentId');
+    const smsSenderId = channelValue(this.node, config, 'smsSenderId');
+    if (rcsAgentId && smsSenderId) {
+      // RCS from the agent with the SMS fallback of the sender ID, events on the configuration set.
+      allow(
+        ['sms-voice:SendRcsMessage', 'sms-voice:SendTextMessage'],
+        [
+          smsArn('rcs-agent', rcsAgentId),
+          smsArn('sender-id', smsSenderId),
+          smsArn('configuration-set', `${prefix}-sms-cs`),
+        ],
+      );
+    }
     allow(
       ['ses:SendEmail'],
       [

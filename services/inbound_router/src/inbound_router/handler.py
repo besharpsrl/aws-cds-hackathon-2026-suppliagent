@@ -33,7 +33,9 @@ from inbound_router.normalize import (
     RawMessage,
     email_message,
     is_email,
+    is_sms,
     is_whatsapp,
+    sms_messages,
     whatsapp_messages,
 )
 
@@ -60,14 +62,19 @@ def _lambda() -> Any:
 
 def handler(event: dict[str, Any], _context: Any) -> None:
     for record in event["Records"]:
-        message = json.loads(json.loads(record["body"])["Message"])
-        for raw in _raw_messages(message):
+        envelope = json.loads(record["body"])
+        message = json.loads(envelope["Message"])
+        for raw in _raw_messages(message, str(envelope.get("Timestamp", ""))):
             _store(raw)
 
 
-def _raw_messages(event: dict[str, Any]) -> list[RawMessage]:
+def _raw_messages(event: dict[str, Any], published_at: str = "") -> list[RawMessage]:
     if is_whatsapp(event):
         return whatsapp_messages(event)
+    if is_sms(event):
+        if not published_at:
+            raise InvalidInputError
+        return sms_messages(event, published_at)
     if is_email(event):
         order_domain = os.environ.get("ORDER_DOMAIN", "").lower()
         return [email_message(event, _read_mail(event), order_domain)]

@@ -278,3 +278,57 @@ def test_whatsapp_delivery_status_is_ignored(events: list[Any], wa_event: Builde
     router.handler(sqs_event(wa_event(None, statuses=[{"id": "wamid.1", "status": "read"}])), None)
 
     assert events == []
+
+
+def sms_sqs_event(sender: str, body: str, provider_id: str = "in-1") -> dict[str, Any]:
+    message = {
+        "originationNumber": sender,
+        "destinationNumber": "rcs-test",
+        "messageBody": body,
+        "inboundMessageId": provider_id,
+    }
+    envelope = {
+        "Type": "Notification",
+        "TopicArn": "arn:aws:sns:x",
+        "Timestamp": "2026-10-28T09:00:00.123Z",
+        "Message": json.dumps(message),
+    }
+    return {"Records": [{"messageId": "sqs-1", "body": json.dumps(envelope)}]}
+
+
+def test_rcs_reply_of_a_known_number_joins_the_contact_conversation(events: list[Any]) -> None:
+    boto3.resource("dynamodb").Table("suppliagent-test-channel-identities").put_item(
+        Item={
+            "channelAddress": "SMS#+393470000001",
+            "channel": "SMS",
+            "contactId": "con_001",
+            "role": "CUSTOMER_CONTACT",
+            "verified": True,
+        }
+    )
+    tap = json.dumps(
+        {"type": "SUGGESTION", "text": "Ricevuto", "postbackData": "delivery_received"}
+    )
+    router.handler(sms_sqs_event("+393470000001", tap), None)
+
+    [item] = stored("conv_con001")
+    assert item["channel"] == "SMS" and item["contactId"] == "con_001"
+    assert item["interactiveReply"]["id"] == "delivery_received"
+    conversation = (
+        boto3.resource("dynamodb")
+        .Table("suppliagent-test-conversations")
+        .get_item(Key={"conversationId": "conv_con001"})["Item"]
+    )
+    assert (conversation["lastInboundChannel"], conversation["lastInboundFrom"]) == (
+        "SMS",
+        "+393470000001",
+    )
+
+
+def test_sms_without_the_sns_timestamp_is_refused() -> None:
+    event = sms_sqs_event("+393470000001", "ciao")
+    envelope = json.loads(event["Records"][0]["body"])
+    del envelope["Timestamp"]
+    event["Records"][0]["body"] = json.dumps(envelope)
+    with pytest.raises(InvalidInputError):
+        router.handler(event, None)

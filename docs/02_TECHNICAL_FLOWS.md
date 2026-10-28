@@ -353,7 +353,9 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 | C2 prodotto danneggiato | Foto obbligatoria; segnalazione con priorità |
 | C3 nessun tap entro fine giornata | Si assume consegnato (configurabile) |
 
-*Stato (T-52, solo WhatsApp)*: all'uscita per la consegna (`order.status_changed` → `OUT_FOR_DELIVERY`, ERP mock `advance`; regola `suppliagent-<env>-out-for-delivery`) il Notifier invia il template `delivery_update` (nome, numero d'ordine, fascia da `Deliveries.window`) al contatto cliente che ha fatto l'ordine, se la sua conversazione è su WhatsApp; ordini di un agente di commercio: nessun messaggio. Quick reply `delivery_received` (l'agente ringrazia; lo stato `DELIVERED` resta all'ERP mock) e `delivery_issue` (passo 3). RCS/SMS con fallback: T-27.
+*Stato (T-52, solo WhatsApp)*: all'uscita per la consegna (`order.status_changed` → `OUT_FOR_DELIVERY`, ERP mock `advance`; regola `suppliagent-<env>-out-for-delivery`) il Notifier invia il template `delivery_update` (nome, numero d'ordine, fascia da `Deliveries.window`) al contatto cliente che ha fatto l'ordine, se la sua conversazione è su WhatsApp; ordini di un agente di commercio: nessun messaggio. Quick reply `delivery_received` (l'agente ringrazia; lo stato `DELIVERED` resta all'ERP mock) e `delivery_issue` (passo 3). 
+
+*Stato (T-27)*: se il contatto ha un'identità `SMS#` verificata, l'avviso parte su **RCS** dall'agente (`SendRcsMessage`, testo con fascia oraria e suggested reply *Ricevuto* / *Segnala problema*, postback `delivery_received` / `delivery_issue`) con fallback **SMS** dal sender ID (solo notifica, one-way, C4); se RCS rifiuta l'invio o non è configurato, il template WhatsApp (C7). Il tap torna dal topic `sms-inbound` al Router come `interactiveReply` (senza `contextId`: RCS non dice a quale messaggio risponde) e l'agente risponde su RCS nella stessa conversazione del contatto.
 
 ### F-13 – Riordino proattivo (FN-19)
 
