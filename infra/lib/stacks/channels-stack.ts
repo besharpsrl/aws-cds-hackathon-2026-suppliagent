@@ -58,7 +58,7 @@ export class ChannelsStack extends Stack {
     this.emailEventsTopic = topic('EmailEventsTopic', 'email-events', 'ses');
     this.smsInboundTopic = topic('SmsInboundTopic', 'sms-inbound', 'sms-voice');
     const smsEventsTopic = topic('SmsEventsTopic', 'sms-events', 'sms-voice');
-    // Delivery results of RCS and SMS sends (RCS_SMS_SETUP.md: without it only a CloudWatch metric).
+    // Delivery results of RCS and SMS sends (CHANNELS_SETUP.md §3: without it only a CloudWatch metric).
     const smsConfigurationSet = new smsvoice.CfnConfigurationSet(this, 'SmsConfigurationSet', {
       configurationSetName: `${prefix}-sms-cs`,
       eventDestinations: [

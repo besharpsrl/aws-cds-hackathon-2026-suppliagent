@@ -7,8 +7,7 @@ inclusion: always
 ```
 SuppliAgent/
 ├── agent-context/           # contesto per agenti di sviluppo (AGENTS.md, CLAUDE.md, kiro-steering/)
-├── SUPPLIAGENT_SOLUTION.md
-├── docs/                    # fonte di verità (01 overview, 02 flussi, 03 funzionalità, infra, drawio)
+├── docs/                    # fonte di verità (01 overview, 02 flussi, 03 funzionalità, infra, canali, drawio)
 ├── assets/brand/            # logo
 ├── infra/                   # CDK TS: bin/, lib/stacks/ (1 file per stack), lib/constructs/, config/
 ├── agent/                   # Strands agent (zip, code deploy): main.py, src/suppliagent_agent/ (prompts/: customer, sales_rep, shared), evals/

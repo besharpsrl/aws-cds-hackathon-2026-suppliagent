@@ -14,7 +14,7 @@
 - Tempi e soglie sono **parametri configurabili** (SSM, §7).
 - Ogni passaggio rilevante emette un **evento applicativo** (§6.4).
 - Lingua delle risposte = lingua del contatto (default italiano).
-- Gli importi mostrati al cliente sono **stime IVA esclusa** dal listino del cliente (decisione aperta: mostrare o no i prezzi).
+- Gli importi mostrati al cliente sono **stime IVA esclusa** dal listino del cliente (decisione del 27/10: il riepilogo mostra il totale stimato).
 
 ## 2. Modelli di stato
 
@@ -129,11 +129,7 @@ sequenceDiagram
 
 ### 3.3 Debounce
 
-| Parametro | Default |
-|---|---|
-| `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | 3000 / 6000 / 15000 |
-| `turnLockTtlMs` | 120000 |
-| `turnMaxMessages` | 20 (messaggi presi da un turno, i più vecchi; gli altri al turno dopo) |
+Parametri in §7 (`debounceTextMs`, `debounceMediaMs`, `debounceMaxMs`, `turnLockTtlMs`, `turnMaxMessages`); implementazione in [Infrastructure Design §5.2.2](./INFRASTRUCTURE_DESIGN.md).
 
 - **C1** messaggio singolo → risposta dopo `debounceTextMs`.
 - **C2** raffica (foto bigliettino + vocale "aggiungi…" + testo) → **un turno** con tutti i messaggi in ordine.
@@ -155,6 +151,36 @@ I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`att
 
 ## 4. Flussi
 
+Esempio end-to-end: ordine da foto su WhatsApp (F-04 → F-07).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant R as Ristoratore (WhatsApp)
+    participant WA as EUM Social
+    participant IN as Router + Dispatcher
+    participant A as AgentCore Runtime
+    participant G as Gateway (tool)
+    participant N as Notifier
+    participant ERP as ERP adapter (mock)
+    R->>WA: foto bigliettino + vocale
+    WA->>IN: eventi (raggruppati dal debounce)
+    IN->>A: un turno con foto + vocale
+    A->>G: identify_contact, get_customer_profile
+    A->>G: extract_order_lines (vision) + transcribe
+    A->>G: match_products, check_availability, get_prices, get_delivery_options
+    A->>G: create_order_draft
+    A->>N: riepilogo + pulsanti di chiarimento
+    N->>WA: SendWhatsAppMessage (interactive)
+    R->>WA: tap scelte + "Confermo"
+    WA->>IN: risposte
+    IN->>A: turno
+    A->>G: confirm_order
+    G->>ERP: order.confirmed → submitOrder
+    A->>N: conferma
+    N->>R: email con PDF (SES) + SMS/RCS
+```
+
 ### F-01 – Primo contatto e informativa (FN-02)
 
 **Trigger**: primo messaggio di un contatto senza informativa registrata (`identify_contact` → `privacy.noticeSent` falso; per un indirizzo sconosciuto, il primo messaggio della conversazione).
@@ -162,6 +188,8 @@ I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`att
 1. L'agente si presenta come **assistente virtuale del Distributore**, spiega in una riga cosa può fare ("puoi mandarmi l'ordine anche come foto del bigliettino").
 2. Invia il link all'**informativa privacy** (trattamento dei dati del contatto per la gestione degli ordini; URL dal parametro `privacyNoticeUrl`, passato al Runtime e al prompt: finché è `UNSET` dice che l'informativa è disponibile presso l'ufficio del Distributore) e ne registra l'invio con `update_privacy(noticeSent)` (data e versione, `privacyNoticeSentAt` / `privacyNoticeVersion` su `Contacts`). Per le comunicazioni promozionali/proattive chiede il **consenso** specifico con una domanda *Sì / No* in testo (i pulsanti di T-25 servono al riepilogo e ai chiarimenti, non al consenso) e lo registra con `update_privacy(proactiveConsent)` (`proactiveConsent`, `proactiveConsentAt`, `proactiveConsentChannel`, `proactiveConsentVersion`). La domanda non va nello stesso messaggio di un'altra domanda sì/no (riepilogo ordine, chiarimento): si fa al primo messaggio successivo che non ne ha, una volta per conversazione.
 3. Prosegue con la richiesta del cliente.
+
+Il testo non è fisso: l'agente lo scrive nella lingua del contatto seguendo le regole dei prompt [`customer.md`](../agent/src/suppliagent_agent/prompts/customer.md) e [`customer_unknown.md`](../agent/src/suppliagent_agent/prompts/customer_unknown.md) (informativa in coda alla risposta, mai al posto della risposta; mai un link inventato). Il testo legale all'URL è del Distributore (azione manuale: pubblicare la pagina e impostare `privacyNoticeUrl` in `infra/config/environments.ts`).
 
 Un indirizzo `UNKNOWN` riceve l'informativa nel primo messaggio (saluto + richiesta di identificazione); `identify_contact(privacyNoticeSent)` la registra sul contatto creato, e la domanda sul consenso arriva dal messaggio successivo, da contatto noto. Gli agenti di commercio sono personale: nessuna informativa. Il consenso si può cambiare in ogni momento ("stop proposte" lo revoca).
 
@@ -336,7 +364,7 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 | C1 WhatsApp entro 24h | Messaggio libero |
 | C2 WhatsApp oltre 24h | Template approvato |
 | C3 Template non approvato | Fallback SMS/email |
-| C4 RCS non supportato dal device (in Italia: tutti gli iPhone) | Fallback SMS automatico via pool; col sender ID alfanumerico (one-way) è solo una notifica, senza opzioni da rispondere ([RCS_SMS_SETUP](./RCS_SMS_SETUP.md)) |
+| C4 RCS non supportato dal device (in Italia: tutti gli iPhone) | Fallback SMS per messaggio (`SendRcsMessage` con `FallbackConfiguration`, niente pool); col sender ID alfanumerico (one-way) è solo una notifica, senza opzioni da rispondere ([CHANNELS_SETUP §3](./CHANNELS_SETUP.md)) |
 | C5 STOP su SMS | Opt-out registrato |
 | C6 Fascia notturna (21:00–07:00) | Proattivi rinviati; conferme d'ordine inviate comunque |
 | C7 Invio fallito / bounce | Retry (T-24: 3 tentativi con backoff sugli errori transitori delle API di invio), poi canale alternativo (WhatsApp → RCS/SMS sull'identità `SMS#` verificata del contatto; RCS rifiutato → `SendTextMessage`); per email bounce → richiesta nuovo indirizzo (T-26: bounce permanente dell'email di conferma → `orderEmail` cancellato, `orderEmailBouncedAt`, messaggio nella conversazione dell'ordine che chiede un altro indirizzo; la risposta arriva all'agente, che chiama `set_order_email`) |
@@ -537,7 +565,7 @@ Pubblicati sul bus applicativo: servono a collegare i componenti (regole EventBr
 |---|---|
 | `debounceTextMs` / `debounceMediaMs` / `debounceMaxMs` | 3000 / 6000 / 15000 |
 | `turnLockTtlMs` | 120000 |
-| `turnMaxMessages` | 20 |
+| `turnMaxMessages` | 20 (messaggi presi da un turno, i più vecchi; gli altri al turno dopo) |
 | `matchAutoThreshold` / `matchAskThreshold` | 0.85 / 0.5 |
 | `maxClarificationsPerMessage` | 5 |
 | `unmatchedMaxAttempts` | 2 |
@@ -559,7 +587,3 @@ Pubblicati sul bus applicativo: servono a collegare i componenti (regole EventBr
 - `correlationId` = `conversationId` (+ `orderId` quando presente) propagato su Router, Dispatcher, AgentCore, tool, Notifier, ERP adapter.
 - Log JSON senza contenuto dei messaggi; contenuto in `Messages` (cifrato).
 - Tracce AgentCore per ogni turno.
-
-## 9. Punti aperti
-
-Domande aperte e decisioni prese sono in [`START_HERE.md`](../START_HERE.md) §6 (fonte unica).

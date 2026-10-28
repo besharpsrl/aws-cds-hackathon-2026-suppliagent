@@ -1,14 +1,14 @@
-# SuppliAgent – Panoramica tecnica del progetto
+# SuppliAgent – Panoramica e concept
 
 > AWS CDS Agentic AI Partner Hackathon · Team beSharp
-> Stato: **v1.0 – allineato alla submission** (T-72: solo le funzionalità della gara) · Data: 28/10/2026
+> Stato: **v1.1 – allineato alla submission** · Data: 28/10/2026 · Caso d'uso di un **cliente reale di beSharp** (il "Distributore")
 > Documenti collegati: [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) · [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md) · [Infrastructure design](./INFRASTRUCTURE_DESIGN.md) · [Diagramma](./architecture.drawio)
 
 ---
 
 ## 1. Scopo del documento
 
-Descrivere a colpo d'occhio cosa fa SuppliAgent, chi lo usa, come è fatto e come si comporta nei casi principali. È il punto di ingresso alla documentazione.
+Unico documento di visione: cosa fa SuppliAgent, chi lo usa, come è fatto, come si comporta nei casi principali, come si misura e come risponde ai criteri di gara (dal 28/10 include l'ex `SUPPLIAGENT_SOLUTION.md`).
 
 ## 2. Il problema
 
@@ -38,12 +38,18 @@ Il caso d'uso nasce da un **cliente reale di beSharp**: un distributore di prodo
 
 **Il back office** supervisiona da una **console web**: ordini e righe a bassa confidenza, conversazioni, problemi di consegna, presa in carico.
 
-### Valore atteso
-- Tempo di inserimento ordine: da minuti di lavoro manuale a **secondi**
-- **% righe abbinate automaticamente** e accuratezza
-- **% ordini senza intervento umano**
-- **Valore dei suggerimenti accettati** e **riordini recuperati**
-- Tempo risparmiato dagli agenti di commercio
+### KPI e impatto misurabile
+
+| KPI | Come si misura |
+|---|---|
+| **Tempo di inserimento ordine** | dalla foto alla conferma (vs inserimento manuale) |
+| **% righe abbinate automaticamente** | righe confermate senza correzioni / totale |
+| **Accuratezza dell'abbinamento** | correzioni del cliente o del back office |
+| **% ordini senza intervento umano** | ordini confermati senza handoff |
+| **Scontrino medio e suggerimenti accettati** | valore righe aggiunte da suggerimenti |
+| **Riordini recuperati** | ordini nati da proposte proattive |
+| **Tempo risparmiato dagli agenti** | briefing e risposte su schede tecniche |
+| **Problemi di consegna** | segnalazioni / consegne |
 
 ## 4. Attori
 
@@ -72,6 +78,8 @@ Il caso d'uso nasce da un **cliente reale di beSharp**: un distributore di prodo
 - Logistica e pianificazione dei giri di consegna (simulati).
 - Dashboard KPI e analytics (Firehose, Glue, Athena): tolti il 27/10 (T-09, T-65); restano gli eventi su EventBridge e l'osservabilità di AgentCore e CloudWatch.
 - Catalogo e prezzi reali non anonimizzati.
+
+**Perimetro della gara**: flussi utente 1–9 con priorità Must/Should/Could ([`START_HERE.md`](../START_HERE.md) §4.3); stato per funzionalità in [03 §4.1](./03_FUNCTIONAL_SPEC.md).
 
 ## 6. Architettura ad alto livello
 
@@ -221,7 +229,29 @@ flowchart TD
 6. **Dati in Europa** e **dati del cliente protetti** (anonimizzati per l'hackathon).
 7. **Riproducibile e misurabile**.
 
-## 10. Glossario
+## 10. Criteri di valutazione della gara
+
+| Criterio | Peso | Come lo copriamo |
+|---|---|---|
+| Esecuzione tecnica | 40% | 2 servizi CDS bidirezionali chiamati nel codice (WhatsApp, SES in/out; SMS/RCS se pronto) + AgentCore Runtime e Gateway (Memory e Observability con T-54), vision, ricerca ibrida su S3 Vectors; CDK riproducibile |
+| Valore e impatto | 20% | **Cliente reale**, processo quotidiano ad alto volume, KPI misurabili |
+| Demo | 20% | Foto del bigliettino → ordine verificato in pochi secondi, conferma con email e PDF; riordino con un tap e consegna con RCS se pronti, altrimenti come prossimi passi nel video |
+| Creatività | 10% | Ordine da scrittura a mano, ruoli diversi (cliente, agente di commercio) sullo stesso agente; copilota e proattività se pronti |
+| Funzionalità | 10% | Serverless, scalabile; i giudici possono ordinare da soli via WhatsApp |
+| **Premio WhatsApp (Meta)** | $10k | Commercio conversazionale su WhatsApp: esattamente lo scenario che Meta promuove |
+
+## 11. Rischi e mitigazioni
+
+| Rischio | Mitigazione |
+|---|---|
+| Scrittura a mano poco leggibile | Nova Pro vision (Claude se abilitato sull'account) + domande di chiarimento + storico cliente; dataset di bigliettini veri per i test |
+| Dati del cliente riservati | Catalogo **anonimizzato o sintetico** derivato da quello reale; nessun dato personale reale |
+| Marchio del cliente nel video | Brand fittizio e dati sintetici (decisione del 27/10) |
+| Integrazione ERP reale non fattibile in 2 settimane | ERP adapter con implementazione mock e interfaccia documentata |
+| Approvazione template WhatsApp | 8 template `APPROVED` il 28/10; servono solo fuori dalla finestra di 24 h; fallback RCS/SMS ed email |
+| Costi | Account condiviso: costi isolati con i tag `Project`/`Owner`/`Env`; serverless e scale-to-zero; spegnimento dopo il judging ([TEARDOWN](./TEARDOWN.md)) |
+
+## 12. Glossario
 
 | Termine | Significato |
 |---|---|
@@ -239,13 +269,3 @@ flowchart TD
 | **Debounce** | Attesa della fine della raffica di messaggi prima di rispondere |
 | **CDS / EUM / RCS** | AWS Communication Developer Services / End User Messaging / Rich Communication Services |
 | **Finestra 24h / Template** | Regole WhatsApp per i messaggi inviati dall'azienda |
-
-## 11. Mappa della documentazione
-
-| Documento | Contenuto | Per chi |
-|---|---|---|
-| 01 – Panoramica (questo) | Visione d'insieme e flusso principale | Tutti |
-| [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) | Stati, flussi dettagliati, casistiche, errori, contratti | Sviluppatori |
-| [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md) | Funzionalità, priorità, criteri di accettazione | Tutti / pianificazione |
-| [Infrastructure Design](./INFRASTRUCTURE_DESIGN.md) | Architettura AWS, stack CDK, sicurezza, costi | Infra / sviluppatori |
-| [architecture.drawio](./architecture.drawio) | Diagramma architetturale | Tutti / submission |
