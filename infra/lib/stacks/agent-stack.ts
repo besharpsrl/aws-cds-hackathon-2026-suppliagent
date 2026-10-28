@@ -1,15 +1,27 @@
+import { createHash } from 'node:crypto';
 import * as path from 'node:path';
-import { CfnOutput, CfnResource, Duration, Stack, Validations, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  CfnResource,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  Validations,
+  type StackProps,
+} from 'aws-cdk-lib';
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as agentcore from 'aws-cdk-lib/aws-bedrockagentcore';
 import type * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import type * as events from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { IKey } from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import type * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as cr from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
-import type { EnvConfig } from '../../config/environments.js';
+import { MANDATORY_TAGS, type EnvConfig } from '../../config/environments.js';
 import { PythonLambda } from '../constructs/python-lambda.js';
 import { REPO_ROOT, uvBundling } from '../constructs/uv-bundling.js';
 import type { TableName } from './data-stack.js';
@@ -36,9 +48,9 @@ export interface AgentStackProps extends StackProps {
 const LAMBDA_PLATFORM_PACKAGES = ['boto3', 'botocore', 's3transfer', 'aws-lambda-powertools'];
 
 /**
- * Agent runtime (T-40, reduced): Gateway (MCP, IAM inbound auth) with the `customers` and
- * `order_intake` and `catalog` tool targets and an AgentCore Runtime running the Strands agent from a zip (no container). Memory, Guardrail,
- * the other tool targets and observability extras: T-54.
+ * Agent runtime: Gateway (MCP, IAM inbound auth) with the tool targets, an AgentCore Runtime running
+ * the Strands agent from a zip (no container), AgentCore Memory, a Bedrock Guardrail and the
+ * Runtime's observability (traces, application logs, log group retention and CMK) (T-40, T-41, T-54).
  */
 export class AgentStack extends Stack {
   readonly runtime: agentcore.Runtime;
@@ -331,13 +343,59 @@ export class AgentStack extends Stack {
     const gatewayUrl = gateway.gatewayUrl;
     if (!gatewayUrl) throw new Error('Gateway L2 returned no gatewayUrl');
 
+    // AgentCore Memory (T-54, FN-25): `actorId` = contact, `sessionId` = conversation. The agent
+    // recalls the `preferences` and `facts` namespaces (agent/src/suppliagent_agent/app.py).
+    const memory = new agentcore.Memory(this, 'Memory', {
+      memoryName: `suppliagent_${config.envName}_memory`,
+      description: 'Conversation history and long-term notes per contact',
+      expirationDuration: Duration.days(30),
+      kmsKey: key,
+      memoryStrategies: [
+        agentcore.MemoryStrategy.usingUserPreference({
+          strategyName: 'preferences',
+          namespaces: ['/preferences/{actorId}'],
+        }),
+        agentcore.MemoryStrategy.usingSemantic({
+          strategyName: 'facts',
+          namespaces: ['/facts/{actorId}'],
+        }),
+        agentcore.MemoryStrategy.usingSummarization({
+          strategyName: 'summaries',
+          namespaces: ['/summaries/{actorId}/{sessionId}'],
+        }),
+      ],
+    });
+
+    acknowledgeWildcards(memory, {
+      'Action::kms:ReEncrypt*':
+        'Memory L2 grantEncryptDecrypt on the project CMK for its service role.',
+      'Action::kms:GenerateDataKey*':
+        'Memory L2 grantEncryptDecrypt on the project CMK for its service role.',
+    });
+
+    const guardrail = new AgentGuardrail(this, 'Guardrail', {
+      prefix,
+      key,
+      // the EU guardrail profile routes to the same regions as the `eu.` model profile
+      destinationRegions: config.model.destinationRegions,
+    });
+
+    // Application logs and traces of the Runtime (T-54): our log group, with the CMK and retention.
+    const applicationLogs = new logs.LogGroup(this, 'RuntimeApplicationLogs', {
+      logGroupName: `/aws/vendedlogs/bedrock-agentcore/${prefix}-agent`,
+      retention: config.logRetention,
+      encryptionKey: key,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     this.runtime = new agentcore.Runtime(this, 'Runtime', {
       runtimeName: `suppliagent_${config.envName}_agent`,
       description: 'SuppliAgent Strands agent (T-41).',
       agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromCodeAsset({
         path: path.join(REPO_ROOT, 'agent'),
         runtime: agentcore.AgentCoreRuntime.PYTHON_3_12,
-        entrypoint: ['main.py'],
+        // ADOT (aws-opentelemetry-distro) instruments the agent: spans to CloudWatch GenAI Observability.
+        entrypoint: ['opentelemetry-instrument', 'main.py'],
         ...uvBundling({
           package: 'suppliagent-agent',
           sources: {
@@ -351,9 +409,39 @@ export class AgentStack extends Stack {
         MODEL_ID: config.model.profileId,
         AWS_REGION: this.region,
         PRIVACY_NOTICE_URL: config.parameters.privacyNoticeUrl,
+        MEMORY_ID: memory.memoryId,
+        GUARDRAIL_ID: guardrail.guardrailId,
+        GUARDRAIL_VERSION: guardrail.version,
+        AGENT_OBSERVABILITY_ENABLED: 'true',
+        OTEL_PYTHON_DISTRO: 'aws_distro',
+        OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
+        // Strands: message texts, prompts and tool inputs/results are redacted in the spans (no
+        // message contents, phone numbers or emails in traces, AGENTS.md §7).
+        OTEL_SEMCONV_STABILITY_OPT_IN: 'gen_ai_unredacted_attributes=',
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false',
       },
+      tracingEnabled: true,
+      loggingConfigs: [
+        {
+          logType: agentcore.LogType.APPLICATION_LOGS,
+          destination: agentcore.LoggingDestination.cloudWatchLogs(applicationLogs),
+        },
+      ],
     });
     gateway.grantInvoke(this.runtime);
+    memory.grantRead(this.runtime);
+    memory.grantWrite(this.runtime);
+    // A message blocked by the guardrail is replaced in the history (new event, old one deleted).
+    memory.grant(this.runtime, 'bedrock-agentcore:DeleteEvent');
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock:ApplyGuardrail'],
+        resources: guardrail.resources,
+      }),
+    );
+    // Memory and Guardrail are encrypted with the CMK: the caller's role needs the key.
+    key.grant(this.runtime, 'kms:Decrypt', 'kms:GenerateDataKey');
+    retainRuntimeLogs(this, this.runtime, config, key);
     this.runtime.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
@@ -381,6 +469,8 @@ export class AgentStack extends Stack {
     });
     new CfnOutput(this, 'RuntimeArn', { value: this.runtime.agentRuntimeArn });
     new CfnOutput(this, 'GatewayUrl', { value: gatewayUrl });
+    new CfnOutput(this, 'MemoryId', { value: memory.memoryId });
+    new CfnOutput(this, 'GuardrailId', { value: guardrail.guardrailId });
 
     acknowledgeWildcards(gateway, {
       'Action::kms:GenerateDataKey*': 'Gateway L2 grantEncryptDecrypt on the project CMK.',
@@ -419,5 +509,194 @@ export class AgentStack extends Stack {
 function acknowledgeWildcards(scope: Construct, findings: Record<string, string>) {
   for (const [finding, reason] of Object.entries(findings)) {
     Validations.of(scope).acknowledge({ id: `AwsSolutions-IAM5[${finding}]`, reason });
+  }
+}
+
+interface AgentGuardrailProps {
+  readonly prefix: string;
+  readonly key: IKey;
+  /** Regions `eu.guardrail.v1:0` routes to from this region: IAM needs the profile in each. */
+  readonly destinationRegions: readonly string[];
+}
+
+/**
+ * Bedrock Guardrail of the agent (T-54, FN-32, E-06), checked on the user's latest message and on
+ * every reply. Calibrated not to block normal ordering: no PII filter on names, phone numbers,
+ * emails or VAT numbers (identification needs them); "other customers' data" is enforced by the
+ * tools (scope checks), which know who the caller is, not by a topic classifier.
+ */
+class AgentGuardrail extends Construct {
+  readonly guardrailId: string;
+  readonly version: string;
+  /** ARNs for `bedrock:ApplyGuardrail`: the guardrail and the EU guardrail profile in each region. */
+  readonly resources: string[];
+
+  constructor(scope: Construct, id: string, props: AgentGuardrailProps) {
+    super(scope, id);
+    const stack = Stack.of(this);
+    // Standard tier: content filters and denied topics in Italian too (Classic: English, French,
+    // Spanish only); it requires the cross-region guardrail profile, EU only.
+    const profileArn = (region: string) =>
+      `arn:aws:bedrock:${region}:${stack.account}:guardrail-profile/eu.guardrail.v1:0`;
+    const filter = (type: string, strength = 'MEDIUM') => ({
+      type,
+      inputStrength: strength,
+      outputStrength: strength,
+    });
+    const blocked = (type: string) => ({ type, action: 'BLOCK' });
+    const policy = {
+      contentPolicyConfig: {
+        contentFiltersTierConfig: { tierName: 'STANDARD' },
+        filtersConfig: [
+          filter('HATE'),
+          filter('INSULTS'),
+          filter('SEXUAL'),
+          filter('VIOLENCE'),
+          filter('MISCONDUCT'),
+          { type: 'PROMPT_ATTACK', inputStrength: 'MEDIUM', outputStrength: 'NONE' },
+        ],
+      },
+      topicPolicyConfig: {
+        topicsTierConfig: { tierName: 'STANDARD' },
+        topicsConfig: [
+          {
+            name: 'Unauthorized discounts',
+            type: 'DENY',
+            // Output only: a user asking for a discount must reach the agent, which hands off
+            // (OUT_OF_SCOPE); the agent itself must never grant one.
+            inputEnabled: false,
+            outputEnabled: true,
+            definition:
+              'The assistant grants, promises or confirms a discount, special price, free goods, credit or payment terms for the customer.',
+            examples: [
+              'Ok, ti faccio il 10% di sconto su questo ordine.',
+              'I can give you the olive oil at 5 euros instead of 7.',
+              'Va bene, la consegna te la regalo e paghi a 90 giorni.',
+            ],
+          },
+          {
+            name: 'Medical advice',
+            type: 'DENY',
+            definition:
+              'Medical or health advice for a person: diagnoses, treatments, or whether a food is safe for their illness, pregnancy or intolerance.',
+            examples: [
+              'Sono celiaco, posso mangiare questa pasta senza stare male?',
+              'What should I take for food poisoning?',
+              'Sono incinta, posso mangiare la burrata?',
+            ],
+          },
+        ],
+      },
+      sensitiveInformationPolicyConfig: {
+        piiEntitiesConfig: [
+          blocked('CREDIT_DEBIT_CARD_NUMBER'),
+          blocked('CREDIT_DEBIT_CARD_CVV'),
+          blocked('CREDIT_DEBIT_CARD_EXPIRY'),
+          blocked('PIN'),
+          blocked('PASSWORD'),
+          blocked('AWS_ACCESS_KEY'),
+          blocked('AWS_SECRET_KEY'),
+        ],
+      },
+    };
+    const guardrail = new bedrock.CfnGuardrail(this, 'Resource', {
+      name: `${props.prefix}-agent`,
+      description: 'SuppliAgent agent: harmful content, prompt attacks, discounts, medical advice.',
+      // Replaced in the reply by the agent's localized safe answer (E-06).
+      blockedInputMessaging: 'Non posso aiutarti con questa richiesta. / I cannot help with that.',
+      blockedOutputsMessaging:
+        'Non posso aiutarti con questa richiesta. / I cannot help with that.',
+      kmsKeyArn: props.key.keyArn,
+      crossRegionConfig: { guardrailProfileArn: profileArn(stack.region) },
+      ...policy,
+    });
+    // A version is immutable: a new one is published whenever the policy changes.
+    const digest = createHash('sha256').update(JSON.stringify(policy)).digest('hex').slice(0, 16);
+    const version = new bedrock.CfnGuardrailVersion(this, 'Version', {
+      guardrailIdentifier: guardrail.attrGuardrailId,
+      description: `Policy ${digest}`,
+    });
+    this.guardrailId = guardrail.attrGuardrailId;
+    this.version = version.attrVersion;
+    this.resources = [
+      guardrail.attrGuardrailArn,
+      ...new Set([stack.region, ...props.destinationRegions].map(profileArn)),
+    ];
+  }
+}
+
+/**
+ * The Runtime writes stdout and the OTel logs to `/aws/bedrock-agentcore/runtimes/<id>-DEFAULT`,
+ * a log group it creates itself at the first invocation (outside CloudFormation): create it first if
+ * missing, then set retention, the CMK and the mandatory tags (AGENTS.md §7) on it.
+ */
+function retainRuntimeLogs(
+  scope: Construct,
+  runtime: agentcore.Runtime,
+  config: EnvConfig,
+  key: IKey,
+) {
+  const stack = Stack.of(scope);
+  const logGroupName = `/aws/bedrock-agentcore/runtimes/${runtime.agentRuntimeId}-DEFAULT`;
+  const logGroupArn = `arn:aws:logs:${stack.region}:${stack.account}:log-group:${logGroupName}`;
+  const tags = { ...MANDATORY_TAGS, Env: config.envName };
+  const call = (action: string, parameters: Record<string, unknown>, ignore?: string) => ({
+    service: 'CloudWatchLogs',
+    action,
+    parameters,
+    physicalResourceId: cr.PhysicalResourceId.of(logGroupName),
+    ...(ignore ? { ignoreErrorCodesMatching: ignore } : {}),
+  });
+  const policy = cr.AwsCustomResourcePolicy.fromStatements([
+    new iam.PolicyStatement({
+      actions: [
+        'logs:CreateLogGroup',
+        'logs:PutRetentionPolicy',
+        'logs:AssociateKmsKey',
+        'logs:TagResource',
+      ],
+      resources: [logGroupArn, `${logGroupArn}:*`],
+    }),
+  ]);
+  const steps: [string, ReturnType<typeof call>][] = [
+    [
+      'RuntimeLogGroup',
+      call(
+        'createLogGroup',
+        { logGroupName, kmsKeyId: key.keyArn, tags },
+        'ResourceAlreadyExistsException',
+      ),
+    ],
+    ['RuntimeLogGroupKey', call('associateKmsKey', { logGroupName, kmsKeyId: key.keyArn })],
+    [
+      'RuntimeLogGroupRetention',
+      call('putRetentionPolicy', { logGroupName, retentionInDays: config.logRetention }),
+    ],
+    ['RuntimeLogGroupTags', call('tagResource', { resourceArn: logGroupArn, tags })],
+  ];
+  let previous: Construct | undefined;
+  for (const [id, sdkCall] of steps) {
+    const resource = new cr.AwsCustomResource(scope, id, {
+      onCreate: sdkCall,
+      onUpdate: sdkCall,
+      policy,
+      installLatestAwsSdk: false,
+    });
+    if (previous) resource.node.addDependency(previous);
+    previous = resource;
+    acknowledgeWildcards(resource, {
+      [`Resource::arn:aws:logs:${stack.region}:<AWS::AccountId>:log-group:/aws/bedrock-agentcore/runtimes/<${stack.getLogicalId(runtime.node.defaultChild as CfnResource)}.AgentRuntimeId>-DEFAULT:*`]:
+        'The log-group ARN form IAM matches for CloudWatch Logs actions; this runtime log group only.',
+    });
+  }
+  // The shared Lambda of AwsCustomResource (one per stack).
+  const provider = stack.node.tryFindChild(
+    `AWS${cr.AwsCustomResource.PROVIDER_FUNCTION_UUID.replace(/-/g, '')}`,
+  );
+  if (provider) {
+    Validations.of(provider).acknowledge({
+      id: 'AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]',
+      reason: 'AwsCustomResource provider: CloudWatch Logs write for its own log group only.',
+    });
   }
 }

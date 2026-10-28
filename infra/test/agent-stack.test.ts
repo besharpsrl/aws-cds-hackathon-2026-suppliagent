@@ -70,23 +70,91 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       AgentRuntimeName: 'suppliagent_dev_agent',
       AgentRuntimeArtifact: {
         CodeConfiguration: {
-          EntryPoint: ['main.py'],
+          EntryPoint: ['opentelemetry-instrument', 'main.py'],
           Runtime: 'PYTHON_3_12',
           Code: Match.anyValue(),
         },
       },
-      EnvironmentVariables: {
+      EnvironmentVariables: Match.objectLike({
         MODEL_ID: 'eu.amazon.nova-pro-v1:0',
         GATEWAY_URL: { 'Fn::GetAtt': [Match.stringLikeRegexp('^Gateway'), 'GatewayUrl'] },
         AWS_REGION: 'eu-west-1',
         PRIVACY_NOTICE_URL: 'UNSET',
-      },
+        MEMORY_ID: { 'Fn::GetAtt': [Match.stringLikeRegexp('^Memory'), 'MemoryId'] },
+        GUARDRAIL_ID: { 'Fn::GetAtt': [Match.stringLikeRegexp('^Guardrail'), 'GuardrailId'] },
+        GUARDRAIL_VERSION: {
+          'Fn::GetAtt': [Match.stringLikeRegexp('^GuardrailVersion'), 'Version'],
+        },
+        // no message contents in the spans (AGENTS.md §7)
+        OTEL_SEMCONV_STABILITY_OPT_IN: 'gen_ai_unredacted_attributes=',
+      }),
     });
+  });
+
+  it('keeps conversations and per-contact notes in AgentCore Memory, encrypted with the CMK (FN-25)', () => {
+    template.hasResourceProperties('AWS::BedrockAgentCore::Memory', {
+      Name: 'suppliagent_dev_memory',
+      EncryptionKeyArn: Match.anyValue(),
+      EventExpiryDuration: 30,
+    });
+    const [memory] = Object.values(template.findResources('AWS::BedrockAgentCore::Memory'));
+    const namespaces = JSON.stringify(memory.Properties.MemoryStrategies);
+    // the namespaces the agent recalls (agent/src/suppliagent_agent/app.py)
+    expect(namespaces).toContain('/preferences/{actorId}');
+    expect(namespaces).toContain('/facts/{actorId}');
+    const runtime = actions(statementsOf('RuntimeExecutionRole'));
+    expect(runtime).toEqual(
+      expect.arrayContaining(['bedrock-agentcore:CreateEvent', 'bedrock-agentcore:ListEvents']),
+    );
+    // DeleteEvent only: the guardrail redaction replaces a blocked message in the history
+    expect(runtime.filter((a) => /Delete|CreateMemory|UpdateMemory/.test(a))).toEqual([
+      'bedrock-agentcore:DeleteEvent',
+    ]);
+  });
+
+  it('applies a guardrail that does not filter the contact data needed to identify a caller (FN-32)', () => {
+    const [guardrail] = Object.values(template.findResources('AWS::Bedrock::Guardrail'));
+    expect(guardrail.Properties.KmsKeyArn).toBeDefined();
+    // Standard tier (Italian) through the EU guardrail profile only
+    expect(JSON.stringify(guardrail.Properties.CrossRegionConfig)).toContain(
+      ':guardrail-profile/eu.guardrail.v1:0',
+    );
+    const pii = JSON.stringify(guardrail.Properties.SensitiveInformationPolicyConfig);
+    for (const type of ['EMAIL', 'PHONE', 'NAME', 'ADDRESS'])
+      expect(pii).not.toContain(`"${type}"`);
+    const topics = guardrail.Properties.TopicPolicyConfig.TopicsConfig as {
+      Name: string;
+      InputEnabled?: boolean;
+    }[];
+    // a discount request must reach the agent, which hands off (OUT_OF_SCOPE)
+    expect(topics.find((t) => t.Name === 'Unauthorized discounts')?.InputEnabled).toBe(false);
+    const apply = statementsOf('RuntimeExecutionRole').filter((s) =>
+      [s.Action].flat().includes('bedrock:ApplyGuardrail'),
+    );
+    expect(JSON.stringify(apply)).toContain('GuardrailArn');
+    for (const region of ['eu-west-1', 'eu-central-1', 'eu-west-3', 'eu-north-1']) {
+      expect(JSON.stringify(apply)).toContain(`arn:aws:bedrock:${region}:`);
+    }
+    template.resourceCountIs('AWS::Bedrock::GuardrailVersion', 1);
+  });
+
+  it('sends runtime traces and application logs to a CMK log group with retention', () => {
+    template.hasResourceProperties('AWS::Logs::LogGroup', {
+      LogGroupName: '/aws/vendedlogs/bedrock-agentcore/suppliagent-dev-agent',
+      RetentionInDays: 14,
+      KmsKeyId: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::Logs::Delivery', {});
+    // the log group the Runtime creates itself gets retention, CMK and tags
+    const calls = JSON.stringify(template.findResources('Custom::AWS'));
+    for (const call of ['createLogGroup', 'associateKmsKey', 'putRetentionPolicy', 'tagResource']) {
+      expect(calls).toContain(call);
+    }
   });
 
   it('lets the runtime invoke only the Nova Pro profile and its EU foundation models', () => {
     const bedrock = statementsOf('RuntimeExecutionRole').filter((s) =>
-      [s.Action].flat().some((a) => a.startsWith('bedrock:')),
+      [s.Action].flat().some((a) => a.startsWith('bedrock:Invoke')),
     );
     expect(bedrock).toHaveLength(1);
     const resources = JSON.stringify(bedrock[0].Resource);
