@@ -263,9 +263,22 @@ def test_one_email_per_order_revision(fakes: Fakes) -> None:
     assert len(fakes.emails) == 1
 
     update_order(revision=1, status="SUBMITTED")  # F-08.C2: changed before the cut-off
-    assert notifier.handler(pdf_ready(reason="updated"), None) == {"status": "SENT"}
+    updated = pdf_ready(reason="updated")
+    updated["detail"]["revision"] = 1
+    assert notifier.handler(updated, None) == {"status": "SENT"}
     subject = fakes.emails[-1]["Content"]["Simple"]["Subject"]["Data"]
     assert subject.startswith("Ordine aggiornato ord_abc123")
+
+
+def test_a_late_event_for_an_older_revision_sends_nothing(fakes: Fakes) -> None:
+    live()
+    update_order(revision=1, status="SUBMITTED")  # changed before the confirmed event arrived
+    assert notifier.handler(pdf_ready(), None) == {"status": "SUPERSEDED"}
+    event = pdf_ready(reason="updated")
+    event["detail"]["revision"] = 1
+    assert notifier.handler(event, None) == {"status": "SENT"}
+    [email] = fakes.emails
+    assert email["Content"]["Simple"]["Subject"]["Data"].startswith("Ordine aggiornato")
 
 
 def test_a_failed_send_can_be_retried(fakes: Fakes, events: Any) -> None:
@@ -401,3 +414,13 @@ def test_a_newer_address_survives_an_old_bounce(fakes: Fakes) -> None:
 def test_other_ses_events_change_nothing(fakes: Fakes, event_type: str, bounce_type: str) -> None:
     assert notifier.handler(ses_event(event_type, bounce_type), None)["bounces"] == "0"
     assert contact()["orderEmail"] == "luca@example.org" and fakes.whatsapp == []
+
+
+def test_a_bounce_to_a_sales_rep_asks_nothing(fakes: Fakes, events: Any) -> None:
+    live()
+    message = json.loads(ses_event()["Records"][0]["Sns"]["Message"])
+    message["mail"]["tags"]["contactId"] = ["rep_001"]
+    event = {"Records": [{"Sns": {"Message": json.dumps(message)}}]}
+    assert notifier.handler(event, None)["bounces"] == "1"
+    assert fakes.whatsapp == []  # the rep cannot set an order email: the back office fixes it
+    assert [kind for kind, _ in events] == ["notification.failed"]

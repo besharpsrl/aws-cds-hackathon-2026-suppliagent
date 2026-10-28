@@ -21,7 +21,7 @@ outgoing message is only recorded in `Messages`, so the pipeline runs without a 
 or a verified SES identity (T-14).
 
 Not in the base (T-24 complete, T-29): templates outside the 24 h window, SMS/RCS, quiet hours,
-opt-out, channel fallback, order confirmation emails.
+opt-out, channel fallback.
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `WA_PHONE_NUMBER_ID_PARAM`, `SES_FROM_PARAM`,
 `SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`, `DOCUMENTS_BUCKET`.
@@ -338,7 +338,12 @@ def _order_confirmation(detail: dict[str, Any]) -> dict[str, str]:
     if not address:  # F-07.C7: WhatsApp and SMS only; the assistant asked for an address
         _order_event("notification.skipped", order_id, sandbox=_sandbox(), reason="NO_EMAIL")
         return {"status": "NO_EMAIL"}
-    key = f"order-email#{order_id}#{int(order.get('revision', 0))}"
+    current = int(order.get("revision", 0))
+    revision = int(detail.get("revision", current))
+    if revision < current:  # changed since: the newer `order.pdf_ready` sends the right email
+        logger.info("order email superseded by a newer revision")
+        return {"status": "SUPERSEDED"}
+    key = f"order-email#{order_id}#{revision}"
     if not _claim(key):
         if _is_done(key):
             logger.info("duplicate order email ignored")
@@ -500,6 +505,8 @@ def _order_email_bounced(
         if conversation_id
         else None
     )
+    if not contact_id.startswith("con_"):
+        return  # a sales rep's address is their channel identity: the back office fixes it
     if not conversation or (
         conversation.get("lastInboundChannel") == "EMAIL"
         and str(conversation.get("lastInboundFrom", "")).lower() in bounced
