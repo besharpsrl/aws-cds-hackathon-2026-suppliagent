@@ -19,6 +19,7 @@ NOW = datetime(2026, 10, 28, 9, 0, tzinfo=UTC)
 TABLES: dict[str, tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]] = {
     "customers": (("customerId",), (("repId",),)),
     "contacts": (("contactId",), (("customerId",),)),
+    "channel-identities": (("channelAddress",), (("contactId",),)),
     "products": (("sku",), ()),
     "price-lists": (("priceListId", "sku"), ()),
     "promotions": (("promoId",), (("sku",),)),

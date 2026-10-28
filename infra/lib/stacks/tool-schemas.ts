@@ -78,6 +78,19 @@ export const CUSTOMERS_TOOLS: agentcore.ToolDefinition[] = [
       required: ['caller'],
     },
   },
+  {
+    name: 'set_order_email',
+    description:
+      'Saves the email address the caller gave you for their order confirmation emails (with the PDF); it replaces the previous one. Customer contacts only, their own contact. Returns status UPDATED and the saved orderEmail, or INVALID_INPUT if it is not a valid address.',
+    inputSchema: {
+      type: OBJECT,
+      properties: {
+        email: { type: STRING, description: 'The email address exactly as the user wrote it.' },
+        caller: CALLER,
+      },
+      required: ['email', 'caller'],
+    },
+  },
 ];
 
 /** Mirrors the pydantic input in services/tools/order_intake (T-43). */
@@ -275,7 +288,7 @@ export const ORDERS_TOOLS: agentcore.ToolDefinition[] = [
   {
     name: 'request_order_confirmation',
     description:
-      'Call when the order is complete, before asking the customer to confirm. Checks it (unresolved lines, packs, delivery date and cut-off, minimum) and returns either NEEDS_FIXES with the issues, or status PENDING_CONFIRMATION with the summary to show: lines, prices, total, delivery date, notes. Without this call the order cannot be confirmed.',
+      'Call when the order is complete, before asking the customer to confirm. Checks it (unresolved lines, packs, delivery date and cut-off, minimum) and returns either NEEDS_FIXES with the issues, or status PENDING_CONFIRMATION with the summary to show: lines, prices, total, delivery date, notes, and orderEmail: where the confirmation email will go (null = no address on record). Without this call the order cannot be confirmed.',
     inputSchema: {
       type: OBJECT,
       properties: {

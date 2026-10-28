@@ -7,6 +7,8 @@ needs a branded document. Text is WinAnsi (cp1252); other characters become `?`.
 from decimal import Decimal
 from typing import Any
 
+from suppliagent_shared.orders import ACTIVE_LINES
+
 PAGE_W, PAGE_H = 595, 842
 MARGIN = 50
 LINE_H = 16
@@ -44,7 +46,8 @@ def _pages(order: dict[str, Any]) -> list[str]:
     ]
     if notes := order.get("deliveryNotes"):
         first.append(_show(MARGIN, 733, f"Notes: {notes}", 90, size=11))
-    lines = order.get("lines", [])
+    # Only what is ordered: removed or unresolved lines stay on the item, not in the document.
+    lines = [ln for ln in order.get("lines", []) if ln.get("status", "CONFIRMED") in ACTIVE_LINES]
     chunks = [lines[i : i + LINES_PER_PAGE] for i in range(0, len(lines), LINES_PER_PAGE)] or [[]]
     pages = []
     for number, chunk in enumerate(chunks):

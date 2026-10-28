@@ -12,10 +12,12 @@ from suppliagent_shared.errors import SuppliAgentError
 from suppliagent_tool_customers.customers import (
     GetCustomerProfileInput,
     IdentifyContactInput,
+    SetOrderEmailInput,
     ToolInput,
     UpdatePrivacyInput,
     get_customer_profile,
     identify_contact,
+    set_order_email,
     update_privacy,
 )
 
@@ -25,6 +27,7 @@ TOOLS: dict[str, tuple[type[ToolInput], Callable[[Any], dict[str, Any]]]] = {
     "identify_contact": (IdentifyContactInput, identify_contact),
     "get_customer_profile": (GetCustomerProfileInput, get_customer_profile),
     "update_privacy": (UpdatePrivacyInput, update_privacy),
+    "set_order_email": (SetOrderEmailInput, set_order_email),
 }
 
 

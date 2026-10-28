@@ -31,6 +31,7 @@ describe('AgentStack (T-40, T-41 reduced, FN-32)', () => {
       'identify_contact',
       'get_customer_profile',
       'update_privacy',
+      'set_order_email',
     ]);
     expect(toolsOf('order-intake').map((t: { Name: string }) => t.Name)).toEqual([
       'extract_order_lines',

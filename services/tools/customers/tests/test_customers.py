@@ -428,3 +428,90 @@ def test_handler_returns_error_codes(event: dict[str, Any], tool: str, error: st
 
 def test_handler_hides_unexpected_failures() -> None:
     assert lambda_handler({}, SimpleNamespace(client_context=None)) == {"error": "INTERNAL_ERROR"}
+
+
+# --- set_order_email (FN-14, F-07.C7) -------------------------------------------------------
+
+CON_003 = caller("CUSTOMER_CONTACT", "con_003", "WHATSAPP#+393330000003")  # no email on record
+
+
+def set_email(who: dict[str, Any], email: str) -> dict[str, Any]:
+    return customers.set_order_email(
+        customers.SetOrderEmailInput.model_validate({"caller": who, "email": email})
+    )
+
+
+def test_order_email_is_stored_normalized_on_the_own_contact(events: list[Any], aws: Any) -> None:
+    from suppliagent_shared.contacts import order_email
+
+    assert order_email("con_003") is None
+    result = set_email(CON_003, "  Paolo.Greco@Example.COM ")
+
+    assert result == {"status": "UPDATED", "orderEmail": "paolo.greco@example.com"}
+    item = aws.Table("suppliagent-test-contacts").get_item(Key={"contactId": "con_003"})["Item"]
+    assert item["orderEmail"] == "paolo.greco@example.com" and "orderEmailAt" in item
+    assert order_email("con_003") == "paolo.greco@example.com"
+    assert events == [("contact.order_email_set", {"contactId": "con_003"})]
+    # never a channel identity: mail from that address is not trusted as the contact
+    identities = aws.Table("suppliagent-test-channel-identities").scan()["Items"]
+    assert not any("paolo.greco" in i["channelAddress"] for i in identities)
+
+
+def test_order_email_falls_back_to_the_verified_email_identity(aws: Any) -> None:
+    from suppliagent_shared.contacts import order_email
+
+    assert order_email("con_001") == "ordini.fornoantico@example.com"
+    assert order_email("rep_001") == "marco.rinaldi@example.com"
+    assert order_email(None) is None
+
+
+def test_a_given_order_email_wins_and_clears_a_bounce(events: list[Any], aws: Any) -> None:
+    from suppliagent_shared.contacts import order_email
+
+    contacts = aws.Table("suppliagent-test-contacts")
+    contacts.update_item(
+        Key={"contactId": "con_001"},
+        UpdateExpression="SET orderEmailBouncedAt = :ts",
+        ExpressionAttributeValues={":ts": "2026-10-28T09:00:00Z"},
+    )
+    set_email(CON_001, "luca@example.org")
+
+    assert order_email("con_001") == "luca@example.org"
+    assert "orderEmailBouncedAt" not in contacts.get_item(Key={"contactId": "con_001"})["Item"]
+
+
+@pytest.mark.parametrize(
+    "email", ["", "not-an-email", "a@b", "Luca <luca@example.org>", "a@x.it, b@y.it", "a b@x.it"]
+)
+def test_invalid_order_email_is_refused(email: str, events: list[Any]) -> None:
+    with pytest.raises(InvalidInputError):
+        set_email(CON_003, email)
+    assert events == []
+
+
+@pytest.mark.parametrize("who", [REP_001, UNKNOWN, caller("CUSTOMER_CONTACT", None)])
+def test_only_a_customer_contact_sets_its_own_order_email(
+    who: dict[str, Any], events: list[Any]
+) -> None:
+    with pytest.raises(AccessDeniedError):
+        set_email(who, "x@example.org")
+    assert events == []
+
+
+def test_order_email_of_an_unknown_contact_is_not_found(events: list[Any]) -> None:
+    with pytest.raises(NotFoundError):
+        set_email(caller("CUSTOMER_CONTACT", "con_999"), "x@example.org")
+    assert events == []
+
+
+def test_set_order_email_through_the_gateway_handler(events: list[Any]) -> None:
+    context = SimpleNamespace(
+        client_context=SimpleNamespace(
+            custom={"bedrockAgentCoreToolName": "customers___set_order_email"}
+        )
+    )
+    ok = lambda_handler({"caller": CON_003, "email": "p@example.org"}, context)
+    assert ok == {"status": "UPDATED", "orderEmail": "p@example.org"}
+    assert lambda_handler({"caller": REP_001, "email": "p@example.org"}, context) == {
+        "error": "ACCESS_DENIED"
+    }

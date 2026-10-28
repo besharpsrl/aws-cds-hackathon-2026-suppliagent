@@ -37,6 +37,8 @@ SEARCH = "catalog___search_catalog"
 HANDOFF = "orders___handoff_to_human"
 # F-01: privacy notice and consent of a customer contact; sales reps are staff and never get it.
 PRIVACY = "customers___update_privacy"
+# FN-14, F-07.C7: the address for the order confirmation email, asked when there is none.
+ORDER_EMAIL = "customers___set_order_email"
 # Stock, prices, delivery dates (T-45) and the order lifecycle (T-46); the tools check the caller's
 # own customers (or the rep's portfolio) themselves.
 ORDER_TOOLS = frozenset(
@@ -56,7 +58,7 @@ ORDER_TOOLS = frozenset(
 KNOWN_TOOLS = frozenset({IDENTIFY, PROFILE, EXTRACT, MATCH, SEARCH, HANDOFF}) | ORDER_TOOLS
 ROLE_TOOLS: dict[Role, frozenset[str]] = {
     "UNKNOWN": frozenset({IDENTIFY, HANDOFF}),
-    "CUSTOMER_CONTACT": KNOWN_TOOLS | {PRIVACY},
+    "CUSTOMER_CONTACT": KNOWN_TOOLS | {PRIVACY, ORDER_EMAIL},
     "SALES_REP": KNOWN_TOOLS,
 }
 ROLE_PROMPTS: dict[Role, list[str]] = {

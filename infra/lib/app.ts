@@ -67,6 +67,7 @@ export function buildApp(app: App, config: EnvConfig) {
       mediaBucket: foundation.mediaBucket,
       documentsBucket: foundation.documentsBucket,
       inboundTopics: [channels.waEventsTopic, channels.mailInboundTopic],
+      emailEventsTopic: channels.emailEventsTopic,
       agentRuntimeArn: agent.runtime.agentRuntimeArn,
       tables: {
         channelIdentities: data.tables.ChannelIdentities,

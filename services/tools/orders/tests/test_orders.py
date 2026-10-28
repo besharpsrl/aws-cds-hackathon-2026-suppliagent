@@ -700,3 +700,18 @@ def test_a_line_without_a_price_blocks_the_summary(aws: Any) -> None:
         make(RequestConfirmationInput, caller=CUSTOMER, orderId=order["orderId"])
     )
     assert out["status"] == "PENDING_CONFIRMATION"
+
+
+def test_summary_says_where_the_confirmation_email_goes(aws: Any) -> None:  # F-07.C7
+    order_id = pending()  # con_001 has a verified email identity
+    again = request_order_confirmation(
+        make(RequestConfirmationInput, caller=CUSTOMER, orderId=order_id)
+    )
+    assert again["orderEmail"] == "ordini.fornoantico@example.com"
+
+    no_email = caller("CUSTOMER_CONTACT", "con_003", "conv_3")  # owns cus_003, no email
+    order = draft(no_email, customer="cus_003", deliveryDate="2026-10-30")  # a Friday
+    out = request_order_confirmation(
+        make(RequestConfirmationInput, caller=no_email, orderId=order["orderId"])
+    )
+    assert out["status"] == "PENDING_CONFIRMATION" and out["orderEmail"] is None

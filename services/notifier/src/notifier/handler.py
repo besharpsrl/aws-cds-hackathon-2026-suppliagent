@@ -8,6 +8,14 @@ Two kinds of request, invoked by Lambda (the Dispatcher, the Router):
   Idempotent on `idempotencyKey`.
 - `read_receipt`: WhatsApp "read" for an inbound message of that conversation.
 
+And two events (T-26, FN-14):
+- EventBridge `order.pdf_ready` (Order PDF, after `order.confirmed` / `order.updated`): the order
+  confirmation email with the PDF, to the contact who confirmed (`suppliagent_shared.contacts`),
+  in their language, Reply-To `ordine+<orderId>@`. Once per order revision. No address: skipped
+  (F-07.C7, the assistant asks for one before the confirmation).
+- SNS from the SES configuration set: a permanent bounce of a confirmation email clears the
+  contact's `orderEmail` and asks for a new address in the order's conversation (F-11.C7).
+
 Sandbox (SSM `notifierSandbox`, default on when the parameter is missing): nothing is sent, the
 outgoing message is only recorded in `Messages`, so the pipeline runs without a WhatsApp number
 or a verified SES identity (T-14).
@@ -16,7 +24,7 @@ Not in the base (T-24 complete, T-29): templates outside the 24 h window, SMS/RC
 opt-out, channel fallback, order confirmation emails.
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `WA_PHONE_NUMBER_ID_PARAM`, `SES_FROM_PARAM`,
-`SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`.
+`SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`, `DOCUMENTS_BUCKET`.
 """
 
 import json
@@ -33,12 +41,18 @@ from aws_lambda_powertools.utilities import parameters
 from botocore.exceptions import ClientError
 from pydantic import BaseModel, ConfigDict
 from suppliagent_shared.aws import put_event, table
+from suppliagent_shared.contacts import order_email
 from suppliagent_shared.errors import (
     AccessDeniedError,
     ChannelUnavailableError,
     InvalidInputError,
+    NotFoundError,
     SuppliAgentError,
 )
+from suppliagent_shared.models import parse_order_id
+from suppliagent_shared.orders import AFTER_CONFIRMATION
+
+from notifier.order_email import Email, render
 
 SOURCE = "suppliagent.notifier"
 WHATSAPP_WINDOW = timedelta(hours=24)
@@ -46,6 +60,15 @@ WHATSAPP_TEXT_LIMIT = 4096
 CLAIM_SECONDS = 120  # an unfinished send can be retried after this
 DONE_SECONDS = 7 * 24 * 3600
 SUBJECTS = {"it-IT": "La tua richiesta", "en-GB": "Your request"}
+ORDER_TEMPLATE = "order_confirmation"
+# The email follows the order through the ERP; a cancelled or expired order gets none.
+EMAILED_STATUSES = AFTER_CONFIRMATION | {"SCHEDULED", "OUT_FOR_DELIVERY"}
+BOUNCE_TEXT = {
+    "it": "Non riesco a consegnare l'email di conferma dell'ordine {order}: l'indirizzo non "
+    "risulta valido. Mi scrivi un altro indirizzo email per le conferme d'ordine?",
+    "en": "I could not deliver the confirmation email for order {order}: the address does not "
+    "seem to work. Could you send me another email address for order confirmations?",
+}
 logger = Logger(service="notifier")
 
 
@@ -77,13 +100,23 @@ def _ses() -> Any:
     return boto3.client("sesv2")
 
 
+@cache
+def _s3() -> Any:
+    return boto3.client("s3")
+
+
 def reset_clients() -> None:
     """For tests."""
     _social.cache_clear()
     _ses.cache_clear()
+    _s3.cache_clear()
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, str]:
+    if event.get("detail-type") == "order.pdf_ready":
+        return _order_confirmation(event.get("detail") or {})
+    if "Records" in event:
+        return _email_events(event["Records"])
     request = Request.model_validate(event)
     logger.set_correlation_id(request.conversationId)
     conversation = (
@@ -244,23 +277,246 @@ def _send_email(address: str, text: str, locale: str | None) -> None:
 
 def _record(request: Request, channel: str, provider_id: str | None, status: str) -> None:
     """The outgoing message in the conversation history (console, KPIs)."""
-    message_id = "msg_" + uuid5(NAMESPACE_URL, f"out#{request.idempotencyKey}").hex
-    sent_at = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    extra: dict[str, str] = {"sentBy": request.sentBy} if request.sentBy else {}
+    _store(
+        request.conversationId,
+        str(request.idempotencyKey),
+        channel,
+        str(request.text),
+        provider_id,
+        status,
+        extra,
+    )
+
+
+def _store(
+    conversation_id: str,
+    key: str,
+    channel: str,
+    text: str,
+    provider_id: str | None,
+    status: str,
+    extra: dict[str, str],
+) -> None:
+    message_id = "msg_" + uuid5(NAMESPACE_URL, f"out#{key}").hex
+    sent_at = _now()
     item: dict[str, Any] = {
-        "conversationId": request.conversationId,
+        "conversationId": conversation_id,
         "tsMessageId": f"{sent_at}#{message_id}",
         "messageId": message_id,
         "channel": channel,
         "direction": "OUTBOUND",
-        "text": request.text,
+        "text": text,
         "sentAt": sent_at,
         "status": status,
+        **extra,
     }
-    if request.sentBy:
-        item["sentBy"] = request.sentBy
     if provider_id:  # a GSI key: cannot be empty
         item["providerMessageId"] = provider_id
     table("messages").put_item(Item=item)
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+# --- order confirmation email (T-26, FN-14) ------------------------------------------------
+
+
+def _order_confirmation(detail: dict[str, Any]) -> dict[str, str]:
+    order_id = parse_order_id(detail.get("orderId"))
+    logger.set_correlation_id(order_id)
+    order = table("orders").get_item(Key={"orderId": order_id}, ConsistentRead=True).get("Item")
+    if not order:
+        raise NotFoundError
+    if order["status"] not in EMAILED_STATUSES:
+        logger.info("order not confirmed: no email", status=order["status"])
+        return {"status": "SKIPPED"}
+    # The contact who confirmed (a sales rep for an order placed for a customer, F-10.D).
+    contact_id = str(order.get("confirmedBy") or order.get("createdBy") or "")
+    address = order_email(contact_id)
+    if not address:  # F-07.C7: WhatsApp and SMS only; the assistant asked for an address
+        _order_event("notification.skipped", order_id, sandbox=_sandbox(), reason="NO_EMAIL")
+        return {"status": "NO_EMAIL"}
+    key = f"order-email#{order_id}#{int(order.get('revision', 0))}"
+    if not _claim(key):
+        if _is_done(key):
+            logger.info("duplicate order email ignored")
+            return {"status": "DUPLICATE"}
+        raise SendInProgressError
+    sandbox = _sandbox()
+    try:
+        email = render(
+            order,
+            _venue(str(order["customerId"])),
+            _language(contact_id),
+            updated=detail.get("reason") == "updated",
+        )
+        pdf = (
+            _s3()
+            .get_object(Bucket=os.environ["DOCUMENTS_BUCKET"], Key=f"orders/{order_id}.pdf")["Body"]
+            .read()
+        )
+        if not sandbox:
+            _send_order_email(address, email, pdf, order_id, contact_id)
+    except Exception:
+        _unclaim(key)
+        _order_event("notification.failed", order_id, sandbox=sandbox)
+        raise
+    _done(key)
+    status = "SANDBOX" if sandbox else "SENT"
+    try:
+        if conversation_id := order.get("conversationId"):
+            _store(
+                str(conversation_id),
+                key,
+                "EMAIL",
+                email.subject,
+                None,
+                status,
+                {"orderId": order_id, "template": ORDER_TEMPLATE},
+            )
+        _order_event("notification.sent", order_id, sandbox=sandbox)
+    except Exception:
+        logger.exception("sent, but not recorded")
+    logger.info("order email sent", sandbox=sandbox)  # never the address (AGENTS §7)
+    return {"status": status}
+
+
+def _venue(customer_id: str) -> str:
+    customer = table("customers").get_item(Key={"customerId": customer_id}).get("Item") or {}
+    return str(customer.get("venueName", ""))
+
+
+def _language(contact_id: str) -> str:
+    name, key = (
+        ("sales-reps", "repId") if contact_id.startswith("rep_") else ("contacts", "contactId")
+    )
+    item = table(name).get_item(Key={key: contact_id}).get("Item") or {}
+    return str(item.get("language", "it"))
+
+
+def _send_order_email(
+    address: str, email: Email, pdf: bytes, order_id: str, contact_id: str
+) -> None:
+    sender = _param("SES_FROM_PARAM")
+    if sender == "UNSET":
+        raise ChannelUnavailableError
+    local, domain = sender.rsplit("@", 1)
+    _ses().send_email(
+        FromEmailAddress=sender,
+        Destination={"ToAddresses": [address]},
+        # Answers reach the Router with the order (F-15.C3): `ordine+<orderId>@` on our domain.
+        ReplyToAddresses=[f"{local}+{order_id}@{domain}"],
+        Content={
+            "Simple": {
+                "Subject": {"Data": email.subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": email.text, "Charset": "UTF-8"},
+                    "Html": {"Data": email.html, "Charset": "UTF-8"},
+                },
+                "Attachments": [
+                    {
+                        "RawContent": pdf,
+                        "FileName": f"{order_id}.pdf",
+                        "ContentType": "application/pdf",
+                        "ContentDisposition": "ATTACHMENT",
+                    }
+                ],
+            }
+        },
+        # Echoed in the SES events: the bounce handler finds the order and the contact.
+        EmailTags=[
+            {"Name": "template", "Value": ORDER_TEMPLATE},
+            {"Name": "orderId", "Value": order_id},
+            {"Name": "contactId", "Value": contact_id},
+        ],
+        ConfigurationSetName=_param("SES_CONFIGURATION_SET_PARAM"),
+    )
+
+
+def _order_event(detail_type: str, order_id: str, *, sandbox: bool, reason: str = "") -> None:
+    detail: dict[str, Any] = {
+        "orderId": order_id,
+        "channel": "EMAIL",
+        "template": ORDER_TEMPLATE,
+        "sandbox": sandbox,
+    }
+    if reason:
+        detail["reason"] = reason
+    put_event(SOURCE, detail_type, detail)
+
+
+# --- SES events: bounces of the confirmation email (F-11.C7) -------------------------------
+
+
+def _email_events(records: list[dict[str, Any]]) -> dict[str, str]:
+    handled = 0
+    for record in records:
+        event = json.loads(record.get("Sns", {}).get("Message") or "{}")
+        bounce = event.get("bounce", {})
+        tags = event.get("mail", {}).get("tags", {})
+        if (
+            event.get("eventType") != "Bounce"
+            or bounce.get("bounceType") != "Permanent"
+            or tags.get("template") != [ORDER_TEMPLATE]
+        ):
+            continue  # deliveries, opens, transient bounces: only metrics
+        _order_email_bounced(
+            parse_order_id((tags.get("orderId") or [None])[0]),
+            str((tags.get("contactId") or [""])[0]),
+            {str(r.get("emailAddress", "")).lower() for r in bounce.get("bouncedRecipients", [])},
+            str(event["mail"]["messageId"]),
+        )
+        handled += 1
+    return {"status": "OK", "bounces": str(handled)}
+
+
+def _order_email_bounced(
+    order_id: str, contact_id: str, bounced: set[str], ses_message_id: str
+) -> None:
+    logger.set_correlation_id(order_id)
+    _order_event("notification.failed", order_id, sandbox=False, reason="BOUNCED")
+    if contact_id.startswith("con_") and bounced:
+        try:  # only if it is still the address that bounced: a newer one is kept
+            table("contacts").update_item(
+                Key={"contactId": contact_id},
+                UpdateExpression="SET orderEmailBouncedAt = :now REMOVE orderEmail",
+                ConditionExpression="orderEmail IN ("
+                + ", ".join(f":b{i}" for i in range(len(bounced)))
+                + ")",
+                ExpressionAttributeValues={
+                    ":now": _now(),
+                    **{f":b{i}": email for i, email in enumerate(sorted(bounced))},
+                },
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+                raise
+    order = table("orders").get_item(Key={"orderId": order_id}).get("Item") or {}
+    conversation_id = order.get("conversationId")
+    conversation = (
+        table("conversations").get_item(Key={"conversationId": conversation_id}).get("Item")
+        if conversation_id
+        else None
+    )
+    if not conversation or (
+        conversation.get("lastInboundChannel") == "EMAIL"
+        and str(conversation.get("lastInboundFrom", "")).lower() in bounced
+    ):
+        logger.info("bounce: no channel to ask for a new address")
+        return
+    language = "en" if _language(contact_id).startswith("en") else "it"
+    request = Request(
+        kind="reply",
+        conversationId=str(conversation_id),
+        idempotencyKey=f"bounce#{ses_message_id}",
+        text=BOUNCE_TEXT[language].format(order=order_id),
+    )
+    try:
+        _reply(request, conversation)
+    except ChannelUnavailableError:  # outside the WhatsApp window: no template for this yet
+        logger.info("bounce: channel unavailable, nobody asked")
 
 
 # Idempotency: a claim in the TurnBuffer table (TTL attribute `expiresAt`, like the Router's

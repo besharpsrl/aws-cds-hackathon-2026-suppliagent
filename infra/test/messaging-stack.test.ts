@@ -52,7 +52,9 @@ describe('MessagingStack – ingestion (T-21, FN-01)', () => {
   });
 
   it('subscribes the queue to the WhatsApp and inbound-mail topics, keeping the SNS envelope', () => {
-    const subscriptions = Object.values(template.findResources('AWS::SNS::Subscription'));
+    const subscriptions = Object.values(template.findResources('AWS::SNS::Subscription')).filter(
+      (s) => s.Properties.Protocol !== 'lambda', // the Notifier's bounce subscription (T-26)
+    );
     expect(subscriptions).toHaveLength(2);
     for (const s of subscriptions) {
       expect(s.Properties.Protocol).toBe('sqs');
@@ -253,6 +255,37 @@ describe('MessagingStack – order pipeline (T-07, FN-13, FN-14)', () => {
       expect(rolePolicy(name)).not.toMatch(/"(dynamodb|s3|events|ssm|kms|sqs):\*"/);
     }
     expect(rolePolicy('order-pdf')).not.toContain('dynamodb:UpdateItem');
+  });
+});
+
+describe('MessagingStack – order confirmation email (T-26, FN-14)', () => {
+  it('sends the email once the PDF is ready: order.pdf_ready from order-pdf to the Notifier', () => {
+    const rule = Object.values(template.findResources('AWS::Events::Rule')).find(
+      (r) => r.Properties.Name === 'suppliagent-dev-order-pdf-ready',
+    );
+    expect(rule?.Properties.EventPattern).toEqual({
+      source: ['suppliagent.order-pdf'],
+      'detail-type': ['order.pdf_ready'],
+    });
+    expect(JSON.stringify(rule?.Properties.Targets)).toContain('Notifier');
+    expect(rolePolicy('order-pdf')).toContain('events:PutEvents');
+  });
+
+  it('lets the Notifier read the PDF, the order and the recipient, and clear a bounced address', () => {
+    expect(functionProps('notifier')?.Environment.Variables.DOCUMENTS_BUCKET).toBeDefined();
+    const policy = rolePolicy('notifier');
+    expect(policy).toContain('s3:GetObject');
+    expect(policy).toContain('/index/by-contactId');
+    expect(policy).toContain('dynamodb:UpdateItem');
+    expect(policy).not.toMatch(/"(dynamodb|s3|events|ssm|kms):\*"|s3:PutObject/);
+  });
+
+  it('subscribes the Notifier to the SES events topic for bounces only (F-11.C7)', () => {
+    template.hasResourceProperties('AWS::SNS::Subscription', {
+      Protocol: 'lambda',
+      FilterPolicyScope: 'MessageBody',
+      FilterPolicy: { eventType: ['Bounce'] },
+    });
   });
 });
 

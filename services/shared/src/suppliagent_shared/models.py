@@ -83,6 +83,11 @@ class Contact(Item):
     proactiveConsentAt: str | None = None
     proactiveConsentChannel: str | None = None
     proactiveConsentVersion: str | None = None
+    # Order confirmations only (FN-14, T-26): asked by the assistant when the contact has no email;
+    # never a channel identity. Cleared on a hard bounce (`orderEmailBouncedAt`).
+    orderEmail: str | None = None
+    orderEmailAt: str | None = None
+    orderEmailBouncedAt: str | None = None
 
 
 class SalesRep(Item):
