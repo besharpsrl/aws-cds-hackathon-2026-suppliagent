@@ -63,8 +63,8 @@ from notifier.order_email import Email, render
 SOURCE = "suppliagent.notifier"
 WHATSAPP_WINDOW = timedelta(hours=24)
 WHATSAPP_TEXT_LIMIT = 4096
-_MD_HEADING = re.compile(r"^#{1,6}[ \t]+\**(.+?)\**[ \t]*$", re.MULTILINE)
-_MD_BOLD = re.compile(r"\*\*(\S(?:.*?\S)?)\*\*")
+_MD_HEADING = re.compile(r"^#{1,6}[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+_MD_BOLD = re.compile(r"\*\*(?!\s)(.+?)(?<!\s)\*\*")
 CLAIM_SECONDS = 120  # an unfinished send can be retried after this
 DONE_SECONDS = 7 * 24 * 3600
 SUBJECTS = {"it-IT": "La tua richiesta", "en-GB": "Your request"}
@@ -339,7 +339,7 @@ def _send(
 
 def whatsapp_markup(text: str) -> str:
     """Markdown the model writes (`**bold**`, `# heading`) as WhatsApp bold (`*bold*`), T-68."""
-    text = _MD_HEADING.sub(r"*\1*", text)
+    text = _MD_HEADING.sub(lambda m: "*" + m.group(1).replace("*", "") + "*", text)
     return _MD_BOLD.sub(r"*\1*", text)
 
 
