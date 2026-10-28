@@ -7,6 +7,8 @@ from the tool schemas the model sees and written into every tool call by a hook.
 # ruff: noqa: N815 - field names are the camelCase wire names (02 §6).
 
 import copy
+import hashlib
+import logging
 import os
 import re
 from datetime import datetime
@@ -18,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from strands import Agent
 from strands.hooks import BeforeToolCallEvent
 from strands.models import Model
+from strands.session import SessionManager
 from strands.tools.mcp.mcp_agent_tool import MCPAgentTool
 from strands.types.content import Messages
 from strands.types.tools import AgentTool
@@ -66,6 +69,18 @@ LANGUAGES = {"it": "Italian", "en": "English"}
 THINKING = re.compile(r"<thinking>.*?(</thinking>|$)", re.DOTALL)
 RESPONSE_TAG = re.compile(r"</?response>")
 ATTACHMENT_LABELS = {"image": "photo", "audio": "voice message", "document": "document"}
+# Message text is untrusted: delimited, and the sender cannot write the system's own tags
+# (`user_context` is where AgentCore Memory puts what it recalls about the caller).
+UNTRUSTED_TAG = "user_message"
+SYSTEM_TAGS = re.compile(r"user_message|user_context", re.IGNORECASE)
+# E-06: what the user gets when the Bedrock Guardrail blocks the input or the reply.
+GUARDRAIL_REPLY = {
+    "it": "Non posso aiutarti con questa richiesta. "
+    "Posso aiutarti con ordini, prodotti e consegne.",
+    "en": "I can't help with that request. I can help with orders, products and deliveries.",
+}
+
+logger = logging.getLogger(__name__)
 
 
 class Attachment(BaseModel):
@@ -177,7 +192,8 @@ def system_prompt(turn: TurnRequest) -> str:
 
 
 def user_prompt(turn: TurnRequest) -> str:
-    """All messages of the burst (debounced by the dispatcher) as one user turn."""
+    """All messages of the burst (debounced by the dispatcher) as one user turn. The text the
+    sender wrote is delimited as untrusted content (FN-32), never mixed with the system's lines."""
     lines = []
     for message in turn.messages:
         # The URI (set by the system, never by the sender) is what `extract_order_lines` takes.
@@ -187,27 +203,52 @@ def user_prompt(turn: TurnRequest) -> str:
             for a in message.attachments
         ]
         if message.text:
-            lines.append(message.text)
+            text = SYSTEM_TAGS.sub(lambda m: m.group().replace("_", " "), message.text)
+            lines.append(f"<{UNTRUSTED_TAG}>\n{text}\n</{UNTRUSTED_TAG}>")
     return "\n".join(lines) or "[empty message]"
 
 
-# ponytail: conversation history lives in the Runtime session's memory (one microVM per
-# runtimeSessionId); lost when the session ends. AgentCore Memory replaces it in T-54.
+def memory_actor_id(turn: TurnRequest) -> str:
+    """AgentCore Memory actor (FN-25): the contact, the same on every channel. A caller not yet
+    identified has no contact: a hash of the address, so no phone number or email is stored."""
+    if turn.contactId:
+        return turn.contactId
+    return "addr-" + hashlib.sha256(turn.channelAddress.encode()).hexdigest()[:32]
+
+
+def guardrail_reply(turn: TurnRequest) -> str:
+    return GUARDRAIL_REPLY.get(turn.locale.split("-")[0].lower(), GUARDRAIL_REPLY["en"])
+
+
+# Without AgentCore Memory (local runs, tests) the history lives in the Runtime session's process
+# (one microVM per runtimeSessionId) and is lost when the session ends.
 # Keyed by conversation and sender: another sender never inherits tool results.
 _HISTORY: dict[tuple[str, str], Messages] = {}
 
 
-def run_turn(turn: TurnRequest, tools: list[AgentTool], model: Model) -> str:
+def run_turn(
+    turn: TurnRequest,
+    tools: list[AgentTool],
+    model: Model,
+    session_manager: SessionManager | None = None,
+) -> str:
+    """One turn. With `session_manager` (AgentCore Memory) the history and what is recalled about
+    the caller come from Memory; otherwise from the in-process history."""
     key = (turn.conversationId, turn.channelAddress)
     agent = Agent(
         model=model,
         tools=list[Any](select_tools(tools, turn.role)),
         system_prompt=system_prompt(turn),
         # a copy: a failed turn must not leave a dangling user message or toolUse in the history
-        messages=copy.deepcopy(_HISTORY.get(key, [])),
+        messages=None if session_manager else copy.deepcopy(_HISTORY.get(key, [])),
+        session_manager=session_manager,
         callback_handler=None,  # the default handler prints the streamed text: no contents in logs
     )
     agent.add_hook(inject_caller, BeforeToolCallEvent)
     result = agent(user_prompt(turn), invocation_state={CALLER: caller_of(turn)})
-    _HISTORY[key] = agent.messages
+    if not session_manager:
+        _HISTORY[key] = agent.messages
+    if result.stop_reason == "guardrail_intervened":
+        logger.warning("guardrail intervened", extra={"conversationId": turn.conversationId})
+        return guardrail_reply(turn)
     return RESPONSE_TAG.sub("", THINKING.sub("", str(result))).strip()
