@@ -121,7 +121,7 @@ def test_demo_customer_contact_is_verified_at_once(events: list[Any], aws: Any) 
     result = identify(caller=UNKNOWN, customerCode="C90001", venueName="demo bistro")  # T-71
     assert result["status"] == "MATCHED"
     assert result["contact"]["status"] == "VERIFIED"
-    assert result["customers"] == [{"customerId": "cus_901", "venueName": "Demo Bistro"}]
+    assert result["customers"] == [{"customerId": "cus_901", "venueName": "Demo Bistro 1"}]
     contact_id = result["contact"]["contactId"]
     identity = aws.Table("suppliagent-test-channel-identities").get_item(
         Key={"channelAddress": NEW_PHONE}

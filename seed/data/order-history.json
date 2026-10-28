@@ -2212,5 +2212,57 @@
         "unit": "pz"
       }
     ]
+  },
+  {
+    "customerId": "cus_902",
+    "dateOrderId": "2026-10-23#ord_h9021",
+    "orderId": "ord_h9021",
+    "date": "2026-10-23",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 12,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
+  },
+  {
+    "customerId": "cus_903",
+    "dateOrderId": "2026-10-23#ord_h9031",
+    "orderId": "ord_h9031",
+    "date": "2026-10-23",
+    "lines": [
+      {
+        "sku": "FDL-PIZZA-1KG",
+        "description": "Fior di latte per pizza 1 kg",
+        "quantity": 12,
+        "unit": "pz"
+      },
+      {
+        "sku": "POM-PELATI-2500",
+        "description": "Pomodori pelati latta 2,5 kg (cartone da 6)",
+        "quantity": 1,
+        "unit": "ct"
+      },
+      {
+        "sku": "GRANA-GRAT-1KG",
+        "description": "Formaggio grana grattugiato 1 kg",
+        "quantity": 1,
+        "unit": "pz"
+      }
+    ]
   }
 ]

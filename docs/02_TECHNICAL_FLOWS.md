@@ -183,7 +183,7 @@ I media vengono salvati dall'Inbound Router prima di scrivere il messaggio (`att
 | C4 dati incoerenti dopo 3 tentativi | Handoff `IDENTIFICATION_FAILED` |
 | C5 contatto con più locali | Chiede il locale (lista con pulsanti) |
 | C6 chi scrive è un agente di commercio non censito su quel numero | Verifica tramite console (login `sales_rep`) o back office |
-| C7 cliente di prova dei giudici (`Customers.autoVerifyContacts = true`, codice nel README) | Contatto creato già `VERIFIED` (`ChannelIdentity.verified = true`): ordina dal messaggio successivo. Per tutti gli altri clienti resta C1/C2. I giudici che usano lo stesso codice condividono il locale (storico e ordini); `seed/reset.py` ripristina lo scenario |
+| C7 clienti di prova dei giudici (`Customers.autoVerifyContacts = true`, codici `C90001`–`C90003` nel README) | Contatto creato già `VERIFIED` (`ChannelIdentity.verified = true`): ordina dal messaggio successivo. Per tutti gli altri clienti resta C1/C2. I giudici che usano lo stesso codice condividono il locale (storico e ordini); `seed/reset.py` cancella gli ordini |
 
 ### F-03 – Comprensione dell'intento (FN-04)
 

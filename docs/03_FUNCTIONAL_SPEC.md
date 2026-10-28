@@ -47,7 +47,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 |---|---|---|---|---|---|---|
 | FN-01 | Messaggistica multicanale bidirezionale (WhatsApp, email, RCS/SMS) | M | CH | TE, FU, WA | §3, F-11 | ◐ T-68, T-26, T-27 |
 | FN-02 | Primo contatto, informativa e consenso proattivo | M | AG | VI | F-01 | ◐ T-48 |
-| FN-03 | Identificazione contatto e ruolo (cliente / agente di commercio) | M | AG | FU | F-02 | ◐ T-71 |
+| FN-03 | Identificazione contatto e ruolo (cliente / agente di commercio) | M | AG | FU | F-02 | ✅ |
 | FN-04 | Comprensione dell'intento | M | AG | FU | F-03 | ✅ |
 | FN-05 | **Ordine da foto di bigliettino scritto a mano** | M | AG | CR, DP, WA | F-04 | ✅ |
 | FN-06 | Ordine da vocale, testo ed email | M | AG + CH | TE, FU | F-04 | ◐ T-26b |
@@ -75,7 +75,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 | FN-28 | Console back office in tempo reale | M | CO | DP, VI | – | ◐ T-62, T-63 |
 | FN-29 | Chat web per agenti di commercio | S | CO | TE | F-10 | ◐ T-64 |
 | FN-30 | Dashboard KPI di impatto | S | CO | VI, DP | – | ⬜ |
-| FN-31 | Accesso giudici e ambiente della demo (`dev`) | M | IN + CO | FU | – | ◐ T-10, T-71 |
+| FN-31 | Accesso giudici e ambiente della demo (`dev`) | M | IN + CO | FU | – | ◐ T-10 |
 | FN-32 | Sicurezza, privacy e autorizzazione per ruolo | M | IN + AG | TE | – | ✅ |
 | FN-33 | Osservabilità ed eventi | S | IN + CO | TE | §6.4 | ◐ T-54 (solo AgentCore Observability) |
 | FN-34 | Integrazione con l'ERP reale | W | – | – | – | – |
@@ -100,7 +100,7 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 #### FN-03 – Identificazione contatto e ruolo · **M** · AG
 - [ ] Numeri noti riconosciuti senza domande, con ruolo corretto.
 - [ ] Contatto nuovo identificato con nome locale + codice cliente/P.IVA; ordini di contatti non verificati restano in bozza fino alla verifica.
-- [ ] Cliente di prova dei giudici (`autoVerifyContacts`): chi si identifica col suo codice è verificato subito e può ordinare; per gli altri clienti il contatto resta da verificare (F-02.C7).
+- [ ] Clienti di prova dei giudici (`autoVerifyContacts`): chi si identifica col loro codice è verificato subito e può ordinare; per gli altri clienti il contatto resta da verificare (F-02.C7).
 - [ ] Contatto con più locali: l'agente chiede per quale locale.
 - [ ] Un agente di commercio vede solo i clienti del suo portafoglio (verificato nel tool).
 
