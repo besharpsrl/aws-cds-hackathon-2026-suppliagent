@@ -48,6 +48,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         mcp_tool("customers___identify_contact"),
         mcp_tool("customers___get_customer_profile"),
         mcp_tool("customers___update_privacy"),
+        mcp_tool("customers___set_order_email"),
         mcp_tool("order-intake___extract_order_lines"),
         mcp_tool("catalog___match_products"),
         mcp_tool("catalog___search_catalog"),
@@ -68,6 +69,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         "customers___identify_contact",
         "customers___get_customer_profile",
         "customers___update_privacy",
+        "customers___set_order_email",
         "order_intake___extract_order_lines",
         "catalog___match_products",
         "catalog___search_catalog",
@@ -81,6 +83,7 @@ def test_select_tools_filters_by_role_and_hides_caller() -> None:
         t.tool_name for t in rep
     }
     assert "customers___update_privacy" not in {t.tool_name for t in rep}  # F-01: staff
+    assert "customers___set_order_email" not in {t.tool_name for t in rep}  # own contact only
     for t in customer:
         schema = t.tool_spec["inputSchema"]["json"]
         assert "caller" not in schema["properties"]

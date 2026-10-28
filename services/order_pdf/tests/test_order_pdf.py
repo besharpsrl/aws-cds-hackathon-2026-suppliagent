@@ -65,11 +65,27 @@ def test_long_orders_paginate() -> None:
     assert b"SKU-0119" in pdf
 
 
+def test_removed_lines_are_not_in_the_pdf() -> None:
+    removed = {"sku": "BUR-1", "name": "Burro tolto", "quantity": 1, "status": "REMOVED"}
+    kept = {**ORDER["lines"][0], "status": "CONFIRMED"}
+    pdf = render_order_pdf({**ORDER, "lines": [kept, removed]})
+    assert b"Mozzarella" in pdf and b"Burro tolto" not in pdf
+
+
 def test_line_without_name_falls_back_to_raw_text() -> None:
     pdf = render_order_pdf(
         {**ORDER, "lines": [{"sku": "X-1", "rawText": "mozz fdl", "quantity": 1, "unit": "kg"}]}
     )
     assert b"mozz fdl" in pdf
+
+
+@pytest.fixture
+def events(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict[str, Any]]]:
+    sent: list[tuple[str, dict[str, Any]]] = []
+    monkeypatch.setattr(
+        pdf_handler, "put_event", lambda _s, kind, detail: sent.append((kind, detail))
+    )
+    return sent
 
 
 @pytest.fixture
@@ -80,6 +96,7 @@ def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         "AWS_SECRET_ACCESS_KEY": "testing",
         "TABLE_PREFIX": "suppliagent-test-",
         "DOCUMENTS_BUCKET": BUCKET,
+        "EVENT_BUS_NAME": "suppliagent-test-events",
     }.items():
         monkeypatch.setenv(name, value)
     with mock_aws():
@@ -109,15 +126,25 @@ def test_direct_invocation_stores_the_pdf_under_a_stable_key() -> None:
 
 
 @pytest.mark.usefixtures("aws")
-def test_eventbridge_order_confirmed_is_handled() -> None:
+def test_eventbridge_order_confirmed_is_handled_and_announces_the_pdf(events: list[Any]) -> None:
     event = {"detail-type": "order.confirmed", "detail": {"orderId": "ord_001"}}
     assert pdf_handler.handler(event, None)["s3Uri"].endswith("orders/ord_001.pdf")
+    assert events == [
+        ("order.pdf_ready", {"orderId": "ord_001", "reason": "confirmed", "revision": 0})
+    ]
 
 
 @pytest.mark.usefixtures("aws")
-def test_eventbridge_order_updated_rewrites_the_pdf() -> None:
+def test_eventbridge_order_updated_rewrites_the_pdf(events: list[Any]) -> None:
     event = {"detail-type": "order.updated", "detail": {"orderId": "ord_001"}}
     assert pdf_handler.handler(event, None)["s3Uri"].endswith("orders/ord_001.pdf")
+    assert events[0][1]["reason"] == "updated"
+
+
+@pytest.mark.usefixtures("aws")
+def test_direct_invocation_announces_nothing(events: list[Any]) -> None:
+    pdf_handler.handler({"orderId": "ord_001"}, None)
+    assert events == []
 
 
 @pytest.mark.usefixtures("aws")

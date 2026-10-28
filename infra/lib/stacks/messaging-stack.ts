@@ -12,7 +12,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
-import { SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
+import { LambdaSubscription, SqsSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
+import * as sns from 'aws-cdk-lib/aws-sns';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { channelValue, type EnvConfig } from '../../config/environments.js';
@@ -28,6 +29,8 @@ export interface MessagingStackProps extends StackProps {
   /** Order PDFs go to `orders/` here (T-07). */
   readonly documentsBucket: IBucket;
   readonly inboundTopics: readonly ITopic[];
+  /** SES configuration set events: the Notifier handles bounces of confirmation emails (T-26). */
+  readonly emailEventsTopic: ITopic;
   /** The agent Runtime the Dispatcher invokes (AgentStack). */
   readonly agentRuntimeArn: string;
   readonly tables: {
@@ -49,7 +52,8 @@ export interface MessagingStackProps extends StackProps {
  * to FIFO queues; per-chat order comes from the AWS receipt timestamp and the debounce.
  * Debounce (T-22, FN-26): Router -> TurnBuffer + SQS `turn-flush` (delay) -> Turn Dispatcher
  * (lock, one agent turn per burst) -> Notifier (T-24 base, the only sender).
- * Orders (T-07, FN-13/14): EventBridge `order.confirmed` -> ERP adapter (mock) and Order PDF.
+ * Orders (T-07, FN-13/14): EventBridge `order.confirmed` -> ERP adapter (mock) and Order PDF;
+ * `order.pdf_ready` -> Notifier, the confirmation email with the PDF (T-26).
  */
 export class MessagingStack extends Stack {
   readonly inboundQueue: sqs.Queue;
@@ -217,9 +221,9 @@ export class MessagingStack extends Stack {
         }),
       ],
     );
-    this.addNotifier(props, phoneNumberParam);
+    const notifier = this.addNotifier(props, phoneNumberParam);
     this.addDispatcher(props, notifierName, debounce);
-    this.addOrderPipeline(props);
+    this.addOrderPipeline(props, notifier);
     this.addOrderSweeper(props, notifierName);
 
     Validations.of(router).acknowledge({
@@ -243,7 +247,7 @@ export class MessagingStack extends Stack {
   }
 
   /** Notifier (T-24 base): the only function allowed to call the CDS send APIs (AGENTS §8.7). */
-  private addNotifier(props: MessagingStackProps, phoneNumberParam: string): void {
+  private addNotifier(props: MessagingStackProps, phoneNumberParam: string): lambda.IFunction {
     const { config, key, tables } = props;
     const prefix = `suppliagent-${config.envName}`;
     const param = (n: string) => `/suppliagent/${config.envName}/${n}`;
@@ -275,11 +279,31 @@ export class MessagingStack extends Stack {
         SES_FROM_PARAM: param('sesFromAddress'),
         SES_CONFIGURATION_SET_PARAM: param('sesConfigurationSet'),
         SANDBOX_PARAM: param('notifierSandbox'),
+        DOCUMENTS_BUCKET: props.documentsBucket.bucketName,
       },
     });
     const allow = (actions: string[], resources: string[]) =>
       notifier.function.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
     allow(['dynamodb:GetItem'], [tables.conversations.tableArn]);
+    // Order confirmation email (T-26): the order, its venue, the recipient's address and language.
+    allow(
+      ['dynamodb:GetItem'],
+      [tables.orders, tables.customers, tables.contacts, tables.salesReps].map((t) => t.tableArn),
+    );
+    allow(['dynamodb:Query'], [`${tables.channelIdentities.tableArn}/index/by-contactId`]);
+    // A hard bounce clears the contact's orderEmail (F-11.C7).
+    allow(['dynamodb:UpdateItem'], [tables.contacts.tableArn]);
+    allow(['s3:GetObject'], [props.documentsBucket.arnForObjects('orders/*')]);
+    // Only bounces: deliveries, opens and clicks stay metrics on the topic.
+    props.emailEventsTopic.addSubscription(
+      new LambdaSubscription(notifier.function, {
+        filterPolicyWithMessageBody: {
+          eventType: sns.FilterOrPolicy.filter(
+            sns.SubscriptionFilter.stringFilter({ allowlist: ['Bounce'] }),
+          ),
+        },
+      }),
+    );
     allow(['dynamodb:Query'], [`${tables.messages.tableArn}/index/by-providerMessageId`]);
     allow(['dynamodb:PutItem'], [tables.messages.tableArn]);
     // T-25: `summaryMessageId` of the order whose summary went out with the Confirm button.
@@ -332,10 +356,15 @@ export class MessagingStack extends Stack {
       reason:
         'The phone number id is set after deploy (SSM, manual WABA step); send only, this account.',
     });
+    Validations.of(notifier).acknowledge({
+      id: `AwsSolutions-IAM5[Resource::${prefix}-foundation:ExportsOutputFnGetAttDocumentsBucket9EC9DEB9ArnEA5095A7/orders/*]`,
+      reason: 'Reads the order PDF documents/orders/<orderId>.pdf to attach it; read-only.',
+    });
+    return notifier.function;
   }
 
   /** ERP adapter (mock) and Order PDF, both fed by `order.confirmed` (T-07, FN-13, FN-14). */
-  private addOrderPipeline(props: MessagingStackProps): void {
+  private addOrderPipeline(props: MessagingStackProps, notifier: lambda.IFunction): void {
     const { config, key, tables } = props;
     const prefix = `suppliagent-${config.envName}`;
     const failureParam = `/suppliagent/${config.envName}/erpMockFailure`;
@@ -396,10 +425,7 @@ export class MessagingStack extends Stack {
         }),
       ),
       handler: 'order_pdf.handler.handler',
-      environment: {
-        TABLE_PREFIX: common.TABLE_PREFIX,
-        DOCUMENTS_BUCKET: props.documentsBucket.bucketName,
-      },
+      environment: { ...common, DOCUMENTS_BUCKET: props.documentsBucket.bucketName },
       withDlq: true,
     });
     const allowPdf = (actions: string[], resources: string[]) =>
@@ -407,6 +433,7 @@ export class MessagingStack extends Stack {
     allowPdf(['dynamodb:GetItem'], [tables.orders.tableArn]);
     allowPdf(['s3:PutObject'], [props.documentsBucket.arnForObjects('orders/*')]);
     allowPdf(['kms:Decrypt', 'kms:GenerateDataKey'], [key.keyArn]);
+    allowPdf(['events:PutEvents'], [props.eventBus.eventBusArn]);
 
     new events.Rule(this, 'OrderConfirmedRule', {
       ruleName: `${prefix}-order-confirmed`,
@@ -420,6 +447,14 @@ export class MessagingStack extends Stack {
       eventBus: props.eventBus,
       eventPattern: { detailType: ['order.updated'] },
       targets: [new targets.LambdaFunction(erp.function), new targets.LambdaFunction(pdf.function)],
+    });
+
+    // T-26: the confirmation email waits for the PDF it attaches (also after a change, F-08.C2).
+    new events.Rule(this, 'OrderPdfReadyRule', {
+      ruleName: `${prefix}-order-pdf-ready`,
+      eventBus: props.eventBus,
+      eventPattern: { source: ['suppliagent.order-pdf'], detailType: ['order.pdf_ready'] },
+      targets: [new targets.LambdaFunction(notifier)],
     });
 
     // E-08: errors and parked events are visible; the notification target arrives with T-09.

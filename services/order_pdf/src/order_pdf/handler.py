@@ -5,7 +5,11 @@ Invoked by EventBridge `order.confirmed` (so the PDF is ready for the email, T-2
 with `{"orderId"}`. The order is read from `Orders`; the key is stable, so a repeat or a later
 call after a change regenerates the file in place. Returns the `s3Uri` for the caller.
 
-Environment: `TABLE_PREFIX`, `DOCUMENTS_BUCKET`.
+After an EventBridge trigger it emits `order.pdf_ready` (`orderId`, `reason` = `confirmed` |
+`updated`, `revision`): the Notifier sends the confirmation email with the PDF on it (T-26), so
+the email never races the file.
+
+Environment: `TABLE_PREFIX`, `DOCUMENTS_BUCKET`, `EVENT_BUS_NAME`.
 """
 
 import os
@@ -14,13 +18,15 @@ from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger
-from suppliagent_shared.aws import table
+from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.errors import NotFoundError
 from suppliagent_shared.models import parse_order_id
 
 from order_pdf.pdf import render_order_pdf
 
 logger = Logger(service="order-pdf")
+SOURCE = "suppliagent.order-pdf"
+REASONS = {"order.confirmed": "confirmed", "order.updated": "updated"}
 
 
 @cache
@@ -29,11 +35,8 @@ def _s3() -> Any:
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, str]:
-    detail = (
-        event["detail"]
-        if event.get("detail-type") in ("order.confirmed", "order.updated")
-        else event
-    )
+    reason = REASONS.get(str(event.get("detail-type")))
+    detail = event["detail"] if reason else event
     order_id = parse_order_id(detail.get("orderId"))
     logger.set_correlation_id(order_id)
     order = table("orders").get_item(Key={"orderId": order_id}).get("Item")
@@ -48,4 +51,10 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, str]:
         ContentType="application/pdf",
         ServerSideEncryption="aws:kms",
     )
+    if reason:
+        put_event(
+            SOURCE,
+            "order.pdf_ready",
+            {"orderId": order_id, "reason": reason, "revision": int(order.get("revision", 0))},
+        )
     return {"s3Uri": f"s3://{bucket}/{key}"}

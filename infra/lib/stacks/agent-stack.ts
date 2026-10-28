@@ -292,6 +292,9 @@ export class AgentStack extends Stack {
     allowOrders(['dynamodb:PutItem'], tables.Issues.tableArn);
     // Evidence that the customer answered after the summary (confirm_order): read-only.
     allowOrders(['dynamodb:Query'], tables.Messages.tableArn);
+    // Where the confirmation email goes, shown with the summary (T-26, F-07.C7): read-only
+    // (Contacts GetItem is in the common scope).
+    allowOrders(['dynamodb:Query'], `${tables.ChannelIdentities.tableArn}/index/by-contactId`);
     // handoff_to_human (T-49): table-level grant; the tool keys the update on caller.conversationId.
     allowOrders(['dynamodb:UpdateItem'], tables.Conversations.tableArn);
     eventBus.grantPutEventsTo(ordersTool);

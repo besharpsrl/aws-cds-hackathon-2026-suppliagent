@@ -1,5 +1,5 @@
-"""identify_contact, get_customer_profile and update_privacy (FN-02, FN-03, F-01, F-02,
-TECHNICAL_FLOWS §3.2 and §6.5)."""
+"""identify_contact, get_customer_profile, update_privacy and set_order_email (FN-02, FN-03,
+FN-14, F-01, F-02, F-07.C7, TECHNICAL_FLOWS §3.2 and §6.5)."""
 
 # ruff: noqa: N815 - field names are the camelCase wire names (02 §6).
 
@@ -16,6 +16,7 @@ from botocore.exceptions import ClientError
 from pydantic import BaseModel, ConfigDict, Field
 from suppliagent_shared.auth import CallerContext, caller_scope
 from suppliagent_shared.aws import put_event, table
+from suppliagent_shared.contacts import MAX_EMAIL_LENGTH, normalize_email
 from suppliagent_shared.errors import AccessDeniedError, InvalidInputError, NotFoundError
 from suppliagent_shared.models import (
     ChannelIdentity,
@@ -57,6 +58,10 @@ class GetCustomerProfileInput(ToolInput):
 class UpdatePrivacyInput(ToolInput):
     noticeSent: bool = False
     proactiveConsent: bool | None = None
+
+
+class SetOrderEmailInput(ToolInput):
+    email: str = Field(max_length=MAX_EMAIL_LENGTH)
 
 
 def identify_contact(args: IdentifyContactInput) -> dict[str, Any]:
@@ -154,6 +159,29 @@ def update_privacy(args: UpdatePrivacyInput) -> dict[str, Any]:
         detail["proactiveConsent"] = args.proactiveConsent
     put_event(SOURCE, "contact.privacy_updated", detail)
     return {"status": "UPDATED", "privacy": _privacy(updated)}
+
+
+def set_order_email(args: SetOrderEmailInput) -> dict[str, Any]:
+    """Stores the address for the caller's order confirmation emails (FN-14, F-07.C7). Customer
+    contacts only, their own record; replaces a previous or bounced address."""
+    caller = args.caller
+    if caller.role is not Role.CUSTOMER_CONTACT or not caller.contactId:
+        raise AccessDeniedError
+    email = normalize_email(args.email)
+    try:
+        table("contacts").update_item(
+            Key={"contactId": caller.contactId},
+            UpdateExpression="SET orderEmail = :email, orderEmailAt = :now "
+            "REMOVE orderEmailBouncedAt",
+            ConditionExpression="attribute_exists(contactId)",
+            ExpressionAttributeValues={":email": email, ":now": _now()},
+        )
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+            raise
+        raise NotFoundError from e
+    put_event(SOURCE, "contact.order_email_set", {"contactId": caller.contactId})
+    return {"status": "UPDATED", "orderEmail": email}
 
 
 def _now() -> str:

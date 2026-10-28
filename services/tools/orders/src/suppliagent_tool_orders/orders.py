@@ -24,6 +24,7 @@ from botocore.exceptions import ClientError
 from pydantic import BaseModel, ConfigDict, Field
 from suppliagent_shared.auth import CallerContext, require_customer_access
 from suppliagent_shared.aws import put_event, table
+from suppliagent_shared.contacts import order_email
 from suppliagent_shared.delivery import (
     WEEKDAYS,
     calendar_closed,
@@ -515,7 +516,12 @@ def request_order_confirmation(args: RequestConfirmationInput) -> dict[str, Any]
     # `pendingSince` also restarts the 2 h reminder (F-07.C4) when the summary is shown again
     sets = {"pendingSince": _stamp(_now())}
     updated = _write(order, sets, new_status="PENDING_CONFIRMATION", allowed=EDITABLE)
-    return {"status": "PENDING_CONFIRMATION", "summary": _view(updated)}
+    # F-07.C7: where the confirmation email will go (the caller confirms); null = ask for one
+    return {
+        "status": "PENDING_CONFIRMATION",
+        "summary": _view(updated),
+        "orderEmail": order_email(args.caller.contactId),
+    }
 
 
 def confirm_order(args: ConfirmOrderInput) -> dict[str, Any]:
