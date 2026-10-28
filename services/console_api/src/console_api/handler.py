@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 
 import boto3
 from boto3.dynamodb.conditions import Key
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from console_api import conversations
@@ -168,7 +169,11 @@ def _image_url(order: dict[str, Any]) -> str | None:
     if not uri:
         return None
     bucket, _, key = uri.removeprefix("s3://").partition("/")
-    url: str = boto3.client("s3").generate_presigned_url(
+    # SSE-KMS objects only answer SigV4-signed URLs, on the regional endpoint
+    s3 = boto3.client(
+        "s3", config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"})
+    )
+    url: str = s3.generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": key},
         ExpiresIn=int(os.environ.get("IMAGE_URL_TTL_SECONDS", "300")),

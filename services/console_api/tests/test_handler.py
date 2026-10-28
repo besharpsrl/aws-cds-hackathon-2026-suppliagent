@@ -279,9 +279,9 @@ def test_detail_lines_follow_the_console_contract() -> None:
 
 def test_detail_image_comes_from_the_conversation_when_the_order_has_none() -> None:
     _, body = call("/orders/{orderId}", "backoffice", order_id="ord_3")
-    assert "media-bucket.s3.amazonaws.com/b.jpg" in str(
-        body["imageUrl"]
-    )  # the image, not the earlier voice note
+    url = str(body["imageUrl"])  # the image, not the earlier voice note
+    assert "media-bucket.s3" in url and "/b.jpg?" in url
+    assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in url  # SSE-KMS objects need SigV4
 
 
 def test_correction_matches_the_line_prices_it_and_updates_the_order() -> None:
