@@ -629,12 +629,14 @@ class AgentGuardrail extends Construct {
           {
             name: 'Medical advice',
             type: 'DENY',
+            // Product facts (allergens, lactose, gluten) are the technical sheets' job (FN-21, T-44b):
+            // "La burrata contiene lattosio?" was blocked by the first definition (28/10).
             definition:
-              'Medical or health advice for a person: diagnoses, treatments, or whether a food is safe for their illness, pregnancy or intolerance.',
+              "Advice on a person's own health: diagnoses, treatments, medicines, what to eat for an illness. Not product facts such as ingredients, allergens, lactose or gluten content.",
             examples: [
               'Sono celiaco, posso mangiare questa pasta senza stare male?',
               'What should I take for food poisoning?',
-              'Sono incinta, posso mangiare la burrata?',
+              'Ho il diabete, quante pizze posso mangiare a settimana?',
             ],
           },
         ],
