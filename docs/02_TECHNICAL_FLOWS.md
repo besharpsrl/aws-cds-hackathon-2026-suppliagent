@@ -334,7 +334,7 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 | C1 WhatsApp entro 24h | Messaggio libero |
 | C2 WhatsApp oltre 24h | Template approvato |
 | C3 Template non approvato | Fallback SMS/email |
-| C4 RCS non supportato dal device | Fallback SMS automatico (opzioni numerate) |
+| C4 RCS non supportato dal device (in Italia: tutti gli iPhone) | Fallback SMS automatico via pool; col sender ID alfanumerico (one-way) è solo una notifica, senza opzioni da rispondere ([RCS_SMS_SETUP](./RCS_SMS_SETUP.md)) |
 | C5 STOP su SMS | Opt-out registrato |
 | C6 Fascia notturna (21:00–07:00) | Proattivi rinviati; conferme d'ordine inviate comunque |
 | C7 Invio fallito / bounce | Retry, poi canale alternativo; per email bounce → richiesta nuovo indirizzo (T-26: bounce permanente dell'email di conferma → `orderEmail` cancellato, `orderEmailBouncedAt`, messaggio nella conversazione dell'ordine che chiede un altro indirizzo; la risposta arriva all'agente, che chiama `set_order_email`) |

@@ -14,6 +14,7 @@ Concept: [`../SUPPLIAGENT_SOLUTION.md`](../SUPPLIAGENT_SOLUTION.md)
 | 09 | [Testi e template](./09_CONTENT_AND_TEMPLATES.md) | Template WhatsApp (fonte: JSON nel Notifier) e invio a Meta | v0.1 |
 | – | [Iscrizione WhatsApp (WABA)](./WABA_SETUP.md) | Procedura di collegamento del numero WhatsApp ad AWS End User Messaging Social | in uso |
 | – | [VIDEO_SCRIPT.md](./VIDEO_SCRIPT.md) | Copione del video demo (≤ 3 min), alternative per le scene non pronte al freeze e checklist di registrazione | bozza |
+| – | [Agente RCS e mittente SMS](./RCS_SMS_SETUP.md) | Agente RCS di test, tester, sender ID SMS per l'Italia e vincoli (M-11) | in uso |
 | – | [OLD/](./OLD/) | Documenti superati (backlog, DONE, checklist submission, documenti da fare, handoff Claude Code): solo storico | archivio |
 
 **Punto di partenza, stato, timeline, backlog, azioni manuali e decisioni**: [`../START_HERE.md`](../START_HERE.md) (fonte unica).
