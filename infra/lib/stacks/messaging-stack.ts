@@ -43,6 +43,9 @@ export interface MessagingStackProps extends StackProps {
     readonly turnBuffer: ITableV2;
     readonly orders: ITableV2;
     readonly deliveries: ITableV2;
+    readonly products: ITableV2;
+    readonly orderHistory: ITableV2;
+    readonly deliveryCalendar: ITableV2;
   };
 }
 
@@ -280,10 +283,36 @@ export class MessagingStack extends Stack {
         SES_CONFIGURATION_SET_PARAM: param('sesConfigurationSet'),
         SANDBOX_PARAM: param('notifierSandbox'),
         DOCUMENTS_BUCKET: props.documentsBucket.bucketName,
+        DELIVERY_CUTOFF: config.parameters.deliveryCutoff,
       },
     });
     const allow = (actions: string[], resources: string[]) =>
       notifier.function.addToRolePolicy(new iam.PolicyStatement({ actions, resources }));
+    // WhatsApp templates (T-52, F-13 / F-12): the reorder proposal and the delivery-day message.
+    allow(
+      ['dynamodb:GetItem'],
+      [tables.products, tables.deliveries, tables.deliveryCalendar].map((t) => t.tableArn),
+    );
+    allow(
+      ['dynamodb:Query'],
+      [tables.orderHistory.tableArn, `${tables.conversations.tableArn}/index/by-contactId`],
+    );
+    new events.Rule(this, 'ReorderDueRule', {
+      ruleName: `${prefix}-reorder-due`,
+      eventBus: props.eventBus,
+      eventPattern: { source: ['suppliagent.proactive-trigger'], detailType: ['reorder.due'] },
+      targets: [new targets.LambdaFunction(notifier.function)],
+    });
+    new events.Rule(this, 'OutForDeliveryRule', {
+      ruleName: `${prefix}-out-for-delivery`,
+      eventBus: props.eventBus,
+      eventPattern: {
+        source: ['suppliagent.erp'],
+        detailType: ['order.status_changed'],
+        detail: { to: ['OUT_FOR_DELIVERY'] },
+      },
+      targets: [new targets.LambdaFunction(notifier.function)],
+    });
     allow(['dynamodb:GetItem'], [tables.conversations.tableArn]);
     // Order confirmation email (T-26): the order, its venue, the recipient's address and language.
     allow(
