@@ -29,6 +29,11 @@ from suppliagent_shared.models import (
 
 SOURCE = "suppliagent.tool-customers"
 VENUE_SIMILARITY = 0.8
+# F-02: users give the short name ("Da Nino") or the legal name ("Forno Antico S.r.l.")
+GENERIC_NAME_WORDS = frozenset(
+    "pizzeria trattoria ristorante osteria bar caffe cafe pub bistro enoteca locanda "
+    "il lo la i gli le l da di del della dei al alla the and srl srls snc sas spa".split()
+)
 # F-02.C4, per conversation; SSM parameter identificationMaxAttempts, passed by CDK as env var
 MAX_IDENTIFY_ATTEMPTS = int(os.environ.get("IDENTIFICATION_MAX_ATTEMPTS", "3"))
 LAST_ORDERS = 5
@@ -254,18 +259,28 @@ def _attempt_allowed(caller: CallerContext) -> bool:
 def _find_customer(args: IdentifyContactInput) -> tuple[dict[str, Any], str] | None:
     if args.customerCode:
         method = "CUSTOMER_CODE"
-        condition = Attr("customerCode").eq(args.customerCode.strip().upper())
+        condition = Attr("customerCode").eq(_alnum(args.customerCode))
     else:
         method = "VAT_NUMBER"
-        vat = re.sub(r"[\s.]", "", args.vatNumber or "").upper()
-        condition = Attr("vatNumber").eq(vat if vat[:2].isalpha() else f"IT{vat}")
+        condition = Attr("vatNumber").eq(_vat(args.vatNumber or ""))
     # ponytail: Scan with a filter on a registry of a few hundred venues; add a GSI on
     # customerCode/vatNumber (and paginate) if it grows past one 1 MB page.
     candidates = table("customers").scan(FilterExpression=condition)["Items"]
     for customer in candidates:
-        if _same_venue(customer["venueName"], args.venueName or ""):
+        names = (customer["venueName"], customer.get("legalName", ""))
+        if any(_same_venue(name, args.venueName or "") for name in names):
             return customer, method
     return None  # same answer for wrong code and wrong venue: no oracle on customer codes
+
+
+def _alnum(text: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", text.upper())
+
+
+def _vat(text: str) -> str:
+    """'IT-900…', 'P.IVA 900…', '900 000…' -> 'IT900…'; other EU VAT numbers as given."""
+    vat = _alnum(text).removeprefix("PIVA")
+    return f"IT{vat}" if vat.isdigit() else vat
 
 
 def _normalize(text: str) -> str:
@@ -273,8 +288,19 @@ def _normalize(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", ascii_text.casefold()))
 
 
+def _core(text: str) -> str:
+    """Name without venue types, articles and legal forms: 'Trattoria Da Nino' -> 'nino'."""
+    return " ".join(
+        w for w in text.split() if (len(w) > 1 or w.isdigit()) and w not in GENERIC_NAME_WORDS
+    )
+
+
 def _same_venue(registered: str, given: str) -> bool:
     a, b = _normalize(registered), _normalize(given)
+    return _similar(a, b) or _similar(_core(a), _core(b))
+
+
+def _similar(a: str, b: str) -> bool:
     if not a or not b:
         return False
     short, long_ = sorted((a, b), key=len)

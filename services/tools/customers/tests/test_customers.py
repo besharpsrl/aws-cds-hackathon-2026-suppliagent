@@ -515,3 +515,35 @@ def test_set_order_email_through_the_gateway_handler(events: list[Any]) -> None:
     assert lambda_handler({"caller": REP_001, "email": "p@example.org"}, context) == {
         "error": "ACCESS_DENIED"
     }
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"vatNumber": "IT-90000000901", "venueName": "Demo Bistro 1"},
+        {"vatNumber": "P.IVA 90000000901", "venueName": "demo bistro 1"},
+        {"vatNumber": "it 900 000 00901", "venueName": "Demo Bistro"},
+        {"customerCode": "c 90001", "venueName": "Demo Bistro"},
+        {"customerCode": "C-90001", "venueName": "Demo Bistro"},
+    ],
+)
+def test_unknown_matched_with_loosely_written_code_or_vat(args: dict[str, str]) -> None:  # F-02
+    assert identify(caller=UNKNOWN, **args)["status"] == "MATCHED"
+
+
+@pytest.mark.parametrize(
+    ("vat", "venue"),
+    [
+        ("90000000002", "Da Nino"),  # short name, without the venue type
+        ("90000000003", "Aurora"),
+        ("90000000001", "Forno Antico S.r.l."),  # legal name
+        ("90000000006", "Osteria del Ponte S.a.s."),
+    ],
+)
+def test_unknown_matched_with_short_or_legal_name(vat: str, venue: str) -> None:  # F-02
+    assert identify(caller=UNKNOWN, vatNumber=vat, venueName=venue)["status"] == "MATCHED"
+
+
+def test_unknown_other_venue_number_not_matched() -> None:  # F-02.C3
+    result = identify(caller=UNKNOWN, customerCode="C90001", venueName="Trattoria Da Nino")
+    assert result == {"status": "NOT_FOUND"}
