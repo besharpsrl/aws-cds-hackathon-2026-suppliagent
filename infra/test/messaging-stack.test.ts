@@ -179,7 +179,14 @@ describe('MessagingStack – debounce and Notifier (T-22, T-24 base, FN-26, FN-0
       DEBOUNCE_MEDIA_MS: '6000',
       DEBOUNCE_MAX_MS: '15000',
       TURN_LOCK_TTL_MS: '120000',
+      TURN_MAX_MESSAGES: '20',
     });
+  });
+
+  it('lets the dispatcher hand a conversation over after a second failed turn (T-67)', () => {
+    expect(rolePolicy('turn-dispatcher')).toMatch(
+      /"dynamodb:GetItem","dynamodb:UpdateItem"\],"Effect":"Allow","Resource":(\[[^\]]*)?\{"Fn::ImportValue":"[^"]*Conversations/,
+    );
   });
 
   it('lets the dispatcher invoke only this environment’s agent and the notifier', () => {

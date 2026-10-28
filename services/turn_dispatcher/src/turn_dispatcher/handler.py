@@ -7,9 +7,15 @@ messages arrived during the turn.
 A flush is only a "look at this conversation" nudge: any number can be in flight, and all but the
 one that finds the burst over and the lock free do nothing.
 
+A failed agent turn (T-67: Runtime error or throttling E-05, turn too long E-12) is counted in
+`turnFailures`: the first gets a courtesy message and SQS retries the flush after the visibility
+timeout; the second in a row hands the conversation over (`LOW_CONFIDENCE`), tells the contact and
+drops the messages from the buffer (the operator reads them in `Messages`), so nothing ends in the
+DLQ unanswered. A turn takes at most `TURN_MAX_MESSAGES` messages; the rest get the next turn.
+
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `TURN_FLUSH_QUEUE_URL`, `AGENT_RUNTIME_ARN`,
 `NOTIFIER_FUNCTION_NAME`, `DEBOUNCE_TEXT_MS`, `DEBOUNCE_MEDIA_MS`, `DEBOUNCE_MAX_MS`,
-`TURN_LOCK_TTL_MS`.
+`TURN_LOCK_TTL_MS`, `TURN_MAX_MESSAGES`.
 """
 
 import json
@@ -27,12 +33,24 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.errors import SuppliAgentError
+from suppliagent_shared.handoff import HandoffReason, start_handoff
 
 SOURCE = "suppliagent.turn-dispatcher"
 WHATSAPP_WINDOW = timedelta(hours=24)
 MEDIA_TYPES = {"image", "audio", "document"}
 # Notifier errors that a retry cannot fix (typed errors of `suppliagent_shared.errors`).
 PERMANENT_NOTIFIER_ERRORS = {"AccessDeniedError", "ChannelUnavailableError", "InvalidInputError"}
+FAILURES_BEFORE_HANDOFF = 2
+COURTESY = {
+    "it": "Scusa, ho un piccolo problema tecnico: ti rispondo tra un attimo.",
+    "en": "Sorry, I'm having a small technical problem: I'll get back to you in a moment.",
+}
+HANDOFF = {
+    "it": "Non riesco a gestire la tua richiesta in questo momento: ti passo a un collega, che ti "
+    "risponderà qui al più presto.",
+    "en": "I can't handle your request right now: I'm passing you to a colleague, who will reply "
+    "here as soon as possible.",
+}
 logger = Logger(service="turn-dispatcher")
 
 
@@ -40,6 +58,14 @@ class AgentTurnError(SuppliAgentError):
     """The Runtime refused the request or the invocation failed (E-05, E-12): retried by SQS."""
 
     code = "AGENT_TURN_FAILED"
+
+
+class _AgentFailedError(Exception):
+    """Internal: the agent call failed; carries the original error."""
+
+    def __init__(self, error: BaseException) -> None:
+        super().__init__(str(error))
+        self.error = error
 
 
 @cache
@@ -90,7 +116,8 @@ def _flush(conversation_id: str) -> None:
         remaining = int(item.get("lockUntil", now)) - now
         _enqueue(conversation_id, max(1, math.ceil(remaining / 1000)) + 1)
         return
-    pending = locked.get("pending", [])
+    # Oldest first, capped: the rest stay pending and get the next turn (afterTurn, re-flush).
+    pending = locked.get("pending", [])[: int(os.environ.get("TURN_MAX_MESSAGES", "20"))]
     if not pending:
         _release(conversation_id, until, 0)
         return
@@ -106,6 +133,10 @@ def _flush(conversation_id: str) -> None:
             logger.info("conversation in human mode: no turn", messages=len(pending))
         else:
             _run_turn(conversation_id, locked, pending, conversation)
+    except _AgentFailedError as failed:
+        if not _after_agent_failure(conversation_id, until, locked, pending):
+            raise failed.error from None  # SQS redelivers the flush
+        return
     except BaseException:
         try:
             _release(conversation_id, until, 0)  # keep the messages: SQS retries the flush
@@ -116,6 +147,74 @@ def _flush(conversation_id: str) -> None:
     if after and after.get("pending"):
         # Arrived during the turn (C3): one more turn for all of them, debounced as usual.
         _enqueue(conversation_id, math.ceil(int(os.environ["DEBOUNCE_TEXT_MS"]) / 1000))
+
+
+def _after_agent_failure(
+    conversation_id: str, until: int, item: dict[str, Any], pending: list[dict[str, Any]]
+) -> bool:
+    """E-05 / E-12. True if the conversation was handed over and the messages dropped; False if
+    the flush must be retried (lock released, messages kept)."""
+    try:
+        failures = _count_failure(conversation_id, until)
+        first = min(pending, key=lambda m: (m["ts"], m["messageId"]))["messageId"]
+        language = "en" if str(item["caller"].get("locale", "")).startswith("en") else "it"
+        if failures is not None and failures >= FAILURES_BEFORE_HANDOFF:
+            start_handoff(
+                SOURCE,
+                conversation_id,
+                HandoffReason.LOW_CONFIDENCE,
+                f"Il turno dell'agente non è riuscito {failures} volte di seguito "
+                f"(errore tecnico): {len(pending)} messaggi senza risposta.",
+                by="AGENT",
+            )
+            _tell(conversation_id, f"handoff#{first}", HANDOFF[language])
+            _release(conversation_id, until, len(pending))
+            logger.warning("agent failed again: handed over", failures=failures)
+            return True
+        if failures is not None:
+            # Once per burst: the key is its first message, a retry does not apologise twice.
+            _tell(conversation_id, f"courtesy#{first}", COURTESY[language])
+    except Exception:
+        logger.exception("failure handling failed")  # keep the turn's own error for SQS
+    try:
+        _release(conversation_id, until, 0)
+    except Exception:
+        logger.exception("lock not released")  # it expires by itself
+    return False
+
+
+def _count_failure(conversation_id: str, until: int) -> int | None:
+    """One more failed turn, while still holding the lock; None if the lock is no longer ours."""
+    try:
+        response = table("turn-buffer").update_item(
+            Key={"conversationId": conversation_id},
+            UpdateExpression="SET turnFailures = if_not_exists(turnFailures, :zero) + :one",
+            ConditionExpression="lockUntil = :until",
+            ExpressionAttributeValues={":until": until, ":zero": 0, ":one": 1},
+            ReturnValues="UPDATED_NEW",
+        )
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return None
+        raise
+    return int(response["Attributes"]["turnFailures"])
+
+
+def _tell(conversation_id: str, key: str, text: str) -> None:
+    """A system message to the contact through the Notifier (best effort, idempotent on key)."""
+    response = _lambda().invoke(
+        FunctionName=os.environ["NOTIFIER_FUNCTION_NAME"],
+        Payload=json.dumps(
+            {
+                "kind": "reply",
+                "conversationId": conversation_id,
+                "idempotencyKey": key,
+                "text": text,
+            }
+        ).encode(),
+    )
+    if response.get("FunctionError"):
+        logger.warning("system message not sent", key=key.split("#", 1)[0])
 
 
 def _due_at(pending: list[dict[str, Any]]) -> int:
@@ -166,12 +265,15 @@ def _release(conversation_id: str, until: int, drained: int) -> dict[str, Any] |
     expired mid-turn). With nothing drained (a failed turn) only the lock goes."""
     if not drained:
         return _release_update(conversation_id, until, "REMOVE lockUntil", "")
-    removal = ", ".join(["lockUntil", "afterTurn"] + [f"pending[{i}]" for i in range(drained)])
+    # A turn that is over (answered or handed over) also resets the failure count.
+    removal = ", ".join(
+        ["lockUntil", "afterTurn", "turnFailures"] + [f"pending[{i}]" for i in range(drained)]
+    )
     leftover = _release_update(
         conversation_id,
         until,
         "SET afterTurn = :true REMOVE "
-        + ", ".join(["lockUntil"] + [f"pending[{i}]" for i in range(drained)]),
+        + ", ".join(["lockUntil", "turnFailures"] + [f"pending[{i}]" for i in range(drained)]),
         "size(pending) > :n",
         {":true": True, ":n": drained},
     )
@@ -217,7 +319,12 @@ def _run_turn(
 ) -> None:
     started = time.monotonic()
     messages = sorted(pending, key=lambda m: (m["ts"], m["messageId"]))
-    reply, interactive = _invoke_agent(_turn_request(conversation_id, item, messages, conversation))
+    try:
+        reply, interactive = _invoke_agent(
+            _turn_request(conversation_id, item, messages, conversation)
+        )
+    except Exception as e:
+        raise _AgentFailedError(e) from e
     if reply:
         _notify(conversation_id, messages, reply, interactive)
     put_event(

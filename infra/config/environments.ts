@@ -45,6 +45,8 @@ const runtimeParameters: Record<string, string> = {
   debounceMediaMs: '6000',
   debounceMaxMs: '15000',
   turnLockTtlMs: '120000',
+  // Messages one agent turn takes at most (oldest first); the rest get the next turn (T-67).
+  turnMaxMessages: '20',
   matchAutoThreshold: '0.85',
   matchAskThreshold: '0.5',
   maxClarificationsPerMessage: '5',
