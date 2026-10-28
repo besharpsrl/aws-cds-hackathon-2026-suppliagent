@@ -25,18 +25,26 @@ Sandbox (SSM `notifierSandbox`, default on when the parameter is missing): nothi
 outgoing message is only recorded in `Messages`, so the pipeline runs without a WhatsApp number
 or a verified SES identity (T-14).
 
-Not in the base (T-24 complete, T-29): templates outside the 24 h window, SMS/RCS, quiet hours,
-opt-out, channel fallback.
+And two WhatsApp templates (T-29 approved them; T-52, F-13 / F-12):
+- EventBridge `reorder.due` (Proactive Trigger, morning window, consent and cooldown checked
+  there): `reorder_suggestion` to each consenting contact of the venue whose conversation is on
+  WhatsApp, with quick replies `reorder_same` / `reorder_modify` / `reorder_no` / `reorder_stop`.
+- EventBridge `order.status_changed` to `OUT_FOR_DELIVERY` (ERP mock `advance`): `delivery_update`
+  with the delivery window, quick replies `delivery_received` / `delivery_issue`.
+A template goes out also outside the 24 h window; the taps reach the agent as `interactiveReply`.
+
+Not yet (T-24 complete, T-27): other templates outside the window, SMS/RCS, opt-out, channel
+fallback.
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `WA_PHONE_NUMBER_ID_PARAM`, `SES_FROM_PARAM`,
-`SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`, `DOCUMENTS_BUCKET`.
+`SES_CONFIGURATION_SET_PARAM`, `SANDBOX_PARAM`, `DOCUMENTS_BUCKET`, `DELIVERY_CUTOFF`.
 """
 
 import json
 import os
 import re
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import cache
 from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
@@ -44,10 +52,12 @@ from uuid import NAMESPACE_URL, uuid5
 import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities import parameters
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from suppliagent_shared.aws import put_event, table
 from suppliagent_shared.contacts import order_email
+from suppliagent_shared.delivery import calendar_closed, delivery_dates, parse_cutoff
 from suppliagent_shared.errors import (
     AccessDeniedError,
     ChannelUnavailableError,
@@ -165,6 +175,10 @@ def reset_clients() -> None:
 def handler(event: dict[str, Any], _context: Any) -> dict[str, str]:
     if event.get("detail-type") == "order.pdf_ready":
         return _order_confirmation(event.get("detail") or {})
+    if event.get("detail-type") == "reorder.due":
+        return _reorder_due(event.get("detail") or {})
+    if event.get("detail-type") == "order.status_changed":
+        return _delivery_update(event.get("detail") or {})
     if "Records" in event:
         return _email_events(event["Records"])
     request = Request.model_validate(event)
@@ -273,14 +287,20 @@ def _reply(request: Request, conversation: dict[str, Any]) -> dict[str, str]:
     return {"status": status}
 
 
-def _event(detail_type: str, conversation_id: str, channel: str, sandbox: bool) -> None:
+def _event(
+    detail_type: str,
+    conversation_id: str,
+    channel: str,
+    sandbox: bool,
+    template: str | None = None,
+) -> None:
     put_event(
         SOURCE,
         detail_type,
         {
             "conversationId": conversation_id,
             "channel": channel,
-            "template": None,
+            "template": template,
             "sandbox": sandbox,
         },
     )
@@ -708,6 +728,247 @@ def _order_email_bounced(
         _reply(request, conversation)
     except ChannelUnavailableError:  # outside the WhatsApp window: no template for this yet
         logger.info("bounce: channel unavailable, nobody asked")
+
+
+# --- WhatsApp templates: proactive reorder (T-52, F-13) and delivery day (F-12) ------------
+
+REORDER_TEMPLATE = "reorder_suggestion"
+DELIVERY_TEMPLATE = "delivery_update"
+# Quick-reply payloads (ours, sent with the template) and the labels approved by Meta, in the
+# order of the template's buttons (`whatsapp_templates/*.json`, checked by the tests).
+TEMPLATE_BUTTONS: dict[str, dict[str, list[tuple[str, str]]]] = {
+    REORDER_TEMPLATE: {
+        "it": [
+            ("reorder_same", "Riordina uguale"),
+            ("reorder_modify", "Modifica"),
+            ("reorder_no", "No grazie"),
+            ("reorder_stop", "Stop proposte"),
+        ],
+        "en": [
+            ("reorder_same", "Reorder same"),
+            ("reorder_modify", "Change"),
+            ("reorder_no", "No thanks"),
+            ("reorder_stop", "Stop suggestions"),
+        ],
+    },
+    DELIVERY_TEMPLATE: {
+        "it": [("delivery_received", "Ricevuto"), ("delivery_issue", "Segnala problema")],
+        "en": [("delivery_received", "Received"), ("delivery_issue", "Report a problem")],
+    },
+}
+MAX_REORDER_PRODUCTS = 3
+DAYS = {
+    "it": ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"),
+    "en": ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+}
+MONTHS = {
+    "it": (
+        "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
+        "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
+    ),
+    "en": (
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+    ),
+}  # fmt: skip
+AND = {"it": " e ", "en": " and "}
+
+
+def _lang(contact: dict[str, Any]) -> str:
+    return "en" if str(contact.get("language", "it")).startswith("en") else "it"
+
+
+def _day(value: date, language: str, weekday: bool = False) -> str:
+    text = f"{value.day} {MONTHS[language][value.month - 1]}"
+    return f"{DAYS[language][value.weekday()]} {text}" if weekday else text
+
+
+def _first_name(contact: dict[str, Any], customer: dict[str, Any]) -> str:
+    name = str(contact.get("name") or "").split()
+    return name[0] if name else str(customer.get("venueName") or "")
+
+
+def _whatsapp_conversation(contact_id: str) -> dict[str, Any] | None:
+    """The contact's conversation whose last verified message came from WhatsApp (the newest one):
+    the template goes to that address, never to one taken from the event."""
+    items = table("conversations").query(
+        IndexName="by-contactId", KeyConditionExpression=Key("contactId").eq(contact_id)
+    )["Items"]
+    on_whatsapp = [c for c in items if c.get("lastInboundChannel") == "WHATSAPP"]
+    on_whatsapp.sort(key=lambda c: str(c.get("lastMessageAt", "")), reverse=True)
+    return on_whatsapp[0] if on_whatsapp else None
+
+
+def _reorder_due(detail: dict[str, Any]) -> dict[str, str]:
+    """`reorder_suggestion` to the venue's consenting contacts on WhatsApp (F-13.3). Consent and
+    status are read again: they may have changed since the trigger ran."""
+    customer_id = str(detail.get("customerId", ""))
+    logger.set_correlation_id(customer_id)
+    customer = table("customers").get_item(Key={"customerId": customer_id}).get("Item")
+    skus = [str(s) for s in detail.get("skus", [])][:MAX_REORDER_PRODUCTS]
+    if not customer or not skus:
+        raise InvalidInputError
+    names = [
+        str(p["name"])
+        for sku in skus
+        if (p := table("products").get_item(Key={"sku": sku}).get("Item"))
+    ]
+    if not names:
+        raise InvalidInputError
+    last = table("order-history").query(
+        KeyConditionExpression=Key("customerId").eq(customer_id), ScanIndexForward=False, Limit=1
+    )["Items"]
+    last_date = date.fromisoformat(str(last[0]["date"])[:10]) if last else None
+    dates, _ = delivery_dates(
+        customer["deliveryDays"],
+        calendar_closed(customer["zone"]),
+        datetime.now(UTC),
+        parse_cutoff(os.environ["DELIVERY_CUTOFF"]),
+        1,
+    )
+    if not dates or not last_date:
+        raise InvalidInputError
+    statuses: list[str] = []
+    for contact_id in detail.get("contactIds", []):
+        contact = table("contacts").get_item(Key={"contactId": str(contact_id)}).get("Item")
+        if not (
+            contact
+            and contact.get("status") == "VERIFIED"
+            and contact.get("proactiveConsent") is True
+            and customer_id in contact.get("customerIds", [])
+        ):
+            statuses.append("NO_CONSENT")
+            continue
+        language = _lang(contact)
+        products = ", ".join(n.lower() for n in names[:-1])
+        products = f"{products}{AND[language]}{names[-1].lower()}" if products else names[0].lower()
+        statuses.append(
+            _send_template(
+                str(contact_id),
+                REORDER_TEMPLATE,
+                language,
+                [
+                    _first_name(contact, customer),
+                    products,
+                    _day(last_date, language),
+                    _day(dates[0], language, weekday=True),
+                ],
+                f"reorder#{customer_id}#{contact_id}#{date.today().isoformat()}",
+                {"customerId": customer_id},
+            )
+        )
+    logger.info("reorder suggestions", statuses=statuses)
+    return {"status": ",".join(statuses) or "NO_CONTACT"}
+
+
+def _delivery_update(detail: dict[str, Any]) -> dict[str, str]:
+    """`delivery_update` when the order leaves for the delivery (F-12.1), to the customer contact
+    who placed it, if their conversation is on WhatsApp (an order placed by a sales rep: none)."""
+    if detail.get("to") != "OUT_FOR_DELIVERY":
+        return {"status": "SKIPPED"}
+    order_id = parse_order_id(detail.get("orderId"))
+    logger.set_correlation_id(order_id)
+    order = table("orders").get_item(Key={"orderId": order_id}).get("Item")
+    if not order:
+        raise NotFoundError
+    contact_id = str(order.get("confirmedBy") or order.get("createdBy") or "")
+    contact = table("contacts").get_item(Key={"contactId": contact_id}).get("Item")
+    if not contact_id.startswith("con_") or not contact:
+        return {"status": "NO_CONTACT"}
+    delivery = table("deliveries").get_item(Key={"orderId": order_id}).get("Item") or {}
+    start, _, end = str(delivery.get("window", "")).partition("-")
+    if not end:
+        raise InvalidInputError
+    customer = table("customers").get_item(Key={"customerId": order["customerId"]}).get("Item")
+    return {
+        "status": _send_template(
+            contact_id,
+            DELIVERY_TEMPLATE,
+            _lang(contact),
+            [_first_name(contact, customer or {}), order_id, start, end],
+            f"delivery#{order_id}",
+            {"orderId": order_id},
+        )
+    }
+
+
+def _send_template(
+    contact_id: str,
+    name: str,
+    language: str,
+    params: list[str],
+    key: str,
+    extra: dict[str, Any],
+) -> str:
+    conversation = _whatsapp_conversation(contact_id)
+    if not conversation or not conversation.get("lastInboundFrom"):
+        return "NO_WHATSAPP"  # RCS / SMS for contacts without WhatsApp arrive with T-27
+    if conversation.get("mode") == "HUMAN":
+        return "HANDOFF"  # an operator has the conversation: no automatic message
+    conversation_id = str(conversation["conversationId"])
+    if not _claim(key):
+        if _is_done(key):
+            return "DUPLICATE"
+        raise SendInProgressError
+    buttons = TEMPLATE_BUTTONS[name][language]
+    sandbox = _sandbox()
+    try:
+        if sandbox:
+            provider_id: str | None = _sandbox_id(key)
+        else:
+            provider_id = _whatsapp(
+                {
+                    "to": conversation["lastInboundFrom"],
+                    "type": "template",
+                    "template": {
+                        "name": name,
+                        "language": {"code": language},
+                        "components": [
+                            {
+                                "type": "body",
+                                "parameters": [{"type": "text", "text": p} for p in params],
+                            },
+                            *(
+                                {
+                                    "type": "button",
+                                    "sub_type": "quick_reply",
+                                    "index": str(i),
+                                    "parameters": [{"type": "payload", "payload": button_id}],
+                                }
+                                for i, (button_id, _) in enumerate(buttons)
+                            ),
+                        ],
+                    },
+                }
+            )
+    except Exception:
+        _unclaim(key)
+        _event("notification.failed", conversation_id, "WHATSAPP", sandbox, name)
+        raise
+    _done(key)
+    status = "SANDBOX" if sandbox else "SENT"
+    try:
+        _store(
+            conversation_id,
+            key,
+            "WHATSAPP",
+            f"[{name}] " + " · ".join(params),
+            provider_id,
+            status,
+            {
+                **extra,
+                "template": name,
+                "interactive": {
+                    "kind": "TEMPLATE",
+                    "options": [{"id": i, "title": t} for i, t in buttons],
+                },
+            },
+        )
+        _event("notification.sent", conversation_id, "WHATSAPP", sandbox, name)
+    except Exception:
+        logger.exception("sent, but not recorded")
+    logger.info("template sent", template=name, sandbox=sandbox)
+    return status
 
 
 # Idempotency: a claim in the TurnBuffer table (TTL attribute `expiresAt`, like the Router's

@@ -102,7 +102,7 @@ Dipendenze tra corsie: T-63 (C) aspetta T-49 (B); T-50 e T-52 (B) aspettano T-08
 | Area | Stato | Dettaglio |
 |---|---|---|
 | Infra di base (CDK, CI, tag, KMS, dati) | ✅ | 9 stack su `dev`, CI verde, cdk-nag |
-| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template inviati a Meta, ancora `PENDING` il 28/10 alle 12:00 (T-29: da controllare in WhatsApp Manager; non servono alla demo, l'invio di template è T-24, rinviato); invio reale attivo da T-68 (dopo il deploy di `foundation` e `messaging`); flussi 2 e 3 provati il 28/10 col simulatore in IT ed EN fino a ERP mock, PDF, stato, modifica e annullo; prova dal telefono da fare (T-68) |
+| WhatsApp (EUM Social) | ◐ | Numero +39 345 246 0472 collegato, ricezione ok; 8 template **`APPROVED`** il 28/10 pomeriggio (T-29); `reorder_suggestion` e `delivery_update` inviati dal Notifier (T-52); invio reale attivo da T-68 (dopo il deploy di `foundation` e `messaging`); flussi 2 e 3 provati il 28/10 col simulatore in IT ed EN fino a ERP mock, PDF, stato, modifica e annullo; prova dal telefono da fare (T-68) |
 | Email (SES) | ◐ | Dominio `suppliagent.stonecutters.besharp.net` verificato, fuori sandbox, ricezione ok; email di conferma con PDF e bounce fatti (T-26, #100); risposte nello stesso thread del cliente e modifica rispondendo all'email di conferma (T-26b); da provare su `dev` dopo il deploy di `channels`, `messaging`, `agent` |
 | SMS/RCS | ◐ | M-11 fatta (28/10): agente RCS di test attivo, tester Android verificato e messaggio di prova ricevuto; sender ID `SUPPLIAGENT` (IT, one-way); RCS non arriva su iPhone in Italia ([RCS_SMS_SETUP](docs/RCS_SMS_SETUP.md)). Codice da fare (T-27, Could) |
 | Pipeline (Router, debounce, Dispatcher, Notifier base) | ✅ | Errori del turno: cortesia al primo, handoff `LOW_CONFIDENCE` al secondo, tetto di messaggi per turno (T-67, da deployare con `messaging`) |
@@ -180,8 +180,8 @@ Utenti: **ristoratore** (WhatsApp +39 345 246 0472 o email `ordini@…`), **agen
 | 4 | Ordine via email | Email a `ordini@…` con testo o foto → stesso flusso, risposte via email | ◐ ricezione e risposta ok; risposte nel thread, ordine e "Ordine aggiornato" rispondendo all'email di conferma (T-26b, da provare su `dev`); allegati PDF/Excel no |
 | 5 | Supervisione in console | 5a elenco ordini e dettaglio con il bigliettino accanto alle righe · 5b correzione di una riga · 5c handoff: l'operatore prende la conversazione, risponde, la restituisce | ◐ elenco e dettaglio su dati finti (T-62); ✓ handoff lato agente (T-49) e in console (T-63, dopo il deploy di `console` e `messaging`) |
 | 6 | Copilota per l'agente di commercio | "Cosa propongo alla Trattoria X?", briefing prima della visita, domande sulle schede tecniche, ordine per conto del cliente | ☐ (solo il ruolo e i permessi) |
-| 7 | Riordino proattivo | L'assistente scrive per primo ("di solito riordinate l'olio ogni 10 giorni…") → riordino con un tap | ☐ |
-| 8 | Consegna | Avviso via SMS/RCS il giorno della consegna con *Ricevuto / Segnala problema* | ☐ |
+| 7 | Riordino proattivo | L'assistente scrive per primo ("di solito riordinate l'olio ogni 10 giorni…") → riordino con un tap | ◐ template `reorder_suggestion` dal Notifier su `reorder.due` e tap gestiti dall'agente (T-52, dopo il deploy di `messaging` e `agent`); da provare su `dev` |
+| 8 | Consegna | Avviso via SMS/RCS il giorno della consegna con *Ricevuto / Segnala problema* | ◐ su WhatsApp: template `delivery_update` all'uscita per la consegna (ERP mock `advance` → `OUT_FOR_DELIVERY`, T-52); SMS/RCS ☐ (T-27) |
 | 9 | Prova dei giudici | Dal README: numero WhatsApp e codice di prova → ordine da foto → console in sola lettura con il proprio ordine | ◐ console e pagina demo ✅; ingresso coi codici di prova `C90001`–`C90003` (T-71), da provare da telefono (T-68) |
 
 ### 4.4 Tolti dal backlog

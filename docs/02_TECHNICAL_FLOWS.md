@@ -353,12 +353,16 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 | C2 prodotto danneggiato | Foto obbligatoria; segnalazione con priorità |
 | C3 nessun tap entro fine giornata | Si assume consegnato (configurabile) |
 
+*Stato (T-52, solo WhatsApp)*: all'uscita per la consegna (`order.status_changed` → `OUT_FOR_DELIVERY`, ERP mock `advance`; regola `suppliagent-<env>-out-for-delivery`) il Notifier invia il template `delivery_update` (nome, numero d'ordine, fascia da `Deliveries.window`) al contatto cliente che ha fatto l'ordine, se la sua conversazione è su WhatsApp; ordini di un agente di commercio: nessun messaggio. Quick reply `delivery_received` (l'agente ringrazia; lo stato `DELIVERED` resta all'ERP mock) e `delivery_issue` (passo 3). RCS/SMS con fallback: T-27.
+
 ### F-13 – Riordino proattivo (FN-19)
 
 1. **Notte**: Analyzer calcola per ogni cliente gli intervalli medi per prodotto → `CustomerInsights.expectedReorders` (regole in INFRASTRUCTURE_DESIGN §5.6).
 2. **Mattina** (fascia consentita): Proactive Trigger, per i clienti con consenso e un riordino scaduto (oltre `reorderDueFactor` × intervallo), emette `reorder.due`, che avvia un **turno proattivo**; il cooldown di 7 giorni parte dalla proposta (`CustomerInsights.lastProposalAt`).
 3. Messaggio template `reorder_suggestion`: "Buongiorno! Di solito a quest'ora avete già riordinato olio EVO e pelati. Vuole lo stesso ordine dell'ultima volta?" → *Riordina uguale / Modifica / No grazie*.
 4. *Riordina uguale* → bozza dall'ultimo ordine → F-06 → F-07.
+
+*Stato (T-52)*: `reorder.due` → Notifier (regola `suppliagent-<env>-reorder-due`) → template `reorder_suggestion` a ogni contatto del cliente ancora `VERIFIED` e con consenso, sull'indirizzo WhatsApp verificato della sua conversazione più recente (mai dall'evento); nessun invio se la conversazione è in handoff (`HUMAN`) o non è su WhatsApp (RCS con T-27). Parametri: nome, fino a 3 prodotti scaduti, data dell'ultimo ordine, prossima data di consegna. I quick reply portano gli id `reorder_same` / `reorder_modify` / `reorder_no` / `reorder_stop`, che arrivano all'agente come tap (regole in `prompts/customer.md`): `reorder_same` crea la bozza con le righe dell'ultimo ordine (`get_customer_profile`) e segue F-06/F-07 fino al *Confermo*; `reorder_stop` → `update_privacy` con consenso `false`. Idempotente per cliente, contatto e giorno. La fascia notturna e il cooldown sono del Proactive Trigger.
 
 | Caso | Comportamento |
 |---|---|
