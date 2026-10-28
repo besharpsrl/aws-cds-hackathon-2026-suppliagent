@@ -216,5 +216,5 @@ Each line is a claim above. Keep it only if it is true on `dev` when submitting:
 - [ ] Console: orders on real data with the photo next to the lines and line correction (T-62, PR #90).
 - [ ] WhatsApp templates approved by Meta (T-29): then say "approved" and that the assistant can write first; until then keep the wording above.
 - [ ] Voice notes read through Transcribe in the demo.
-- [ ] Items faded in the diagram (roadmap): promote to solid and to the text only if deployed (handoff, copilot tools, proactivity, SMS/RCS, Memory, Observability, Guardrails, WAF, WebSocket chat, AgentCore Identity, CloudTrail, Budgets, Secrets Manager, configuration sets). After any change, regenerate `architecture.png` from the `.drawio`.
+- [ ] The diagram shows the full architecture (mocks included, nothing faded): keep the text honest about what is not on `dev` (handoff, copilot tools, proactivity, SMS/RCS, Memory, Observability, Guardrails, WAF, WebSocket chat, AgentCore Identity, CloudTrail, Budgets, Secrets Manager, configuration sets). After any change, regenerate `architecture.png` from the `.drawio`.
 - [ ] Judges' instructions (number, email, console URL and credentials, sample note) are in the README (T-10) and the text says the same.
