@@ -1,7 +1,7 @@
 # SuppliAgent – Infrastructure Design
 
 > AWS CDS Agentic AI Partner Hackathon · Team beSharp
-> Stato: **v0.2 (draft)** · IaC: **AWS CDK (TypeScript)** · Agent: **Strands Agents su Amazon Bedrock AgentCore** · Region: **eu-west-1**
+> Stato: **v1.0 – allineato alla submission** (T-72, 28/10/2026) · IaC: **AWS CDK (TypeScript)** · Agent: **Strands Agents su Amazon Bedrock AgentCore** · Region: **eu-west-1**
 > Diagramma: [`architecture.drawio`](./architecture.drawio)
 
 ---
@@ -49,7 +49,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 5. **Order & Outbound** – servizio ordini, generazione PDF, **ERP adapter** (mock), **Notifier** con policy di canale, EventBridge Scheduler.
 6. **Proactive** – job giornaliero di **analisi riordini e insight cliente**.
 7. **Data** – DynamoDB (anagrafiche, catalogo, listini, stock, ordini, conversazioni), S3.
-8. **Console & Analytics** – CloudFront + S3 (React), Cognito, API Gateway REST + WebSocket (anche **chat web agenti**), Firehose → S3 → Glue/Athena.
+8. **Console** – CloudFront + S3 (React), Cognito, API Gateway REST (+ WebSocket per la **chat web agenti**, T-64). Niente analytics su Athena (T-09 tolto il 27/10).
 
 ## 4. Stack CDK
 
@@ -63,7 +63,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 | 6 | `MessagingStack` | SQS `inbound` + DLQ, SQS `turn-flush` + DLQ, Lambda Inbound Router (con il download dei media), Turn Dispatcher, Notifier, Order PDF Generator, ERP Adapter, EventBridge Scheduler | Foundation, Channels, Agent, Data |
 | 7 | `ProactiveStack` | EventBridge Scheduler giornaliero, Lambda **Insights & Reorder Analyzer**, Lambda **Proactive Trigger** | Data, Messaging |
 | 8 | `ConsoleStack` | Cognito (gruppi `backoffice`, `sales_rep`, `judge`), API Gateway REST + WebSocket, Lambda API/broadcaster/rep-chat, S3 + CloudFront (OAC) + WAF | Data, Messaging, Agent |
-| 9 | `AnalyticsStack` | Firehose (eventi CDS + applicativi) → S3 Parquet, Glue Catalog, Athena workgroup e viste KPI, CloudWatch Dashboard + allarmi | Channels, Foundation |
+| 9 | `AnalyticsStack` | **Vuoto** (T-09 tolto il 27/10: niente Firehose, Glue, Athena); allarmi CloudWatch negli stack dei componenti | Foundation |
 
 > Verificato il 23/10/2026 su `aws-cdk-lib` 2.274.0:
 > - **AgentCore**: L2 **stabili** in `aws-cdk-lib/aws-bedrockagentcore` (`Runtime`, `RuntimeEndpoint`, `Gateway`, `GatewayTarget`, `WorkloadIdentity`, `Memory`); il pacchetto `@aws-cdk/aws-bedrock-agentcore-alpha` serve solo per Policy e non si usa.
@@ -92,7 +92,7 @@ Disponibilità servizi verificata il 09–12/10/2026:
 #### RCS / SMS – AWS End User Messaging SMS v2
 - **Outbound**: `SendRcsMessage` (conferma d'ordine, avviso di consegna con **suggested replies** *Ricevuto / Segnala problema*, proposta di riordino per chi non usa WhatsApp) con **fallback** `SendTextMessage`.
 - **Inbound two-way** → SNS `suppliagent-sms-inbound` (risposte, postback, STOP).
-- Configuration set con event destinations (Firehose + SNS). Agente RCS registrato, device tester invitati, registrazione Italia (`IT_RCS_LAUNCH_REGISTRATION`).
+- Configuration set con event destinations (SNS). Agente RCS registrato, device tester invitati, registrazione Italia (`IT_RCS_LAUNCH_REGISTRATION`).
 - *Stato (M-11, 28/10)*: agente RCS **di test** `ACTIVE` con un tester Android verificato (solo tester, niente lancio verso gli operatori) e sender ID `SUPPLIAGENT` per IT (one-way); account SMS in sandbox. In Italia RCS non arriva su iPhone. Procedura, ID e vincoli: [RCS_SMS_SETUP.md](./RCS_SMS_SETUP.md).
 
 ### 5.2 Ingestion & Routing
@@ -314,7 +314,7 @@ Convenzioni implementate (T-03): attributi chiave tutti stringa; GSI chiamati `b
 | `inbound-mail` | email grezze | 90 gg |
 | `documents` | PDF ordini | 365 gg |
 | `catalog-assets` | export catalogo, schede tecniche PDF, immagini prodotto | – |
-| `analytics` | eventi Parquet | 365 gg |
+| `analytics` | vuoto (creato dal `FoundationStack`; gli eventi Parquet erano di T-09, tolto) | 365 gg |
 | `console-site` | build React | – |
 | `access-logs` | log | 30 gg |
 
@@ -324,17 +324,17 @@ Convenzioni implementate (T-03): attributi chiave tutti stringa; GSI chiamati `b
 
 - **Frontend** React (Vite) su S3 + CloudFront (OAC) + WAF.
 - **Auth** Cognito: `backoffice` (tutto + handoff), `sales_rep` (chat copilota + propri clienti e ordini), `judge` (sola lettura + chat demo).
-- **Viste**: inbox ordini (stato, confidenza, righe corrette, **immagine originale del bigliettino affiancata alle righe**), conversazioni live, problemi di consegna, clienti, KPI.
+- **Viste**: inbox ordini (stato, confidenza, righe corrette, **immagine originale del bigliettino affiancata alle righe**), conversazioni live, problemi di consegna, clienti.
 - **Chat web agenti**: WebSocket → `rep-chat` → TurnBuffer/Dispatcher → stesso agente con `role = SALES_REP`; risposte in streaming via WebSocket.
 - **Real-time**: Streams di `Messages`/`Orders` → Broadcaster → WebSocket.
 - **Handoff**: `mode = HUMAN`, risposta del back office via Notifier, *Release* all'agente.
 
 Stato (T-60, T-62, T-63, 28/10): implementati Cognito (utenti creati dall'admin; per un `sales_rep` impostare l'attributo `custom:repId`), S3 + CloudFront (OAC) e API REST `/v1/orders` (`services/console_api`, ruolo dai claim del token): `GET /orders` (con `customerName`, `uncertainLines`, `handoff` da `Customers` e `Conversations`), `GET /orders/{orderId}` (righe nel contratto di 02 §6.3, URL pre-firmato del bigliettino) e `PATCH /orders/{orderId}/lines/{lineId}` con `{sku, quantity?}`: solo `backoffice` e il `sales_rep` del portafoglio (`judge` mai), solo ordini `DRAFT`/`NEEDS_CLARIFICATION` e solo uno dei `candidates` della riga; la riga diventa `MATCHED` con `correctedBy`, prezzo e totale ricalcolati, scrittura condizionata su `version`, eventi `order.line_corrected` e `order.status_changed`. La foto è `imageS3Uri` se presente, altrimenti la prima immagine in ingresso della conversazione dell'ordine (preferita quella di `sourceMessageId`). **Conversazioni e handoff (T-63)**: `GET /conversations` (con `mode`, `handoff`, nome del contatto e del locale; in `HUMAN` prima), `GET /conversations/{id}` (ultimi 100 messaggi con canale, direzione, stato e `sentBy`; mai indirizzi né URI dei media), `POST /conversations/{id}/takeover | reply | release` (F-14). Lettura per `backoffice` e `judge`, scrittura solo `backoffice` (un `sales_rep` è rifiutato: le conversazioni non sono per portafoglio); la risposta passa dal Notifier (`lambda:InvokeFunction` solo su quella funzione, nessun permesso di invio CDS per la console). La Lambda `console-api` impacchetta `suppliagent_shared` (`TABLE_PREFIX`) e legge `Contacts`. **Real-time per polling ogni 2 s** (nessun WebSocket/broadcaster: soddisfa FN-28 "entro 2 s"; `WsConnections` e gli Streams restano per T-64). **Non ancora**: WAF (costo fisso, da decidere prima della demo), WebSocket/broadcaster, `rep-chat` (T-64); `imageRegion` e confidenza per riga non sono scritti dall'agente (riquadri assenti, confidenza 100% per le righe con SKU).
 
-### 5.9 Analytics & Observability
+### 5.9 Observability
 
-- Eventi CDS (SES, EUM SMS/RCS, EUM Social) + eventi applicativi ([02 §6.4](./02_TECHNICAL_FLOWS.md)) → Firehose → S3 Parquet → Glue → Athena.
-- **Viste KPI**: tempo foto→conferma, % righe auto-abbinate, correzioni, % ordini senza intervento umano, valore suggerimenti accettati, conversione riordini proattivi, delivery/read rate per canale, problemi di consegna.
+- Eventi applicativi ([02 §6.4](./02_TECHNICAL_FLOWS.md)) sul bus EventBridge; l'export Firehose → S3 → Glue → Athena e le viste KPI sono fuori dalla gara (T-09, T-65 tolti il 27/10).
+- AgentCore Observability: tracce per turno (T-54).
 - CloudWatch: dashboard unica e allarmi (DLQ, errori Notifier, errori ERP adapter). Log JSON (Powertools) con `conversationId`/`orderId`, senza contenuti dei messaggi.
 
 ## 6. Flussi principali (sintesi)
@@ -407,7 +407,7 @@ sequenceDiagram
 | Embedding + S3 Vectors + Knowledge Base | indicizzazione catalogo, query | Basso |
 | WhatsApp | tariffe Meta + fee AWS | Basso–medio |
 | SMS/RCS | per messaggio | Basso |
-| SES, Lambda, DynamoDB, SQS, SNS, API GW, S3, Firehose, Athena | pay-per-use | Trascurabile |
+| SES, Lambda, DynamoDB, SQS, SNS, API GW, S3 | pay-per-use | Trascurabile |
 | CloudFront + WAF | costo fisso WAF | Basso |
 
 > Scelta deliberata di **S3 Vectors** invece di OpenSearch Serverless: nessun costo minimo orario, adatto ai crediti dell'hackathon.

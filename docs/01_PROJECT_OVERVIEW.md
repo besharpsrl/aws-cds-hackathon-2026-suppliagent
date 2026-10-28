@@ -1,7 +1,7 @@
 # SuppliAgent – Panoramica tecnica del progetto
 
 > AWS CDS Agentic AI Partner Hackathon · Team beSharp
-> Stato: **v0.2 – bozza da validare con il team** · Data: 12/10/2026
+> Stato: **v1.0 – allineato alla submission** (T-72: solo le funzionalità della gara) · Data: 28/10/2026
 > Documenti collegati: [02 – Flussi tecnici](./02_TECHNICAL_FLOWS.md) · [03 – Specifica funzionale](./03_FUNCTIONAL_SPEC.md) · [Infrastructure design](./INFRASTRUCTURE_DESIGN.md) · [Diagramma](./architecture.drawio)
 
 ---
@@ -36,9 +36,9 @@ Il caso d'uso nasce da un **cliente reale di beSharp**: un distributore di prodo
 **L'agente di commercio (copilota)**
 - Chiede "cosa propongo al ristorante X?", informazioni sul catalogo e sulle **schede tecniche**, riceve un **briefing** prima delle visite e può **inserire ordini per conto del cliente** (foto del bigliettino scattata durante la visita), via WhatsApp o chat web.
 
-**Il back office** supervisiona da una **console web**: ordini e righe a bassa confidenza, conversazioni, problemi di consegna, KPI, presa in carico.
+**Il back office** supervisiona da una **console web**: ordini e righe a bassa confidenza, conversazioni, problemi di consegna, presa in carico.
 
-### Valore atteso (KPI)
+### Valore atteso
 - Tempo di inserimento ordine: da minuti di lavoro manuale a **secondi**
 - **% righe abbinate automaticamente** e accuratezza
 - **% ordini senza intervento umano**
@@ -63,13 +63,14 @@ Il caso d'uso nasce da un **cliente reale di beSharp**: un distributore di prodo
 - Conferme via email (PDF) e SMS/RCS; avvisi di consegna e segnalazione problemi.
 - Riordino proattivo.
 - Copilota per agenti di commercio: suggerimenti, catalogo, schede tecniche, briefing, ordini per conto del cliente.
-- Console back office con chat web per gli agenti, KPI.
+- Console back office (ordini, correzioni, conversazioni, handoff) con chat web per gli agenti.
 - Lingue: italiano e inglese.
 
 **Fuori perimetro**
 - Integrazione con l'ERP reale (si usa un **adapter mock** con interfaccia documentata).
 - Pagamenti, fatturazione, gestione crediti e fidi.
 - Logistica e pianificazione dei giri di consegna (simulati).
+- Dashboard KPI e analytics (Firehose, Glue, Athena): tolti il 27/10 (T-09, T-65); restano gli eventi su EventBridge e l'osservabilità di AgentCore e CloudWatch.
 - Catalogo e prezzi reali non anonimizzati.
 
 ## 6. Architettura ad alto livello
@@ -129,7 +130,7 @@ flowchart LR
 | Ordini | Ciclo di vita, validazioni, PDF, invio all'ERP | Lambda, EventBridge, ERP adapter |
 | Notifier | Unico punto di uscita, scelta del canale | Lambda + client CDS |
 | Proattività | Insight clienti e proposte di riordino | EventBridge Scheduler, Lambda |
-| Console & KPI | Supervisione, chat agenti, metriche | CloudFront, Cognito, API Gateway, Athena |
+| Console | Supervisione, handoff, chat agenti | CloudFront, Cognito, API Gateway |
 
 ## 7. Flusso principale ad alto livello (con diramazioni)
 
@@ -208,7 +209,7 @@ flowchart TD
 | **WhatsApp** | Ordini (foto, vocali, testo), chiarimenti con pulsanti, riordino proattivo, copilota agenti | È già il canale con cui i ristoratori ordinano |
 | **Email (SES)** | Conferma d'ordine con PDF, ordini via email, briefing agenti | Documento formale e tracciabile |
 | **RCS / SMS** | Conferma breve, avvisi di consegna con pulsanti, proposte per chi non usa WhatsApp | Raggiunge tutti; RCS con branding e pulsanti |
-| **Console / chat web** | Back office, chat copilota da PC per gli agenti, KPI | Controllo umano e misura dell'impatto |
+| **Console / chat web** | Back office, chat copilota da PC per gli agenti | Controllo umano |
 
 ## 9. Principi di progetto
 
