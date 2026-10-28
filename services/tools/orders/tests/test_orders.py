@@ -457,8 +457,21 @@ def test_confirmed_order_changes_until_the_cutoff(events: Events, aws: Any) -> N
     confirm(order_id)
     out = update(order_id, ops=[{"op": "update", "lineId": "l2", "quantity": 6}])
     assert out["status"] == "UPDATED" and out["order"]["total"] == Decimal("299.00")
+    # T-26b: the updated confirmation goes by email to who confirmed (a flag, not the address)
+    assert out["confirmationEmail"] is True
     assert stored(aws, order_id)["revision"] == 1
     assert ("order.updated", {"orderId": order_id, "revision": 1}) in events
+
+
+def test_confirmed_order_change_without_an_email_says_none_goes_out(aws: Any) -> None:
+    no_email = caller("CUSTOMER_CONTACT", "con_003", "conv_3")  # owns cus_003, no email
+    order = draft(no_email, customer="cus_003", deliveryDate="2026-10-30")
+    request_order_confirmation(
+        make(RequestConfirmationInput, caller=no_email, orderId=order["orderId"])
+    )
+    assert confirm(order["orderId"], no_email)["status"] == "CONFIRMED"
+    out = update(order["orderId"], no_email, deliveryNotes="dal retro")
+    assert out["status"] == "UPDATED" and out["confirmationEmail"] is False
 
 
 def test_confirmed_order_change_that_breaks_a_rule_is_not_saved(aws: Any) -> None:
