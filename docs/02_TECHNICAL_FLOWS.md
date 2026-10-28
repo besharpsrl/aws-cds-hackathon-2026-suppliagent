@@ -339,7 +339,9 @@ Disponibile su WhatsApp e chat web; ogni risposta è limitata al **portafoglio**
 | C4 RCS non supportato dal device (in Italia: tutti gli iPhone) | Fallback SMS automatico via pool; col sender ID alfanumerico (one-way) è solo una notifica, senza opzioni da rispondere ([RCS_SMS_SETUP](./RCS_SMS_SETUP.md)) |
 | C5 STOP su SMS | Opt-out registrato |
 | C6 Fascia notturna (21:00–07:00) | Proattivi rinviati; conferme d'ordine inviate comunque |
-| C7 Invio fallito / bounce | Retry, poi canale alternativo; per email bounce → richiesta nuovo indirizzo (T-26: bounce permanente dell'email di conferma → `orderEmail` cancellato, `orderEmailBouncedAt`, messaggio nella conversazione dell'ordine che chiede un altro indirizzo; la risposta arriva all'agente, che chiama `set_order_email`) |
+| C7 Invio fallito / bounce | Retry (T-24: 3 tentativi con backoff sugli errori transitori delle API di invio), poi canale alternativo (WhatsApp → RCS/SMS sull'identità `SMS#` verificata del contatto; RCS rifiutato → `SendTextMessage`); per email bounce → richiesta nuovo indirizzo (T-26: bounce permanente dell'email di conferma → `orderEmail` cancellato, `orderEmailBouncedAt`, messaggio nella conversazione dell'ordine che chiede un altro indirizzo; la risposta arriva all'agente, che chiama `set_order_email`) |
+
+*Stato (T-24)*: C2 una `reply` può nominare un template approvato (`order_pending_reminder` dall'`order-sweeper`, `order_confirmation`) con le variabili da `{{2}}` (il nome lo mette il Notifier): esce solo a finestra chiusa, quick reply `order_show_summary` / `order_cancel_draft` / `order_change`; C3/C7 senza template, o con WhatsApp ancora in errore dopo i retry, la risposta va su RCS/SMS all'identità `SMS#` verificata del contatto, altrimenti `ChannelUnavailable`; C5 *STOP* / *START* su SMS o RCS scrivono o tolgono `optedOutAt` sull'identità `SMS#` (il Router ha solo quell'attributo, condizione IAM `dynamodb:Attributes`) e non ricevono risposta; il Notifier non scrive più a quel numero; C6 nessun `reorder_suggestion` nella fascia notturna (anche il Proactive Trigger la rispetta). Il messaggio di scadenza della bozza non ha template: fuori finestra va su RCS/SMS o non parte.
 
 ### F-12 – Consegna e problemi (FN-18)
 
@@ -401,18 +403,18 @@ Identità unica (`contactId`) e Memory condivisa: un ordine iniziato su WhatsApp
 | ID | Errore | Gestione |
 |---|---|---|
 | E-01 | Evento duplicato | Idempotenza su `providerMessageId`: scrittura in transazione del messaggio e di una guardia `dedup#<messageId>` (TTL 7 giorni nel TurnBuffer), quindi anche con timestamp diverso; la coda standard consegna almeno una volta |
-| E-02 | Download media fallito | Retry ×3 (riconsegna SQS), poi DLQ; richiesta di reinvio al cliente quando c'è il Notifier (T-24) |
+| E-02 | Download media fallito | Retry (riconsegna SQS); all'ultima ricezione prima della DLQ (`MAX_RECEIVES` = `maxReceiveCount` 3) il messaggio passa con il media senza `s3Uri` e l'agente chiede di reinviarlo (T-24) |
 | E-03 | Lettura bigliettino fallita (immagine troppo scura/sfocata) | Richiesta di nuova foto con consigli (luce, inquadratura dall'alto) |
 | E-04 | Tool in errore / timeout | Retry ×1; poi messaggio di cortesia, bozza salvata |
 | E-05 | Throttling/errore Bedrock | Retry con backoff; "ti rispondo tra un attimo" e flush ritardato (T-67: cortesia una volta per raffica; il lock resta preso per metà di `turnLockTtlMs` (backoff di 60 s, così gli altri flush della raffica non riprovano subito), poi retry SQS dopo il visibility timeout di 120 s; il contatore `turnFailures` nel TurnBuffer si azzera al primo turno riuscito) |
 | E-06 | Guardrail interviene | Risposta sicura predefinita nella lingua del contatto ("non posso aiutarti con questa richiesta…"); il messaggio bloccato non resta nello storico |
 | E-07 | Errore indice prodotti / KB | Fallback su ricerca lessicale in DynamoDB; risposte sulle schede rimandate all'agente di commercio |
 | E-08 | ERP adapter non disponibile | Ordine `CONFIRMED`, retry con backoff, allarme; cliente informato della presa in carico |
-| E-09 | Invio CDS fallito | Retry ×3, fallback di canale |
+| E-09 | Invio CDS fallito | Retry ×3 con backoff sugli errori transitori (throttling, 5xx), poi fallback di canale (F-11.C7) (T-24) |
 | E-10 | Messaggio in DLQ | Allarme; redrive; blocca solo quella chat |
 | E-11 | Lock orfano | Scadenza `turnLockTtlMs` |
 | E-12 | Turno oltre il tempo massimo | Cortesia, retry una volta, poi handoff `LOW_CONFIDENCE` (T-67: vale per ogni errore dell'invocazione del Runtime; il secondo errore di fila passa la conversazione a `HUMAN`, avvisa il cliente e scarta i messaggi dal buffer, quindi niente DLQ) |
-| E-13 | Allegato non consentito/malevolo | Non salvato (tipo fuori whitelist, firma dei byte diversa dal tipo dichiarato, oltre 10 MB, virus scan SES diverso da `PASS`): resta nel messaggio senza `s3Uri` e il cliente viene informato. I media WhatsApp non passano da un antivirus |
+| E-13 | Allegato non consentito/malevolo | Non salvato (tipo fuori whitelist, firma dei byte diversa dal tipo dichiarato, oltre 10 MB, virus scan SES diverso da `PASS`): resta nel messaggio senza `s3Uri` e il cliente viene informato (l'agente lo vede come `not available` e chiede un altro formato, `prompts/shared.md`). I media WhatsApp non passano da un antivirus |
 
 ## 6. Contratti
 

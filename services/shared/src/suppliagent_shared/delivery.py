@@ -15,6 +15,28 @@ from suppliagent_shared.aws import table
 ROME = ZoneInfo("Europe/Rome")
 WEEKDAYS = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
 SEARCH_DAYS = 28  # a customer with at least one delivery day always has one in four weeks
+# Dates written to the customer (templates, SMS), in their language.
+DAYS = {
+    "it": ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"),
+    "en": ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+}
+MONTHS = {
+    "it": (
+        "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
+        "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
+    ),
+    "en": (
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+    ),
+}  # fmt: skip
+
+
+def format_day(value: date, language: str, weekday: bool = False) -> str:
+    """ "29 ottobre", or "giovedì 29 ottobre" with `weekday` ("Thursday 29 October" in English)."""
+    language = language if language in MONTHS else "it"
+    text = f"{value.day} {MONTHS[language][value.month - 1]}"
+    return f"{DAYS[language][value.weekday()]} {text}" if weekday else text
 
 
 def rome(moment: datetime | None = None) -> datetime:

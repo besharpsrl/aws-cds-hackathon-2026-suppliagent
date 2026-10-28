@@ -6,11 +6,12 @@ Run by a schedule every few minutes over the orders in `PENDING_CONFIRMATION`:
   that nothing was sent. Nothing is ever confirmed here.
 Nothing is written to the customer during the quiet hours (`QUIET_HOURS`, F-11.C6): the sweep that
 follows at the end of them does both, expiry first. Messages go through the Notifier, in the
-customer's conversation: outside the WhatsApp 24 h window they are not delivered (templates:
-T-29), the order still expires.
+customer's conversation: outside the WhatsApp 24 h window the reminder goes out as the approved
+template `order_pending_reminder` (T-24) or on RCS/SMS; the expiry notice has no template (RCS/SMS
+or nothing), the order still expires.
 
 Environment: `TABLE_PREFIX`, `EVENT_BUS_NAME`, `NOTIFIER_FUNCTION_NAME`, `PENDING_REMINDER_HOURS`,
-`QUIET_HOURS` (`HH:MM-HH:MM`, Europe/Rome).
+`QUIET_HOURS` (`HH:MM-HH:MM`, Europe/Rome), `DELIVERY_CUTOFF` (`HH:MM`).
 """
 
 import json
@@ -25,13 +26,15 @@ from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from suppliagent_shared.aws import put_event, table
-from suppliagent_shared.delivery import ROME, parse_cutoff, rome
+from suppliagent_shared.delivery import ROME, cutoff_at, format_day, parse_cutoff, rome
 from suppliagent_shared.orders import check_transition
 
 logger = Logger(service="order-sweeper")
 SOURCE = "suppliagent.order-sweeper"
 # errors after which sending again is pointless (the Notifier recorded why)
 PERMANENT_NOTIFIER_ERRORS = {"AccessDeniedError", "ChannelUnavailableError", "InvalidInputError"}
+AT = {"it": "{day} alle {time}", "en": "{day} at {time}"}
+TODAY = {"it": "oggi", "en": "today"}
 TEXTS = {
     "it": {
         "reminder": "Il riepilogo del tuo ordine ({lines} righe, consegna il {day}) è ancora in "
@@ -88,19 +91,47 @@ def _language(order: dict[str, Any]) -> str:
     return locale.split("-")[0].lower() if locale.split("-")[0].lower() in TEXTS else "it"
 
 
-def _notify(order: dict[str, Any], kind: str, key: str, **values: Any) -> bool:
+def _reminder_template(order: dict[str, Any], lines: int, now: datetime) -> dict[str, Any]:
+    """Variables of `order_pending_reminder` from `{{2}}` (the Notifier sets the name): lines,
+    delivery date and the last moment to confirm it (the cut-off of the day before)."""
+    language = _language(order)
+    delivery = date.fromisoformat(order["deliveryDate"])
+    limit = cutoff_at(delivery, parse_cutoff(os.environ["DELIVERY_CUTOFF"]))
+    day = (
+        TODAY[language]
+        if limit.date() == rome(now).date()
+        else format_day(limit.date(), language, weekday=True)
+    )
+    return {
+        "name": "order_pending_reminder",
+        "params": [
+            str(lines),
+            format_day(delivery, language, weekday=True),
+            AT[language].format(day=day, time=limit.strftime("%H:%M")),
+        ],
+    }
+
+
+def _notify(
+    order: dict[str, Any],
+    kind: str,
+    key: str,
+    template: dict[str, Any] | None = None,
+    **values: Any,
+) -> bool:
     """False only for a transient failure, worth retrying at the next sweep."""
     text = TEXTS[_language(order)][kind].format(**values)
+    request: dict[str, Any] = {
+        "kind": "reply",
+        "conversationId": order["conversationId"],
+        "idempotencyKey": key,
+        "text": text,
+    }
+    if template:
+        request["template"] = template
     response = _lambda().invoke(
         FunctionName=os.environ["NOTIFIER_FUNCTION_NAME"],
-        Payload=json.dumps(
-            {
-                "kind": "reply",
-                "conversationId": order["conversationId"],
-                "idempotencyKey": key,
-                "text": text,
-            }
-        ).encode(),
+        Payload=json.dumps(request).encode(),
     )
     if response.get("FunctionError"):
         error_type = json.loads(response["Payload"].read()).get("errorType")
@@ -171,6 +202,7 @@ def handler(_event: dict[str, Any], _context: Any) -> dict[str, int]:
                 order,
                 "reminder",
                 f"reminder#{order['orderId']}#{since_text}",
+                _reminder_template(order, active, now),
                 lines=active,
                 day=day,
             ):

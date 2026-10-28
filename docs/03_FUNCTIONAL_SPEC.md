@@ -88,8 +88,8 @@ Elenco completo delle funzionalità di SuppliAgent, con priorità, criteri di ac
 #### FN-01 – Messaggistica multicanale · **M** · CH
 - [ ] WhatsApp (testo, immagine, audio, documento, risposte a pulsanti e liste) arriva all'agente come `NormalizedMessage`.
 - [ ] Email (corpo e allegati) arriva normalizzata; Reply-To `ordine+<id>@` correlato all'ordine.
-- [ ] Risposte SMS e tap RCS arrivano come messaggi del contatto.
-- [ ] Il codice chiama `SendWhatsAppMessage`, `sesv2.SendEmail`, `SendRcsMessage`, `SendTextMessage` (requisito di gara).
+- [x] Risposte SMS e tap RCS arrivano come messaggi del contatto (T-27).
+- [x] Il codice chiama `SendWhatsAppMessage`, `sesv2.SendEmail`, `SendRcsMessage`, `SendTextMessage` (requisito di gara; verificato da `tests/test_cds_usage.py`).
 - [ ] Eventi di consegna/lettura registrati per ogni invio.
 
 #### FN-02 – Primo contatto e consenso · **M** · AG
