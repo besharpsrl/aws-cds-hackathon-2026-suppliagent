@@ -39,7 +39,7 @@ Built by [beSharp](https://www.besharp.it) for the **AWS Communication Developer
 
 ## Architecture
 
-<p align="center"><img src="docs/architecture.png" alt="SuppliAgent architecture"><br><a href="docs/architecture.drawio">docs/architecture.drawio</a> (faded components are roadmap)</p>
+<p align="center"><img src="docs/architecture.png" alt="SuppliAgent architecture"><br><a href="docs/architecture.drawio">docs/architecture.drawio</a></p>
 
 - Region **eu-west-1**; **Amazon Nova Pro** (reasoning and handwritten-note vision) on Amazon Bedrock via the **`eu.` inference profile** (data and inference stay in the EU).
 - **Strands Agents on Amazon Bedrock AgentCore** (Runtime, Memory, Gateway, Identity, Observability), Bedrock Guardrails, Bedrock Knowledge Bases, **Amazon S3 Vectors**, Amazon Transcribe.
