@@ -83,11 +83,15 @@ def start_handoff(
 
 
 def release_handoff(source: str, conversation_id: str, by: str) -> bool:
-    """*Release*: back to AGENT. False if the conversation was not HUMAN."""
+    """*Release*: back to AGENT. False if the conversation was not HUMAN. The identification
+    attempts start over: an operator who releases an unidentified sender lets them try again
+    (otherwise the next message hands off again, F-02)."""
     try:
         response = table("conversations").update_item(
             Key={"conversationId": conversation_id},
-            UpdateExpression="SET #mode = :agent, releasedAt = :now REMOVE #handoff",
+            UpdateExpression=(
+                "SET #mode = :agent, releasedAt = :now REMOVE #handoff, identifyAttempts"
+            ),
             ConditionExpression="#mode = :human",
             ExpressionAttributeNames=NAMES,
             ExpressionAttributeValues={":agent": AGENT, ":human": HUMAN, ":now": _now()},
